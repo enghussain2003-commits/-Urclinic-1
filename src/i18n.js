@@ -198,7 +198,6 @@ const resources = {
       phone: "Phone Number",
       loading: "Loading...",
       patients: "Patients",
-      settings: "Settings",
 
       // Doctor Dashboard
       doctor_dashboard: "Doctor Dashboard",
@@ -257,6 +256,44 @@ const resources = {
       new_prescription: "New Prescription",
       save_prescription: "Save Prescription",
       saving: "Saving...",
+
+      // Password Recovery & Settings
+      forgot_password: "Forgot Password?",
+      forgot_password_title: "Reset Password",
+      forgot_password_subtitle: "Enter your registered email address to receive a password reset link.",
+      send_reset_link: "Send Reset Link",
+      reset_link_sent: "A password reset link has been sent to your email.",
+      reset_password: "Reset Password",
+      new_password: "New Password",
+      confirm_password: "Confirm New Password",
+      passwords_do_not_match: "Passwords do not match.",
+      password_reset_success: "Password reset successfully. You can now login.",
+      update_password: "Update Password",
+      user_settings: "Account Settings",
+      change_password: "Change Password",
+
+      // Dashboard & Analytics (new)
+      total_revenue: "Total Revenue",
+      total_expenses: "Total Expenses",
+      net_profit: "Net Profit",
+      total_employees: "Total Employees",
+      expenses_not_configured: "Expenses module not configured yet",
+      expenses_module_hint: "Set up an expenses table to see full financial overview",
+      from_paid_appointments: "From completed paid appointments",
+      recent_payments: "Recent Payments",
+      recent_activity: "Recent Activity",
+      no_payments_yet: "No payments recorded yet.",
+      no_activity_yet: "No recent activity.",
+      monthly_revenue: "Monthly Overview",
+      appointment_distribution: "Appointment Status",
+      upcoming_appointments: "Upcoming Appointments",
+      view_all: "View All",
+      cash: "Cash",
+      no_data_available: "No data available yet.",
+      expenses: "Expenses",
+      revenue: "Revenue",
+      patients_this_month: "Patients This Month",
+      appointments_per_week: "Appointments per Week",
     }
   },
   ar: {
@@ -455,7 +492,6 @@ const resources = {
       phone: "رقم الهاتف",
       loading: "جارٍ التحميل...",
       patients: "المرضى",
-      settings: "الإعدادات",
 
       // Doctor Dashboard
       doctor_dashboard: "لوحة الطبيب",
@@ -514,6 +550,44 @@ const resources = {
       new_prescription: "وصفة طبية جديدة",
       save_prescription: "حفظ الوصفة",
       saving: "جارٍ الحفظ...",
+
+      // Password Recovery & Settings
+      forgot_password: "هل نسيت كلمة المرور؟",
+      forgot_password_title: "استعادة كلمة المرور",
+      forgot_password_subtitle: "أدخل بريدك الإلكتروني المسجل لتلقي رابط إعادة تعيين كلمة المرور.",
+      send_reset_link: "إرسال الرابط",
+      reset_link_sent: "تم إرسال رابط استعادة كلمة المرور إلى بريدك الإلكتروني.",
+      reset_password: "إعادة تعيين كلمة المرور",
+      new_password: "كلمة المرور الجديدة",
+      confirm_password: "تأكيد كلمة المرور الجديدة",
+      passwords_do_not_match: "كلمات المرور غير متطابقة.",
+      password_reset_success: "تمت إعادة تعيين كلمة المرور بنجاح. يمكنك تسجيل الدخول الآن.",
+      update_password: "تحديث كلمة المرور",
+      user_settings: "إعدادات الحساب",
+      change_password: "تغيير كلمة المرور",
+
+      // لوحة التحكم والتحليلات (جديد)
+      total_revenue: "إجمالي الإيرادات",
+      total_expenses: "إجمالي المصروفات",
+      net_profit: "صافي الربح",
+      total_employees: "إجمالي الموظفين",
+      expenses_not_configured: "وحدة المصروفات غير مُهيأة بعد",
+      expenses_module_hint: "أنشئ جدول المصروفات لعرض النظرة المالية الكاملة",
+      from_paid_appointments: "من المواعيد المكتملة والمدفوعة",
+      recent_payments: "المدفوعات الأخيرة",
+      recent_activity: "النشاط الأخير",
+      no_payments_yet: "لا توجد مدفوعات مسجّلة بعد.",
+      no_activity_yet: "لا يوجد نشاط حديث.",
+      monthly_revenue: "النظرة الشهرية",
+      appointment_distribution: "توزيع حالات المواعيد",
+      upcoming_appointments: "المواعيد القادمة",
+      view_all: "عرض الكل",
+      cash: "نقداً",
+      no_data_available: "لا توجد بيانات بعد.",
+      expenses: "المصروفات",
+      revenue: "الإيرادات",
+      patients_this_month: "مرضى هذا الشهر",
+      appointments_per_week: "المواعيد أسبوعياً",
     }
   }
 };

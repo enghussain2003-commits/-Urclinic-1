@@ -1,11 +1,9 @@
-import React from 'react';
 import { useTranslation } from 'react-i18next';
-import { doctors } from '../data/mockData';
+import { Fragment } from 'react';
 
 const ScheduleView = () => {
-  const { t, i18n } = useTranslation();
-  const isAr = i18n.language === 'ar';
-
+  const { t } = useTranslation();
+  
   const times = ['09:00', '10:00', '11:00', '12:00', '13:00', '14:00', '15:00', '16:00'];
   const days = ['sun', 'mon', 'tue', 'wed', 'thu', 'fri'];
 
@@ -22,7 +20,7 @@ const ScheduleView = () => {
         ))}
 
         {times.map((time, i) => (
-          <React.Fragment key={time}>
+          <Fragment key={time}>
             <div className="schedule-time">{time}</div>
             {days.map((d, j) => {
               // Mock logic for visuals
@@ -41,7 +39,7 @@ const ScheduleView = () => {
                 </div>
               );
             })}
-          </React.Fragment>
+          </Fragment>
         ))}
       </div>
     </div>

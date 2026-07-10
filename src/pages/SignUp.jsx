@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate, Link } from 'react-router-dom';
 import { Activity, User, Phone, Mail, Lock } from 'lucide-react';
@@ -37,16 +37,23 @@ const SignUp = () => {
       if (authError) throw authError;
 
       if (authData?.user) {
-        const userData = {
-          id: authData.user.id,
-          name: fullName,
-          email,
-          phone,
-          role: 'patient',
-          clinic_id: null,
-        };
-        login(userData);
-        navigate('/');
+        if (authData.session) {
+          const userData = {
+            id: authData.user.id,
+            name: fullName,
+            email,
+            phone,
+            role: 'patient',
+            clinic_id: null,
+          };
+          login(userData);
+          navigate('/');
+        } else {
+          // If session is null, email confirmation is required by Supabase
+          setError(t('email') === 'البريد الإلكتروني' 
+            ? 'يرجى التحقق من بريدك الإلكتروني لتفعيل الحساب قبل تسجيل الدخول.' 
+            : 'Please check your email to verify your account before logging in.');
+        }
       }
     } catch (err) {
       setError(err.message || 'An error occurred during sign up.');

@@ -6,7 +6,7 @@ const esc = (s) => String(s ?? '').replace(/[&<>"]/g, (c) => (
   { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]
 ));
 
-export function downloadPrescriptionPdf(rx, { isAr = false, doctorName = '', patientName = '', clinicName = 'CareClinic' } = {}) {
+export function downloadPrescriptionPdf(rx, { isAr = false, doctorName = '', patientName = '', clinicName = 'UrClinic' } = {}) {
   const meds = Array.isArray(rx.medicines) ? rx.medicines : [];
   const dir = isAr ? 'rtl' : 'ltr';
   const L = isAr
@@ -68,7 +68,7 @@ export function downloadPrescriptionPdf(rx, { isAr = false, doctorName = '', pat
 
   ${rx.instructions ? `<div class="section-title">${esc(L.instructions)}</div><div class="box">${esc(rx.instructions)}</div>` : ''}
 
-  <div class="foot">CareClinic — ${esc(rx.prescribed_date || '')}</div>
+  <div class="foot">UrClinic — ${esc(rx.prescribed_date || '')}</div>
 
   <script>window.onload = function () { window.print(); };</script>
 </body>

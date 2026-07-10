@@ -1,4 +1,4 @@
-import React from 'react';
+/* eslint-disable react-refresh/only-export-components */
 import { useTranslation } from 'react-i18next';
 
 // Convert "HH:MM" (24h) to a 12-hour label with AM/PM (Arabic: صباحاً/مساءً).

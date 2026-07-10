@@ -1,15 +1,12 @@
-import React from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
-import { Calendar, Shield, Users, Search, ArrowRight, Star, Heart, Stethoscope, Bone, Baby, SmilePlus } from 'lucide-react';
-import { specialties } from '../data/mockData';
+import { Calendar, Shield, Search, ArrowRight } from 'lucide-react';
 import { useApp } from '../context/AppContext';
 import DoctorCard from '../components/DoctorCard';
 
 const Home = () => {
-  const { t, i18n } = useTranslation();
-  const isAr = i18n.language === 'ar';
-  const { doctors, loading } = useApp();
+  const { t } = useTranslation();
+    const { doctors, loading } = useApp();
 
   const stats = [
     { value: "15,200", label: t('patients_served') },

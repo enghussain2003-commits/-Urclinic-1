@@ -1,7 +1,7 @@
-import React, { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
-import { Activity, Globe, Bell, User, LogOut } from 'lucide-react';
+import { Activity, Globe, Bell, User, LogOut, Settings } from 'lucide-react';
 import { useApp } from '../context/AppContext';
 import NotificationCenter from './NotificationCenter';
 
@@ -10,7 +10,7 @@ const Navbar = () => {
   const location = useLocation();
   const navigate = useNavigate();
   const { user, unreadCount, logout } = useApp();
-  const [showNotif, setShowNotif] = React.useState(false);
+  const [showNotif, setShowNotif] = useState(false);
   const isStaff = user && ['super_admin', 'clinic_admin', 'employee', 'doctor'].includes(user.role);
 
   const handleLogout = () => {
@@ -33,7 +33,7 @@ const Navbar = () => {
     <nav className="navbar">
       <Link to="/" className="navbar-logo">
         <Activity size={28} />
-        CareClinic
+        UrClinic
       </Link>
       <div className="navbar-links">
         <Link to="/" className={`navbar-link ${isActive('/') ? 'active' : ''}`}>{t('home')}</Link>
@@ -61,6 +61,10 @@ const Navbar = () => {
             <Link to="/profile" className="btn btn-ghost btn-sm" style={{ gap: '0.375rem' }}>
               <User size={18} />
               {user.name || t('profile')}
+            </Link>
+            <Link to="/settings" className="btn btn-ghost btn-sm" style={{ gap: '0.375rem' }} title={t('user_settings')}>
+              <Settings size={18} />
+              {t('user_settings') || 'Settings'}
             </Link>
             <button onClick={handleLogout} className="btn btn-ghost btn-sm" style={{ gap: '0.375rem', color: 'var(--danger)' }} title={t('logout')}>
               <LogOut size={18} />

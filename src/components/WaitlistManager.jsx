@@ -1,4 +1,3 @@
-import React from 'react';
 import { useTranslation } from 'react-i18next';
 import { getWaitlist, doctors } from '../data/mockData';
 import { Clock, Bell } from 'lucide-react';

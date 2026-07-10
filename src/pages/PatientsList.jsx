@@ -1,11 +1,10 @@
-import React, { useState } from 'react';
-import { useTranslation } from 'react-i18next';
+import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Search, User, Phone, Calendar, ChevronRight } from 'lucide-react';
+import { Search, User, Phone, ChevronRight } from 'lucide-react';
 import { useApp } from '../context/AppContext';
 
 const PatientsList = () => {
-  const { t } = useTranslation();
+
   const navigate = useNavigate();
   const { patients, loading } = useApp();
 
@@ -22,6 +21,7 @@ const PatientsList = () => {
 
   const calculateAge = (dob) => {
     if (!dob) return '-';
+    // eslint-disable-next-line react-hooks/purity
     const diff = Date.now() - new Date(dob).getTime();
     return Math.floor(diff / (1000 * 60 * 60 * 24 * 365.25));
   };

@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect, Fragment } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
 import { CheckCircle, CreditCard, User, Stethoscope, Calendar as CalendarIcon, Clock, ChevronRight, Banknote, Smartphone, Building2 } from 'lucide-react';
@@ -56,6 +56,7 @@ const Booking = () => {
 
   // When clinic is selected, load its doctors
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     if (!selectedClinic) { setClinicDoctors([]); return; }
     setLoadingDoctors(true);
     supabase.from('doctors').select('*')
@@ -206,12 +207,12 @@ const Booking = () => {
         {/* Stepper */}
         <div className="stepper">
           {[1, 2, 3, 4, 5, 6].map(num => (
-            <React.Fragment key={num}>
+            <Fragment key={num}>
               <div className={`step-circle ${step === num ? 'active' : step > num ? 'completed' : 'pending'}`}>
                 {step > num ? <CheckCircle size={20} /> : num}
               </div>
               {num < 6 && <div className={`step-line ${step > num ? 'active' : ''}`}></div>}
-            </React.Fragment>
+            </Fragment>
           ))}
         </div>
 

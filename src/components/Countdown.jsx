@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
 
 // Live countdown to a target appointment (date 'YYYY-MM-DD' + time 'HH:MM').

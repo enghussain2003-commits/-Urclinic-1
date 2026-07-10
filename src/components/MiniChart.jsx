@@ -1,4 +1,3 @@
-import React from 'react';
 
 // Simple SVG bar chart
 export const BarChart = ({ data, width = 400, height = 200 }) => {

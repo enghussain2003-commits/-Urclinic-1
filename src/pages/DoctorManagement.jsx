@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import ReactDOM from 'react-dom';
 import { useTranslation } from 'react-i18next';
 import { useApp } from '../context/AppContext';
@@ -65,6 +65,7 @@ const DoctorManagement = () => {
     }
   }, []);
 
+  // eslint-disable-next-line react-hooks/set-state-in-effect
   useEffect(() => { loadClinicDoctors(); }, [loadClinicDoctors]);
 
   const [form, setForm] = useState({

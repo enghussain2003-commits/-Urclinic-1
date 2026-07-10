@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate, Link } from 'react-router-dom';
 import { Activity, User, Stethoscope } from 'lucide-react';
@@ -118,6 +118,11 @@ const Login = () => {
           <div className="form-group">
             <label className="form-label">{t('password')}</label>
             <input type="password" className="input" placeholder="••••••••" value={password} onChange={e => setPassword(e.target.value)} />
+            <div style={{ textAlign: 'right', marginTop: '0.25rem' }}>
+              <Link to="/forgot-password" style={{ color: 'var(--primary)', fontSize: '0.875rem' }}>
+                {t('forgot_password')}
+              </Link>
+            </div>
           </div>
           <button type="submit" className="btn btn-primary w-full" style={{ marginTop: '0.5rem' }} disabled={loading}>
             {loading ? (t('loading') || '...') : t('sign_in')}

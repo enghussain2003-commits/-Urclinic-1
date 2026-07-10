@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
 import { FileText, Calendar, Clock, User, Phone, Mail, CheckCircle, XCircle, Hourglass } from 'lucide-react';
 import { useApp } from '../context/AppContext';

@@ -1,6 +1,5 @@
-import React from 'react';
 import { useTranslation } from 'react-i18next';
-import { Video, Mic, MicOff, VideoOff, Phone } from 'lucide-react';
+import { Video, Mic, Phone } from 'lucide-react';
 
 const TelehealthCard = () => {
   const { t } = useTranslation();
@@ -18,8 +17,7 @@ const TelehealthCard = () => {
           backdropFilter: 'blur(8px)',
           color: '#fff',
           border: '1px solid rgba(255,255,255,0.3)',
-          width: '100%', padding: '0.875rem',
-        }}>
+          width: '100%', padding: '0.875rem' }}>
           <Video size={18} /> {t('join_call')}
         </button>
         <div style={{ display: 'flex', justifyContent: 'center', gap: '1rem', marginTop: '1.25rem' }}>

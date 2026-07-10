@@ -1,7 +1,6 @@
-import React from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link, useLocation } from 'react-router-dom';
-import { Activity, LayoutDashboard, CalendarDays, Users, Settings, Stethoscope, Globe, LogOut } from 'lucide-react';
+import { Activity, LayoutDashboard, CalendarDays, Users, Settings, Stethoscope, Globe, LogOut, User } from 'lucide-react';
 import { useApp } from '../context/AppContext';
 
 const Sidebar = () => {
@@ -21,13 +20,14 @@ const Sidebar = () => {
     { path: '/dashboard/patients', icon: Users, label: t('patients_menu') },
     { path: '/dashboard/schedule', icon: CalendarDays, label: t('schedule_menu') },
     { path: '/dashboard/settings', icon: Settings, label: t('settings') || 'Settings' },
+    { path: '/settings', icon: User, label: t('user_settings') || 'Account Settings' },
   ];
 
   return (
     <aside className="sidebar">
       <Link to="/" className="sidebar-logo">
         <Activity size={26} />
-        CareClinic
+        UrClinic
       </Link>
 
       <div className="sidebar-section-title">{t('clinic_panel')}</div>

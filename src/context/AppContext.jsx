@@ -1,4 +1,5 @@
-import React, { createContext, useContext, useState, useEffect, useRef } from 'react';
+/* eslint-disable react-refresh/only-export-components */
+import { createContext, useContext, useState, useEffect, useRef } from 'react';
 import { supabase } from '../supabaseClient';
 import i18n from '../i18n';
 import { getUser, logoutUser, specialties, doctors as mockDoctors, mockPatients } from '../data/mockData';
@@ -45,11 +46,7 @@ const fromDbAppt = (row) => row && ({
   date: row.date ?? row.appointment_date,
   time: row.time ?? row.appointment_time,
 });
-const toDbAppt = ({ date, time, patient_name, patient_phone, ...rest }) => ({
-  ...rest,
-  ...(date ? { appointment_date: date } : {}),
-  ...(time ? { appointment_time: time } : {}),
-});
+
 
 export const AppProvider = ({ children }) => {
   const [user, setUser] = useState(getUser());
@@ -93,7 +90,7 @@ export const AppProvider = ({ children }) => {
                 .from('profiles').select('clinic_id').eq('id', authUser.id).single();
               staffClinicId = prof?.clinic_id || null;
             }
-          } catch (_) { /* ignore — staffClinicId stays null */ }
+          } catch { /* ignore — staffClinicId stays null */ }
         }
       }
 
@@ -191,7 +188,7 @@ export const AppProvider = ({ children }) => {
                 .from('patients').select('id').eq('auth_user_id', authUser.id);
               setMyPatientIds((mine || []).map(r => r.id));
             }
-          } catch (_) { /* ignore — UI falls back to legacy name/phone match */ }
+          } catch { /* ignore — UI falls back to legacy name/phone match */ }
         }
 
       } catch (error) {
@@ -304,7 +301,7 @@ export const AppProvider = ({ children }) => {
     localStorage.setItem('user', JSON.stringify(userData));
   };
   const logout = async () => {
-    try { await supabase.auth.signOut(); } catch (e) { /* ignore */ }
+    try { await supabase.auth.signOut(); } catch { /* ignore */ }
     logoutUser();
     setUser(null);
   };
@@ -349,7 +346,7 @@ export const AppProvider = ({ children }) => {
     };
     setDoctors(prev => [ui, ...prev]);
     // Best-effort local mirror; not required for correctness.
-    try { writeLocalDoctors([ui, ...readLocalDoctors()]); } catch (_) { /* ignore */ }
+    try { writeLocalDoctors([ui, ...readLocalDoctors()]); } catch { /* ignore */ }
     return ui;
   };
 
@@ -467,7 +464,7 @@ export const AppProvider = ({ children }) => {
           .from('patients').select('auth_user_id')
           .eq('id', apt.patient_id).single();
         if (data?.auth_user_id) return data.auth_user_id;
-      } catch (_) { /* fall through to legacy match */ }
+      } catch { /* fall through to legacy match */ }
     }
     // Legacy fallback: phone/name match against the clinic's profiles list.
     const p = patients.find(pt =>

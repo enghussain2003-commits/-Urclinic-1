@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { Bell, CheckCheck, Volume2, CalendarPlus, RefreshCw, XCircle } from 'lucide-react';
 import { useApp } from '../context/AppContext';
 
@@ -29,6 +29,7 @@ const NotificationBell = () => {
   };
 
   const getTimeAgo = (dateStr) => {
+    // eslint-disable-next-line react-hooks/purity
     const diff = Date.now() - new Date(dateStr).getTime();
     const mins = Math.floor(diff / 60000);
     if (mins < 1) return 'Just now';

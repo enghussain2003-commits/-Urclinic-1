@@ -1,10 +1,9 @@
-import React, { useState } from 'react';
-import { useTranslation } from 'react-i18next';
+import { useState } from 'react';
 import { Save, Settings, Phone, MapPin, Clock } from 'lucide-react';
 import { useApp } from '../context/AppContext';
 
 const ClinicSettings = () => {
-  const { t } = useTranslation();
+
   // In a real app, this data would come from Supabase `clinic_settings` table
   const { user } = useApp();
   

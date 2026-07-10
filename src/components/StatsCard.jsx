@@ -1,10 +1,11 @@
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 
 const StatsCard = ({ icon, iconBg, value, label }) => {
   const [count, setCount] = useState(0);
   const numVal = typeof value === 'string' ? parseInt(value.replace(/[^0-9]/g, '')) : value;
 
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     if (isNaN(numVal)) { setCount(value); return; }
     let start = 0;
     const duration = 1200;
@@ -15,7 +16,7 @@ const StatsCard = ({ icon, iconBg, value, label }) => {
       else setCount(Math.floor(start));
     }, 16);
     return () => clearInterval(timer);
-  }, [numVal]);
+  }, [numVal, value]);
 
   const display = typeof value === 'string' && value.includes('%')
     ? `${count}%`

@@ -1,4 +1,3 @@
-import React from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate, useLocation } from 'react-router-dom';
 import { AppProvider, useApp } from './context/AppContext';
 import Navbar from './components/Navbar';
@@ -16,6 +15,9 @@ import ScheduleView from './pages/ScheduleView';
 import PatientsList from './pages/PatientsList';
 import StaffPatientProfile from './pages/StaffPatientProfile';
 import ClinicSettings from './pages/ClinicSettings';
+import ForgotPassword from './pages/ForgotPassword';
+import ResetPassword from './pages/ResetPassword';
+import UserSettings from './pages/UserSettings';
 
 const Layout = ({ children }) => {
   const location = useLocation();
@@ -67,6 +69,8 @@ function App() {
             <Route path="/" element={<Home />} />
             <Route path="/login" element={<Login />} />
             <Route path="/signup" element={<SignUp />} />
+            <Route path="/forgot-password" element={<ForgotPassword />} />
+            <Route path="/reset-password" element={<ResetPassword />} />
             <Route path="/booking" element={
               <ProtectedRoute requiredRole="patient">
                 <Booking />
@@ -112,6 +116,11 @@ function App() {
             <Route path="/dashboard/settings" element={
               <ProtectedRoute requiredRole="clinic">
                 <ClinicSettings />
+              </ProtectedRoute>
+            } />
+            <Route path="/settings" element={
+              <ProtectedRoute>
+                <UserSettings />
               </ProtectedRoute>
             } />
           </Routes>
