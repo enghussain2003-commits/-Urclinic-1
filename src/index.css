@@ -755,6 +755,7 @@ select.input { appearance: none; cursor: pointer; }
 
 .calendar-day {
   aspect-ratio: 1; display: flex; align-items: center; justify-content: center;
+  flex-direction: column;
   border-radius: var(--radius-md);
   font-size: 0.875rem; font-weight: 500;
   transition: all var(--transition-fast);
@@ -762,11 +763,23 @@ select.input { appearance: none; cursor: pointer; }
   color: var(--text);
   min-width: 32px; min-height: 32px;
 }
+.calendar-day small {
+  font-size: 0.55rem;
+  line-height: 1;
+  margin-top: 0.12rem;
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
 .calendar-day:hover { background: var(--primary-50); }
 .calendar-day.today { font-weight: 700; color: var(--primary); border: 1.5px solid var(--primary-200); }
 .calendar-day.selected { background: var(--primary); color: #fff; font-weight: 600; box-shadow: 0 2px 8px rgba(13,148,136,0.3); }
 .calendar-day.disabled { color: var(--text-muted); opacity: 0.4; pointer-events: none; }
 .calendar-day.other-month { color: var(--text-muted); opacity: 0.3; }
+.calendar-day--available { background: rgba(13,148,136,0.06); color: var(--primary-dark); }
+.calendar-day--full { background: rgba(239,68,68,0.09); color: #b91c1c; border: 1px solid rgba(239,68,68,0.2); opacity: 1; }
+.calendar-day--closed { background: var(--bg-alt); color: var(--text-muted); opacity: 0.75; }
 .calendar-day.has-slots::after {
   content: ''; display: block; width: 4px; height: 4px;
   border-radius: 50%; background: var(--success);
@@ -789,10 +802,18 @@ select.input { appearance: none; cursor: pointer; }
   cursor: pointer; background: var(--surface);
   color: var(--text);
   min-height: 44px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
 }
+.timeslot small { font-size: 0.68rem; line-height: 1.1; margin-top: 0.15rem; }
 .timeslot:hover { border-color: var(--primary); color: var(--primary); background: var(--primary-50); }
 .timeslot.selected { background: var(--primary); color: #fff; border-color: var(--primary); box-shadow: 0 2px 8px rgba(13,148,136,0.25); }
-.timeslot.booked { background: var(--bg-alt); color: var(--text-muted); pointer-events: none; text-decoration: line-through; border-color: transparent; }
+.timeslot--booked { background: rgba(239,68,68,0.09); color: #b91c1c; pointer-events: none; border-color: rgba(239,68,68,0.18); }
+.timeslot--past { background: var(--bg-alt); color: var(--text-muted); pointer-events: none; border-color: transparent; }
+.timeslot--break { background: rgba(245,158,11,0.1); color: #b45309; pointer-events: none; border-color: rgba(245,158,11,0.18); }
+.timeslot--unavailable { background: var(--bg-alt); color: var(--text-muted); pointer-events: none; border-color: transparent; }
 
 /* ========== STEPPER ========== */
 .stepper {
@@ -1038,6 +1059,55 @@ tbody tr:last-child td { border-bottom: none; }
   border-bottom: 1px solid var(--border-light);
 }
 .rx-med:last-child { border-bottom: none; }
+
+.prescription-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+  gap: 1rem;
+}
+
+.prescription-summary-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  padding: 1.1rem;
+  box-shadow: var(--shadow-xs);
+  display: flex;
+  flex-direction: column;
+  min-height: 260px;
+}
+
+.prescription-summary-card--latest {
+  border-color: var(--primary-200);
+  box-shadow: 0 8px 20px rgba(13,148,136,0.08);
+}
+
+.prescription-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem 0.85rem;
+  color: var(--text-muted);
+  font-size: 0.8rem;
+}
+
+.prescription-meta span {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+}
+
+.prescription-doctor {
+  margin: 0.75rem 0 0.35rem;
+  font-size: 1rem;
+}
+
+.prescription-diagnosis {
+  color: var(--text-secondary);
+  font-size: 0.9rem;
+  margin: 0 0 0.8rem;
+  line-height: 1.55;
+  flex: 1;
+}
 
 /* ========== WAITLIST ========== */
 .waitlist-item {

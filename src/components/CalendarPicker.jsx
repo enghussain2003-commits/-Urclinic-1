@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
 
-const CalendarPicker = ({ selectedDate, onSelectDate }) => {
+const CalendarPicker = ({ selectedDate, onSelectDate, getDateMeta }) => {
   const { t, i18n } = useTranslation();
   const isRtl = i18n.language === 'ar';
   const today = new Date();
@@ -51,7 +51,8 @@ const CalendarPicker = ({ selectedDate, onSelectDate }) => {
       day: d,
       dateStr,
       type: past ? 'disabled' : dateStr === todayStr ? 'today' : 'normal',
-      selected: selectedDate === dateStr
+      selected: selectedDate === dateStr,
+      meta: getDateMeta ? getDateMeta(dateStr) : null
     });
   }
   // Next month padding
@@ -77,16 +78,23 @@ const CalendarPicker = ({ selectedDate, onSelectDate }) => {
         {dayNames.map(d => (
           <div key={d} className="calendar-day-name">{t(d)}</div>
         ))}
-        {cells.map((cell, i) => (
-          <button
-            key={i}
-            className={`calendar-day ${cell.type} ${cell.selected ? 'selected' : ''}`}
-            onClick={() => cell.dateStr && cell.type !== 'disabled' && cell.type !== 'other-month' && onSelectDate(cell.dateStr)}
-            disabled={cell.type === 'disabled' || cell.type === 'other-month'}
-          >
-            {cell.day}
-          </button>
-        ))}
+        {cells.map((cell, i) => {
+          const disabled = cell.type === 'disabled'
+            || cell.type === 'other-month'
+            || cell.meta?.disabled;
+          return (
+            <button
+              key={i}
+              className={`calendar-day ${cell.type} ${cell.selected ? 'selected' : ''} ${cell.meta?.status ? `calendar-day--${cell.meta.status}` : ''}`}
+              onClick={() => cell.dateStr && !disabled && onSelectDate(cell.dateStr)}
+              disabled={disabled}
+              title={cell.meta?.label || ''}
+            >
+              <span>{cell.day}</span>
+              {cell.meta?.label && <small>{cell.meta.label}</small>}
+            </button>
+          );
+        })}
       </div>
     </div>
   );

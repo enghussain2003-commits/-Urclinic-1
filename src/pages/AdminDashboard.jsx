@@ -251,6 +251,7 @@ const AdminDashboard = () => {
                 <tr>
                   <th>{t('time')}</th>
                   <th>{t('patient')}</th>
+                  <th>{isAr ? 'رقم الحجز' : 'Booking #'}</th>
                   <th>{t('doctor')}</th>
                   <th>{t('status')}</th>
                   <th>{t('actions')}</th>
@@ -258,10 +259,10 @@ const AdminDashboard = () => {
               </thead>
               <tbody>
                 {ctxLoading ? (
-                  <tr><td colSpan="5" className="text-center text-muted" style={{ padding: '1.5rem' }}>{t('loading')}</td></tr>
+                  <tr><td colSpan="6" className="text-center text-muted" style={{ padding: '1.5rem' }}>{t('loading')}</td></tr>
                 ) : todaySchedule.length === 0 ? (
                   <tr>
-                    <td colSpan="5" className="text-center text-muted" style={{ padding: '2rem' }}>
+                    <td colSpan="6" className="text-center text-muted" style={{ padding: '2rem' }}>
                       {t('no_appointments_today')}
                     </td>
                   </tr>
@@ -274,6 +275,7 @@ const AdminDashboard = () => {
                     <tr key={apt.id}>
                       <td>{to12Hour(apt.time, isAr)}</td>
                       <td style={{ fontWeight: 600 }}>{apt.patient_name || '—'}</td>
+                      <td className="text-muted text-sm" style={{ fontFamily: 'monospace' }}>{apt.booking_code || '-'}</td>
                       <td>{docName}</td>
                       <td>
                         <span className={`badge ${statusBadge(apt.status)}`}>
@@ -327,6 +329,10 @@ const AdminDashboard = () => {
                     <span className={`badge ${statusBadge(apt.status)}`}>
                       {t(apt.status === 'no-show' ? 'no_show' : apt.status)}
                     </span>
+                  </div>
+                  <div className="mobile-card-row">
+                    <span className="mobile-card-label">{isAr ? 'رقم الحجز' : 'Booking #'}</span>
+                    <span className="mobile-card-value" style={{ fontFamily: 'monospace' }}>{apt.booking_code || '-'}</span>
                   </div>
                   <div className="mobile-card-row">
                     <span className="mobile-card-label">{t('doctor')}</span>

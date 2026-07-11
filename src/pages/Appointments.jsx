@@ -135,6 +135,7 @@ const Appointments = () => {
           <thead>
             <tr>
               <th>{t('patient')}</th>
+              <th>{isAr ? 'رقم الحجز' : 'Booking #'}</th>
               <th>{isAr ? 'الهاتف' : 'Phone'}</th>
               <th>{t('doctor')}</th>
               <th>{t('date_time')}</th>
@@ -144,14 +145,15 @@ const Appointments = () => {
           </thead>
           <tbody>
             {loading ? (
-              <tr><td colSpan="6" className="text-center text-muted">{t('loading')}</td></tr>
+              <tr><td colSpan="7" className="text-center text-muted">{t('loading')}</td></tr>
             ) : filtered.length === 0 ? (
-              <tr><td colSpan="6" className="text-center text-muted" style={{ padding: '2rem' }}>
+              <tr><td colSpan="7" className="text-center text-muted" style={{ padding: '2rem' }}>
                 {isAr ? 'لا توجد حجوزات' : 'No bookings found'}
               </td></tr>
             ) : filtered.map(apt => (
               <tr key={apt.id}>
                 <td style={{ fontWeight: 600 }}>{apt.patient_name || '-'}</td>
+                <td className="text-muted text-sm" style={{ fontFamily: 'monospace' }}>{apt.booking_code || '-'}</td>
                 <td dir="ltr" className="text-muted text-sm">{apt.patient_phone || '-'}</td>
                 <td>{getDocName(apt.doctor_id)}</td>
                 <td>
@@ -195,6 +197,10 @@ const Appointments = () => {
               <span className={`badge ${statusBadge(apt.status)}`} style={{ marginInlineStart: 'auto' }}>
                 {statusLabel(apt.status)}
               </span>
+            </div>
+            <div className="mobile-card-row">
+              <span className="mobile-card-label">{isAr ? 'رقم الحجز' : 'Booking #'}</span>
+              <span className="mobile-card-value" style={{ fontFamily: 'monospace' }}>{apt.booking_code || '-'}</span>
             </div>
             <div className="mobile-card-row">
               <span className="mobile-card-label"><User size={12} /> {isAr ? 'الطبيب' : 'Doctor'}</span>

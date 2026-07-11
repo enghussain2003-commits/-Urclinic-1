@@ -45,6 +45,7 @@ const fromDbAppt = (row) => row && ({
   ...row,
   date: row.date ?? row.appointment_date,
   time: row.time ?? row.appointment_time,
+  booking_code: row.booking_code ?? row.bookingCode ?? '',
 });
 
 const sortNotifications = (list = []) =>
@@ -481,7 +482,17 @@ export const AppProvider = ({ children }) => {
 
     const { data, error } = await supabase
       .from('appointments').insert([row]).select().single();
-    if (error) throw error;
+    if (error) {
+      const isSlotConflict = error.code === '23505'
+        || (error.message || '').includes('appointments_doctor_active_slot_uniq')
+        || (error.message || '').includes('appointments_doctor_slot_uniq');
+      if (isSlotConflict) {
+        throw new Error(i18n.language === 'ar'
+          ? 'عذراً، تم حجز هذا الموعد قبل لحظات. اختر وقتاً آخر.'
+          : 'Sorry, this appointment was just booked. Please choose another time.');
+      }
+      throw error;
+    }
 
     // Reflect immediately in state with the UI shape (date/time aliases). The
     // realtime channel will re-fetch in a moment, but this avoids a visible lag.

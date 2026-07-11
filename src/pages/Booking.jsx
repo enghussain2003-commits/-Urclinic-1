@@ -39,8 +39,9 @@ const Booking = () => {
   });
 
   const [paymentMethod, setPaymentMethod] = useState('cash');
-  const [bookingId, setBookingId] = useState('');
+  const [bookingCode, setBookingCode] = useState('');
   const [submitting, setSubmitting] = useState(false);
+  const [bookedSlotsByDate, setBookedSlotsByDate] = useState({});
 
   const paymentMethods = [
     { id: 'cash', Icon: Banknote, label: 'Cash at Clinic', labelAr: 'كاش في العيادة', desc: 'Pay on arrival', descAr: 'الدفع عند الحضور' },
@@ -76,6 +77,45 @@ const Booking = () => {
   }, [selectedClinic]);
 
   const [formError, setFormError] = useState('');
+
+  const handleSelectDoctor = (doctor) => {
+    setSelectedDoctor(doctor);
+    setSelectedDate('');
+    setSelectedTime('');
+    setBookedSlotsByDate({});
+  };
+
+  useEffect(() => {
+    if (!selectedDoctor?.id) return;
+
+    const start = new Date();
+    const end = new Date();
+    end.setDate(start.getDate() + 90);
+    const fmt = (d) => d.toISOString().slice(0, 10);
+
+    supabase.rpc('active_appointment_slots', {
+      p_doctor_id: selectedDoctor.id,
+      p_start: fmt(start),
+      p_end: fmt(end),
+    }).then(({ data, error }) => {
+      if (error) {
+        console.warn('availability fetch error:', error.message);
+        setBookedSlotsByDate({});
+        return;
+      }
+      const grouped = {};
+      (data || []).forEach(row => {
+        const date = row.appointment_date;
+        const time = String(row.appointment_time || '').slice(0, 5);
+        if (!date || !time) return;
+        if (!grouped[date]) grouped[date] = new Set();
+        grouped[date].add(time);
+      });
+      setBookedSlotsByDate(Object.fromEntries(
+        Object.entries(grouped).map(([date, set]) => [date, Array.from(set)])
+      ));
+    });
+  }, [selectedDoctor]);
 
   // Validation helpers
   const cleanPhone = patientData.phone.replace(/\D/g, ''); // digits only
@@ -149,7 +189,7 @@ const Booking = () => {
         });
       }
 
-      setBookingId(created?.id || '');
+      setBookingCode(created?.booking_code || (isAr ? 'قيد الإنشاء' : 'Pending'));
       setStep(6);
     } catch (err) {
       // Show the real error instead of silently falling back to localStorage.
@@ -178,15 +218,23 @@ const Booking = () => {
     return `${h}:${m}`;
   };
 
-  // #3: Build available slots from the doctor's working-hours settings.
+  const isToday = (dateStr) => dateStr === new Date().toISOString().slice(0, 10);
+  const nowMinutes = () => {
+    const n = new Date();
+    return n.getHours() * 60 + n.getMinutes();
+  };
+
+  const doctorWorkDays = (doc) => Array.isArray(doc?.work_days) && doc.work_days.length
+    ? doc.work_days
+    : ['sat', 'sun', 'mon', 'tue', 'wed', 'thu'];
+
+  // #3: Build slots from the doctor's working-hours settings.
   const generateTimeSlots = (doc, dateStr) => {
     const open = doc.open_time || '09:00';
     const close = doc.close_time || '17:00';
     const breakStart = doc.break_start || null;
     const breakEnd = doc.break_end || null;
-    const workDays = Array.isArray(doc.work_days) && doc.work_days.length
-      ? doc.work_days
-      : ['sat', 'sun', 'mon', 'tue', 'wed', 'thu']; // default: open except Friday
+    const workDays = doctorWorkDays(doc);
 
     // Closed on this weekday?
     const dayId = DAY_IDS[new Date(dateStr).getDay()];
@@ -195,16 +243,38 @@ const Booking = () => {
     const step = 30;
     const slots = [];
     for (let m = toMinutes(open); m + step <= toMinutes(close); m += step) {
-      // Skip break window
-      if (breakStart && breakEnd && m >= toMinutes(breakStart) && m < toMinutes(breakEnd)) continue;
-      slots.push(toHHMM(m));
+      const time = toHHMM(m);
+      const inBreak = breakStart && breakEnd && m >= toMinutes(breakStart) && m < toMinutes(breakEnd);
+      const booked = (bookedSlotsByDate[dateStr] || []).includes(time);
+      const past = isToday(dateStr) && m <= nowMinutes();
+      const status = inBreak ? 'break' : past ? 'past' : booked ? 'booked' : 'available';
+      slots.push({ time, status });
     }
 
-    const booked = appointments
-      .filter(a => String(a.doctor_id) === String(doc.id) && a.date === dateStr && a.status !== 'rejected' && a.status !== 'cancelled')
-      .map(a => a.time);
+    return slots.length ? slots : [{ time: open, status: 'unavailable' }];
+  };
 
-    return slots.map(time => ({ time, booked: booked.includes(time) }));
+  const getDateMeta = (dateStr) => {
+    if (!selectedDoctor) return null;
+    const dayId = DAY_IDS[new Date(dateStr).getDay()];
+    if (!doctorWorkDays(selectedDoctor).includes(dayId)) {
+      return { status: 'closed', disabled: true, label: isAr ? 'عطلة' : 'Closed' };
+    }
+    const slots = generateTimeSlots(selectedDoctor, dateStr);
+    const bookable = slots.filter(s => s.status === 'available').length;
+    if (bookable === 0) {
+      const allBooked = slots.length > 0 && slots.every(s => s.status === 'booked');
+      return {
+        status: allBooked ? 'full' : 'closed',
+        disabled: true,
+        label: allBooked ? (isAr ? 'مكتمل الحجز' : 'Full') : (isAr ? 'غير متاح' : 'Unavailable'),
+      };
+    }
+    return {
+      status: 'available',
+      disabled: false,
+      label: isAr ? `متبقي ${bookable}` : `${bookable} left`,
+    };
   };
 
   const availableSlots = selectedDoctor && selectedDate
@@ -247,7 +317,7 @@ const Booking = () => {
                     <button
                       key={clinic.id}
                       type="button"
-                      onClick={() => { setSelectedClinic(clinic); setSelectedDoctor(null); setSelectedSpecialty(''); }}
+                      onClick={() => { setSelectedClinic(clinic); setSelectedDoctor(null); setSelectedDate(''); setSelectedTime(''); setBookedSlotsByDate({}); setSelectedSpecialty(''); }}
                       className="card-flat"
                       style={{
                         cursor: 'pointer', textAlign: isAr ? 'right' : 'left', padding: '1.25rem',
@@ -311,7 +381,7 @@ const Booking = () => {
                       key={doc.id}
                       doctor={doc}
                       selected={selectedDoctor?.id === doc.id}
-                      onSelect={setSelectedDoctor}
+                      onSelect={handleSelectDoctor}
                     />
                   ))}
                 </div>
@@ -332,7 +402,7 @@ const Booking = () => {
               <h3 className="mb-md"><CalendarIcon size={20} style={{ display: 'inline', verticalAlign: 'text-bottom', marginInlineEnd: 8 }}/> {t('select_date_time')}</h3>
               <div className="flex gap-xl flex-wrap">
                 <div style={{ flex: '1 1 300px' }}>
-                  <CalendarPicker selectedDate={selectedDate} onSelectDate={setSelectedDate} />
+                  <CalendarPicker selectedDate={selectedDate} onSelectDate={(date) => { setSelectedDate(date); setSelectedTime(''); }} getDateMeta={getDateMeta} />
                 </div>
                 <div style={{ flex: '1 1 300px' }}>
                   {selectedDate ? (
@@ -530,7 +600,7 @@ const Booking = () => {
               </p>
               <div className="card-flat bg-alt mb-xl" style={{ display: 'inline-block', minWidth: 340, textAlign: isAr ? 'right' : 'left' }}>
                 <p className="mb-sm" style={{ display: 'flex', justifyContent: 'space-between', gap: '1.5rem' }}>
-                  <strong>{t('booking_id')}:</strong> <span style={{ fontFamily: 'monospace', color: 'var(--primary)', fontWeight: 700 }}>{bookingId}</span>
+                  <strong>{isAr ? 'رقم الحجز' : t('booking_id')}:</strong> <span style={{ fontFamily: 'monospace', color: 'var(--primary)', fontWeight: 700 }}>{bookingCode}</span>
                 </p>
                 <p className="mb-sm" style={{ display: 'flex', justifyContent: 'space-between', gap: '1.5rem' }}>
                   <strong>{t('patient')}:</strong> <span>{patientData.name}</span>

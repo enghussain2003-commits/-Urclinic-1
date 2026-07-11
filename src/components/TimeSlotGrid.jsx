@@ -12,6 +12,14 @@ export const to12Hour = (time, isAr = false) => {
   return `${h}:${mStr} ${suffix}`;
 };
 
+const stateLabel = (slot, isAr) => {
+  if (slot.status === 'booked') return isAr ? 'محجوز' : 'Booked';
+  if (slot.status === 'past') return isAr ? 'انتهى الوقت' : 'Past';
+  if (slot.status === 'break') return isAr ? 'استراحة' : 'Break';
+  if (slot.status === 'unavailable') return isAr ? 'غير متاح' : 'Unavailable';
+  return isAr ? 'متاح' : 'Available';
+};
+
 const TimeSlotGrid = ({ slots, selectedTime, onSelectTime }) => {
   const { t, i18n } = useTranslation();
   const isAr = i18n.language === 'ar';
@@ -24,16 +32,21 @@ const TimeSlotGrid = ({ slots, selectedTime, onSelectTime }) => {
     <div>
       <h4 style={{ marginBottom: '0.75rem' }}>{t('available_slots')}</h4>
       <div className="timeslots-grid">
-        {slots.map(slot => (
-          <button
-            key={slot.time}
-            className={`timeslot ${slot.booked ? 'booked' : ''} ${selectedTime === slot.time ? 'selected' : ''}`}
-            onClick={() => !slot.booked && onSelectTime(slot.time)}
-            disabled={slot.booked}
-          >
-            {to12Hour(slot.time, isAr)}
-          </button>
-        ))}
+        {slots.map(slot => {
+          const disabled = slot.status !== 'available';
+          return (
+            <button
+              key={slot.time}
+              className={`timeslot timeslot--${slot.status || 'available'} ${selectedTime === slot.time ? 'selected' : ''}`}
+              onClick={() => !disabled && onSelectTime(slot.time)}
+              disabled={disabled}
+              title={stateLabel(slot, isAr)}
+            >
+              <span>{to12Hour(slot.time, isAr)}</span>
+              {slot.status !== 'available' && <small>{stateLabel(slot, isAr)}</small>}
+            </button>
+          );
+        })}
       </div>
     </div>
   );

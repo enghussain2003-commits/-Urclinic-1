@@ -1,17 +1,22 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useTranslation } from 'react-i18next';
-import { FileText, Calendar, Clock, User, Phone, Mail, CheckCircle, XCircle, Hourglass } from 'lucide-react';
+import { FileText, Calendar, Clock, User, Phone, Mail, CheckCircle, XCircle, Hourglass, Download, Eye } from 'lucide-react';
 import { useApp } from '../context/AppContext';
 import { supabase } from '../supabaseClient';
 import PrescriptionViewer from '../components/PrescriptionViewer';
 import Countdown from '../components/Countdown';
 import { to12Hour } from '../components/TimeSlotGrid';
+import { downloadPrescriptionPdf } from '../utils/prescriptionPdf';
 
 const PatientProfile = () => {
   const { t, i18n } = useTranslation();
   const isAr = i18n.language === 'ar';
   const { user, appointments, doctors, myPatientIds } = useApp();
   const [prescriptions, setPrescriptions] = useState([]);
+  const [prescriptionsLoading, setPrescriptionsLoading] = useState(false);
+  const [prescriptionsError, setPrescriptionsError] = useState('');
+  const [visibleRxCount, setVisibleRxCount] = useState(6);
+  const [selectedRx, setSelectedRx] = useState(null);
   const patientUserId = user?.id || null;
 
   // STRICT ID-only linkage. The previous phone/name fallback caused ghost bookings:
@@ -26,15 +31,20 @@ const PatientProfile = () => {
 
   const refreshPrescriptions = useCallback(async () => {
     if (!patientUserId) return;
+    setPrescriptionsLoading(true);
+    setPrescriptionsError('');
     const { data, error } = await supabase.from('prescriptions').select('*')
       .eq('patient_id', patientUserId)
-      .order('prescribed_date', { ascending: false });
+      .order('created_at', { ascending: false });
     if (error) {
       console.warn('prescriptions fetch error:', error.message);
+      setPrescriptionsError(isAr ? 'تعذّر تحميل الوصفات' : 'Could not load prescriptions');
+      setPrescriptionsLoading(false);
       return;
     }
     setPrescriptions(data || []);
-  }, [patientUserId]);
+    setPrescriptionsLoading(false);
+  }, [patientUserId, isAr]);
 
   // Load this patient's prescriptions. RLS returns only their own rows because
   // prescriptions.patient_id stores auth.uid()/profiles.id.
@@ -51,7 +61,8 @@ const PatientProfile = () => {
         { event: 'INSERT', schema: 'public', table: 'prescriptions', filter: `patient_id=eq.${patientUserId}` },
         (payload) => {
           if (!active || !payload.new) return;
-          setPrescriptions(prev => [payload.new, ...prev.filter(rx => rx.id !== payload.new.id)]);
+          setPrescriptions(prev => [payload.new, ...prev.filter(rx => rx.id !== payload.new.id)]
+            .sort((a, b) => new Date(b.created_at || b.prescribed_date || 0) - new Date(a.created_at || a.prescribed_date || 0)));
         })
       .subscribe();
 
@@ -77,6 +88,25 @@ const PatientProfile = () => {
     );
     return doc ? (isAr ? (doc.nameAr || doc.name) : (doc.name || doc.full_name)) : '';
   };
+
+  const rxDateTime = (rx) => {
+    const value = rx?.created_at || rx?.prescribed_date;
+    if (!value) return { date: '-', time: '-' };
+    const d = new Date(value);
+    if (Number.isNaN(d.getTime())) return { date: rx?.prescribed_date || '-', time: '-' };
+    return {
+      date: d.toLocaleDateString(isAr ? 'ar-IQ' : 'en-GB'),
+      time: d.toLocaleTimeString(isAr ? 'ar-IQ' : 'en-US', { hour: 'numeric', minute: '2-digit' }),
+    };
+  };
+
+  const medicineCount = (rx) => Array.isArray(rx?.medicines) ? rx.medicines.length : 0;
+  const previewText = (text, fallback = '-') => {
+    if (!text) return fallback;
+    return text.length > 90 ? `${text.slice(0, 90)}...` : text;
+  };
+
+  const visiblePrescriptions = prescriptions.slice(0, visibleRxCount);
 
   // Normalize the various status spellings into one of: pending | confirmed | rejected.
   const normalize = (s) =>
@@ -132,7 +162,7 @@ const PatientProfile = () => {
                     <div className="flex justify-between items-start flex-wrap gap-md">
                       <div>
                         <h4 className="mb-sm">{getDocName(apt.doctor_id)}</h4>
-                        <p className="text-sm mb-xs text-muted">{isAr ? 'رقم الحجز' : 'Booking'}: {apt.id}</p>
+                        <p className="text-sm mb-xs text-muted">{isAr ? 'رقم الحجز' : 'Booking'}: {apt.booking_code || '-'}</p>
                         <p className="text-sm mb-0 flex items-center gap-sm"><Clock size={14}/> {apt.date} — {to12Hour(apt.time, isAr)}</p>
                       </div>
                       <span className={`badge ${meta.cls} flex items-center gap-sm`}>{meta.icon} {meta.label}</span>
@@ -160,27 +190,88 @@ const PatientProfile = () => {
         </div>
 
         {/* Prescriptions */}
-        <div style={{ flex: '1 1 300px' }}>
-          <h3 className="mb-md"><FileText size={20} style={{ display: 'inline', verticalAlign: 'text-bottom', marginInlineEnd: 8 }}/> {t('prescriptions')}</h3>
-          {prescriptions.length === 0 ? (
+        <div style={{ flex: '3 1 640px' }}>
+          <div className="flex justify-between items-center gap-md flex-wrap mb-md">
+            <h3 style={{ margin: 0 }}><FileText size={20} style={{ display: 'inline', verticalAlign: 'text-bottom', marginInlineEnd: 8 }}/> {t('prescriptions')}</h3>
+            {prescriptions.length > 0 && <span className="badge badge-primary">{prescriptions.length}</span>}
+          </div>
+          {prescriptionsLoading ? (
+            <div className="card-flat bg-alt text-center text-muted" style={{ padding: '1.5rem' }}>
+              {t('loading')}
+            </div>
+          ) : prescriptionsError ? (
+            <div className="card-flat text-center" style={{ padding: '1.5rem', color: 'var(--danger)', borderColor: 'rgba(239,68,68,0.25)' }}>
+              {prescriptionsError}
+            </div>
+          ) : prescriptions.length === 0 ? (
             <div className="card-flat bg-alt text-center text-muted" style={{ padding: '1.5rem' }}>
               <FileText size={32} style={{ opacity: 0.2, margin: '0 auto 0.5rem' }} />
               <p style={{ margin: 0, fontSize: '0.875rem' }}>{t('no_prescriptions')}</p>
             </div>
           ) : (
-            <div className="flex flex-col gap-lg">
-              {prescriptions.map(rx => (
-                <PrescriptionViewer
-                  key={rx.id}
-                  rx={rx}
-                  patientName={user?.name || ''}
-                  doctorName={getDocNameById(rx.doctor_id)}
-                />
-              ))}
+            <div>
+              <div className="prescription-grid">
+                {visiblePrescriptions.map((rx, idx) => {
+                  const dt = rxDateTime(rx);
+                  const doctorName = getDocNameById(rx.doctor_id) || (isAr ? 'طبيب العيادة' : 'Clinic doctor');
+                  return (
+                    <article key={rx.id} className={`prescription-summary-card ${idx === 0 ? 'prescription-summary-card--latest' : ''}`}>
+                      <div className="flex justify-between items-start gap-sm mb-md">
+                        <div className="rx-symbol" style={{ fontSize: '1.4rem' }}>℞</div>
+                        {idx === 0 && <span className="badge badge-primary">{isAr ? 'أحدث وصفة' : 'Latest'}</span>}
+                      </div>
+                      <div className="prescription-meta">
+                        <span><Calendar size={14} /> {isAr ? 'التاريخ' : 'Date'}: {dt.date}</span>
+                        <span><Clock size={14} /> {isAr ? 'الوقت' : 'Time'}: {dt.time}</span>
+                      </div>
+                      <h4 className="prescription-doctor">{doctorName}</h4>
+                      <p className="prescription-diagnosis">{previewText(rx.diagnosis, isAr ? 'لا يوجد تشخيص مسجل' : 'No diagnosis recorded')}</p>
+                      <div className="prescription-meta">
+                        <span>{isAr ? 'عدد الأدوية' : 'Medicines'}: {medicineCount(rx)}</span>
+                        <span>{previewText(rx.instructions, isAr ? 'لا توجد تعليمات إضافية' : 'No extra instructions')}</span>
+                      </div>
+                      <div className="flex gap-sm mt-md flex-wrap">
+                        <button className="btn btn-sm btn-primary" onClick={() => setSelectedRx(rx)}>
+                          <Eye size={15} /> {isAr ? 'عرض التفاصيل' : 'View details'}
+                        </button>
+                        <button
+                          className="btn btn-sm btn-outline"
+                          onClick={() => downloadPrescriptionPdf(rx, { isAr, doctorName, patientName: user?.name || '' })}
+                        >
+                          <Download size={15} /> {t('download_pdf')}
+                        </button>
+                      </div>
+                    </article>
+                  );
+                })}
+              </div>
+              {visibleRxCount < prescriptions.length && (
+                <div className="text-center mt-lg">
+                  <button className="btn btn-outline" onClick={() => setVisibleRxCount(c => c + 6)}>
+                    {isAr ? 'عرض المزيد' : 'Show more'}
+                  </button>
+                </div>
+              )}
             </div>
           )}
         </div>
       </div>
+
+      {selectedRx && (
+        <div className="modal-overlay" onClick={() => setSelectedRx(null)}>
+          <div className="glass p-6" style={{ width: 'min(720px, 100%)' }} onClick={e => e.stopPropagation()}>
+            <div className="flex justify-between items-center gap-md mb-md">
+              <h3 style={{ margin: 0 }}>{isAr ? 'تفاصيل الوصفة' : 'Prescription details'}</h3>
+              <button className="btn btn-sm btn-ghost" onClick={() => setSelectedRx(null)}>{isAr ? 'إغلاق' : 'Close'}</button>
+            </div>
+            <PrescriptionViewer
+              rx={selectedRx}
+              patientName={user?.name || ''}
+              doctorName={getDocNameById(selectedRx.doctor_id)}
+            />
+          </div>
+        </div>
+      )}
     </div>
   );
 };

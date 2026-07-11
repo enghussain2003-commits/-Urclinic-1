@@ -170,7 +170,10 @@ const DoctorDashboard = () => {
                       <Clock size={13} className="text-muted" style={{ marginInlineEnd: 4 }} />
                       {to12Hour(apt.time, isAr)}
                     </td>
-                    <td style={{ fontWeight: 600 }}>{apt.patient_name || '—'}</td>
+                    <td>
+                      <div style={{ fontWeight: 600 }}>{apt.patient_name || '—'}</div>
+                      <div className="text-muted text-sm" style={{ fontFamily: 'monospace' }}>{apt.booking_code || '-'}</div>
+                    </td>
                     <td>
                       <span className={`badge ${statusBadge(apt.status)}`}>
                         {statusLabel(apt.status)}
@@ -199,6 +202,9 @@ const DoctorDashboard = () => {
                     <span className={`badge ${statusBadge(apt.status)}`}>
                       {statusLabel(apt.status)}
                     </span>
+                  </div>
+                  <div className="text-sm text-muted mb-xs" style={{ fontFamily: 'monospace' }}>
+                    {isAr ? 'رقم الحجز' : 'Booking #'}: {apt.booking_code || '-'}
                   </div>
                   <div className="text-sm text-muted mb-md flex items-center">
                     <Clock size={14} style={{ marginInlineEnd: 6 }} />

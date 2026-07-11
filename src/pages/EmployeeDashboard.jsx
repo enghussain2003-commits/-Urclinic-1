@@ -109,6 +109,7 @@ const EmployeeDashboard = () => {
               <tr>
                 <th>{t('time')}</th>
                 <th>{t('patient')}</th>
+                <th>{isAr ? 'رقم الحجز' : 'Booking #'}</th>
                 <th>{t('doctor')}</th>
                 <th>{t('status')}</th>
                 <th>{t('actions')}</th>
@@ -116,10 +117,10 @@ const EmployeeDashboard = () => {
             </thead>
             <tbody>
               {loading ? (
-                <tr><td colSpan="5" className="text-center text-muted">{t('loading')}</td></tr>
+                <tr><td colSpan="6" className="text-center text-muted">{t('loading')}</td></tr>
               ) : todayAppts.length === 0 ? (
                 <tr>
-                  <td colSpan="5" className="text-center text-muted" style={{ padding: '2rem' }}>
+                  <td colSpan="6" className="text-center text-muted" style={{ padding: '2rem' }}>
                     {t('no_appointments_today')}
                   </td>
                 </tr>
@@ -130,6 +131,7 @@ const EmployeeDashboard = () => {
                     {to12Hour(apt.time, isAr)}
                   </td>
                   <td style={{ fontWeight: 600 }}>{apt.patient_name || '—'}</td>
+                  <td className="text-muted text-sm" style={{ fontFamily: 'monospace' }}>{apt.booking_code || '-'}</td>
                   <td>{docName(apt)}</td>
                   <td>
                     <span className={`badge ${statusBadge(apt.status)}`}>
@@ -185,6 +187,9 @@ const EmployeeDashboard = () => {
                   <Clock size={14} style={{ marginInlineEnd: 6 }} />
                   {to12Hour(apt.time, isAr)}
                 </div>
+                <div className="text-sm text-muted mb-xs" style={{ fontFamily: 'monospace' }}>
+                  {isAr ? 'رقم الحجز' : 'Booking #'}: {apt.booking_code || '-'}
+                </div>
                 <div className="text-sm text-muted mb-md flex items-center">
                   {docName(apt)}
                 </div>
@@ -236,7 +241,7 @@ const EmployeeDashboard = () => {
                 <div className="upcoming-info">
                   <div style={{ fontWeight: 600 }}>{apt.patient_name || '—'}</div>
                   <div className="text-sm text-muted">
-                    {docName(apt)} · {to12Hour(apt.time, isAr)}
+                    {apt.booking_code || '-'} · {docName(apt)} · {to12Hour(apt.time, isAr)}
                   </div>
                 </div>
                 <span className={`badge ${statusBadge(apt.status)}`}>
