@@ -664,17 +664,10 @@ export const AppProvider = ({ children }) => {
       throw new Error('Cannot create prescription: patient clinic does not match the logged-in clinic');
     }
 
-    if (import.meta.env.DEV) {
-      console.info('[UrClinic] prescription insert payload', {
-        row,
-        actor: { id: user?.id, role: user?.role, clinic_id: user?.clinic_id },
-      });
-    }
-
     const { data, error } = await supabase.from('prescriptions').insert([row]).select().single();
     if (error) {
       const formatted = formatSupabaseError(error);
-      console.error('[UrClinic] prescription insert failed', { error, row });
+      console.error('Prescription insert failed', { error, row });
       throw new Error(`Prescription insert failed: ${formatted}`);
     }
 

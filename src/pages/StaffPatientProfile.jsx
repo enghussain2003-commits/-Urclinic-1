@@ -146,14 +146,6 @@ const StaffPatientProfile = () => {
   const handleAddPrescription = async (e) => {
     e.preventDefault();
     setRxError('');
-    if (import.meta.env.DEV) {
-      console.info('[UrClinic] prescription submit handler called', {
-        patient_id: id,
-        patient_auth_user_id: patient?.auth_user_id,
-        patient_clinic_id: patient?.clinic_id,
-        actor: { id: user?.id, role: user?.role, clinic_id: user?.clinic_id },
-      });
-    }
     if (!patient.auth_user_id) {
       const message = 'Cannot deliver prescription: this patient record is not linked to a login account / لا يمكن إرسال الوصفة لأن ملف المريض غير مرتبط بحساب دخول';
       setRxError(message);
