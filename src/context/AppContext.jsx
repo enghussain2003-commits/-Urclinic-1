@@ -66,11 +66,6 @@ const formatSupabaseError = (error) => {
   ].filter(Boolean).join(' | ');
 };
 
-const isMissingColumnError = (error, columnName) =>
-  error?.code === '42703' ||
-  error?.code === 'PGRST204' ||
-  (columnName && String(error?.message || '').includes(columnName));
-
 export const AppProvider = ({ children }) => {
   const [user, setUser] = useState(getUser());
   const [doctors, setDoctors] = useState([]);
@@ -675,6 +670,11 @@ export const AppProvider = ({ children }) => {
       console.error('Prescription insert failed', { error, row });
       throw new Error(`Prescription insert failed: ${formatted}`);
     }
+    console.info('prescription inserted', data);
+
+    if (!data?.id) {
+      throw new Error('Prescription notification skipped: inserted prescription id is missing');
+    }
 
     const notificationRow = {
       user_id: patientUserId,
@@ -686,39 +686,23 @@ export const AppProvider = ({ children }) => {
       prescription_id: data.id,
     };
 
+    console.info('before notification insert', notificationRow);
     const { data: insertedNotification, error: notifError } = await supabase
       .from('notifications')
       .insert([notificationRow])
       .select('id, clinic_id, user_id, title, message, type, is_read, prescription_id')
       .single();
 
-    if (notifError && import.meta.env.DEV) {
-      console.error('Prescription notification insert failed', {
+    if (notifError) {
+      const formatted = formatSupabaseError(notifError);
+      console.error('notification insert failed', {
         error: notifError,
         payload: notificationRow,
       });
+      throw new Error(`Prescription notification insert failed: ${formatted}`);
     }
 
-    if (isMissingColumnError(notifError, 'prescription_id')) {
-      const fallbackNotification = { ...notificationRow };
-      delete fallbackNotification.prescription_id;
-      const { data: fallbackInsertedNotification, error: fallbackError } = await supabase
-        .from('notifications')
-        .insert([fallbackNotification])
-        .select('id, clinic_id, user_id, title, message, type, is_read')
-        .single();
-      if (fallbackError && fallbackError.code !== '23505') {
-        console.warn('prescription notification insert failed:', formatSupabaseError(fallbackError));
-      }
-      if (fallbackInsertedNotification && import.meta.env.DEV) {
-        console.info('Prescription notification inserted without prescription_id', fallbackInsertedNotification);
-      }
-    } else if (notifError && notifError.code !== '23505') {
-      console.warn('prescription notification insert failed:', formatSupabaseError(notifError));
-    }
-    if (insertedNotification && import.meta.env.DEV) {
-      console.info('Prescription notification inserted', insertedNotification);
-    }
+    console.info('after notification insert', insertedNotification);
 
     return data;
   };
