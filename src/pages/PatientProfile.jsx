@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useTranslation } from 'react-i18next';
 import { FileText, Calendar, Clock, User, Phone, Mail, CheckCircle, XCircle, Hourglass } from 'lucide-react';
 import { useApp } from '../context/AppContext';
@@ -12,6 +12,7 @@ const PatientProfile = () => {
   const isAr = i18n.language === 'ar';
   const { user, appointments, doctors, myPatientIds } = useApp();
   const [prescriptions, setPrescriptions] = useState([]);
+  const patientUserId = user?.id || null;
 
   // STRICT ID-only linkage. The previous phone/name fallback caused ghost bookings:
   // when a new patient registered with a phone that matched some pre-fix
@@ -23,27 +24,57 @@ const PatientProfile = () => {
     a.patient_id && Array.isArray(myPatientIds) && myPatientIds.includes(a.patient_id)
   );
 
-  // Load this patient's prescriptions (RLS returns only their own: patient_id = auth uid).
+  const refreshPrescriptions = useCallback(async () => {
+    if (!patientUserId) return;
+    const { data, error } = await supabase.from('prescriptions').select('*')
+      .eq('patient_id', patientUserId)
+      .order('prescribed_date', { ascending: false });
+    if (error) {
+      console.warn('prescriptions fetch error:', error.message);
+      return;
+    }
+    setPrescriptions(data || []);
+  }, [patientUserId]);
+
+  // Load this patient's prescriptions. RLS returns only their own rows because
+  // prescriptions.patient_id stores auth.uid()/profiles.id.
   useEffect(() => {
-    if (!user?.id) return;
+    if (!patientUserId) return;
     let active = true;
-    supabase.from('prescriptions').select('*')
-      .eq('patient_id', user.id)
-      .order('prescribed_date', { ascending: false })
-      .then(({ data, error }) => {
-        if (!active) return;
-        if (error) { console.warn('prescriptions fetch error:', error.message); return; }
-        setPrescriptions(data || []);
-      });
-    return () => { active = false; };
-  }, [user?.id]);
+    const loadFrame = requestAnimationFrame(() => {
+      if (active) refreshPrescriptions();
+    });
+
+    const channel = supabase
+      .channel(`prescriptions:${patientUserId}`)
+      .on('postgres_changes',
+        { event: 'INSERT', schema: 'public', table: 'prescriptions', filter: `patient_id=eq.${patientUserId}` },
+        (payload) => {
+          if (!active || !payload.new) return;
+          setPrescriptions(prev => [payload.new, ...prev.filter(rx => rx.id !== payload.new.id)]);
+        })
+      .subscribe();
+
+    const handleFocus = () => { if (active) refreshPrescriptions(); };
+    window.addEventListener('focus', handleFocus);
+
+    return () => {
+      active = false;
+      cancelAnimationFrame(loadFrame);
+      window.removeEventListener('focus', handleFocus);
+      supabase.removeChannel(channel);
+    };
+  }, [patientUserId, refreshPrescriptions]);
 
   const getDocName = (id) => {
     const doc = doctors.find(d => String(d.id) === String(id));
     return doc ? (isAr ? (doc.nameAr || doc.name) : (doc.name || doc.full_name)) : '-';
   };
   const getDocNameById = (doctorId) => {
-    const doc = doctors.find(d => String(d.id) === String(doctorId));
+    const doc = doctors.find(d =>
+      String(d.id) === String(doctorId) ||
+      String(d.profile_id) === String(doctorId)
+    );
     return doc ? (isAr ? (doc.nameAr || doc.name) : (doc.name || doc.full_name)) : '';
   };
 

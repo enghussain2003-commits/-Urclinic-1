@@ -616,6 +616,7 @@ export const AppProvider = ({ children }) => {
       const row = { user_id: userId, title, message, type, is_read: false };
       const cid = opts.clinic_id ?? user?.clinic_id;
       if (cid) row.clinic_id = cid;
+      if (opts.prescription_id) row.prescription_id = opts.prescription_id;
       const { error } = await supabase.from('notifications').insert([row]);
       if (error) { console.warn('notification insert failed:', error.message); return false; }
       return true;
@@ -625,36 +626,51 @@ export const AppProvider = ({ children }) => {
     }
   };
 
-  // Doctor creates a prescription → saved to the patient's record + patient is notified.
+  // Doctor/staff creates a prescription → saved to the patient's account + notified.
   // medicines is a JSON array: [{ name, dosage, instructions }].
   //
-  // M1 FIX: `rx.doctor_id` MUST be the doctors.id uuid (the doctor row), not the
-  // doctor's profile id. The caller is responsible for resolving profile → doctors.id
-  // (e.g. via doctors.find(d => d.profile_id === user.id)?.id). We no longer fall
-  // back to `user?.id`, because that fallback wrote the profile id into a column
-  // that expects doctors.id, breaking every downstream "doctor name" join.
+  // prescriptions.patient_id follows the table's RLS contract: it is the patient's
+  // auth/profile UUID (auth.uid()), not the clinic-scoped patients.id row.
   const createPrescription = async (rx) => {
     try {
+      const patientUserId = rx.patient_user_id || rx.patient_id;
+      if (!patientUserId) {
+        throw new Error('Cannot create prescription: patient account is not linked to an auth user');
+      }
+
       const row = {
-        patient_id: rx.patient_id,
+        patient_id: patientUserId,
         doctor_id: rx.doctor_id || null,
         diagnosis: rx.diagnosis || '',
         medicines: rx.medicines || [],
         instructions: rx.instructions || '',
         prescribed_date: rx.prescribed_date || new Date().toISOString().slice(0, 10),
       };
-      if (user?.clinic_id) row.clinic_id = user.clinic_id;
+      row.clinic_id = rx.clinic_id || user?.clinic_id || null;
       const { data, error } = await supabase.from('prescriptions').insert([row]).select().single();
       if (error) { console.warn('prescription insert failed:', error.message); return null; }
 
-      const ar = i18n.language === 'ar';
-      await sendNotification(
-        rx.patient_user_id,
-        ar ? 'وصفة طبية جديدة' : 'New prescription',
-        ar ? 'أضاف طبيبك وصفة طبية جديدة إلى سجلك' : 'Your doctor added a new prescription to your record',
-        'prescription_new',
-        { clinic_id: row.clinic_id },
-      );
+      const notificationRow = {
+        user_id: patientUserId,
+        clinic_id: row.clinic_id,
+        title: 'تم إصدار وصفة طبية جديدة',
+        message: 'تم إصدار وصفة طبية جديدة لك من العيادة',
+        type: 'prescription_created',
+        is_read: false,
+        prescription_id: data.id,
+      };
+
+      const { error: notifError } = await supabase.from('notifications').insert([notificationRow]);
+      if (notifError?.code === '42703') {
+        const fallbackNotification = { ...notificationRow };
+        delete fallbackNotification.prescription_id;
+        const { error: fallbackError } = await supabase.from('notifications').insert([fallbackNotification]);
+        if (fallbackError && fallbackError.code !== '23505') {
+          console.warn('prescription notification insert failed:', fallbackError.message);
+        }
+      } else if (notifError && notifError.code !== '23505') {
+        console.warn('prescription notification insert failed:', notifError.message);
+      }
       return data;
     } catch (err) {
       console.warn(err);

@@ -78,14 +78,18 @@ const StaffPatientProfile = () => {
   };
 
   const getDocName = (docId) => {
-    const doc = doctors.find(d => d.id === docId);
+    const doc = doctors.find(d =>
+      String(d.id) === String(docId) ||
+      String(d.profile_id) === String(docId)
+    );
     return doc?.name || doc?.full_name || 'Unknown Doctor';
   };
 
-  // M1 FIX: resolve the logged-in doctor's `doctors.id` from their profile id.
-  // Previously `doctor_id` was set to `user.id` (profile id), which broke every
-  // downstream join against the doctors table — names rendered as "Unknown Doctor".
+  // Resolve the logged-in doctor's row from their profile id. Prescriptions use
+  // the profile/auth id per the prescriptions table RLS contract, while older
+  // rows may still contain doctors.id; getDocName supports both.
   const myDoctorId = doctors.find(d => String(d.profile_id) === String(user?.id))?.id || null;
+  const myDoctorProfileId = doctors.find(d => String(d.profile_id) === String(user?.id))?.profile_id || null;
 
   const handleAddVisit = async (e) => {
     e.preventDefault();
@@ -140,14 +144,18 @@ const StaffPatientProfile = () => {
 
   const handleAddPrescription = async (e) => {
     e.preventDefault();
+    if (!patient.auth_user_id) {
+      alert('Cannot deliver prescription: this patient record is not linked to a login account / لا يمكن إرسال الوصفة لأن ملف المريض غير مرتبط بحساب دخول');
+      return;
+    }
     setSavingRx(true);
     try {
       const medicines = rxForm.medicines.filter(m => m.name.trim());
-      // M1: pass the doctors.id, not the profile id.
       const result = await createPrescription({
-        patient_id: patient.auth_user_id || id,
+        patient_id: patient.auth_user_id,
         patient_user_id: patient.auth_user_id,
-        doctor_id: myDoctorId,
+        doctor_id: myDoctorProfileId,
+        clinic_id: patient.clinic_id,
         diagnosis: rxForm.diagnosis,
         instructions: rxForm.instructions,
         medicines,
