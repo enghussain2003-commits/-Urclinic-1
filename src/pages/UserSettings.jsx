@@ -70,13 +70,13 @@ const UserSettings = () => {
   }
 
   return (
-    <div className="page-padding animate-in container" style={{ maxWidth: 700 }}>
+    <div className="page-padding animate-in">
       <div className="flex items-center gap-sm mb-xl">
         <Settings size={28} color="var(--primary)" />
         <h2 style={{ margin: 0 }}>{t('user_settings')}</h2>
       </div>
 
-      <div className="glass p-8">
+      <div className="glass p-8" style={{ maxWidth: 700 }}>
         {error && (
           <div style={{
             background: 'rgba(239,68,68,0.08)', border: '1px solid var(--danger)',
@@ -133,14 +133,14 @@ const UserSettings = () => {
 
         <hr style={{ margin: '2rem 0', borderColor: 'var(--border)' }} />
 
-        <div className="flex justify-between items-center">
+        <div className="flex justify-between items-center flex-wrap gap-md">
           <div>
             <h4 style={{ margin: 0 }}>{t('logout')}</h4>
             <p className="text-sm text-muted" style={{ margin: '0.25rem 0 0' }}>
               {t('email') === 'البريد الإلكتروني' ? 'تسجيل الخروج من حسابك الحالي' : 'Sign out of your current account'}
             </p>
           </div>
-          <button onClick={handleLogout} className="btn" style={{ background: 'rgba(239,68,68,0.1)', color: 'var(--danger)', border: 'none' }}>
+          <button onClick={handleLogout} className="btn" style={{ background: 'rgba(239,68,68,0.1)', color: 'var(--danger)', border: 'none', minWidth: 140 }}>
             <LogOut size={18} /> {t('logout')}
           </button>
         </div>

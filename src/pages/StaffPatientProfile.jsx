@@ -45,8 +45,8 @@ const StaffPatientProfile = () => {
     const fetchPatientData = async () => {
       setLoading(true);
       try {
-        // Fetch patient profile
-        const { data: prof } = await supabase.from('profiles').select('*').eq('id', id).single();
+        // Fetch the clinic-scoped patient record. EHR tables reference patients.id.
+        const { data: prof } = await supabase.from('patients').select('*').eq('id', id).single();
         if (prof) setPatient(prof);
 
         // Fetch medical history
@@ -58,7 +58,8 @@ const StaffPatientProfile = () => {
         if (files) setMedicalFiles(files);
 
         // Fetch prescriptions
-        const { data: rx } = await supabase.from('prescriptions').select('*').eq('patient_id', id).order('prescribed_date', { ascending: false });
+        const rxPatientIds = prof?.auth_user_id ? [prof.auth_user_id, id] : [id];
+        const { data: rx } = await supabase.from('prescriptions').select('*').in('patient_id', rxPatientIds).order('prescribed_date', { ascending: false });
         if (rx) setPrescriptions(rx);
       } catch (err) {
         console.error(err);
@@ -90,6 +91,7 @@ const StaffPatientProfile = () => {
     e.preventDefault();
     const record = {
       patient_id: id,
+      clinic_id: patient.clinic_id,
       doctor_id: visitForm.doctor_id || myDoctorId || null,
       visit_date: new Date().toISOString(),
       diagnosis: visitForm.diagnosis,
@@ -109,6 +111,7 @@ const StaffPatientProfile = () => {
     e.preventDefault();
     const record = {
       patient_id: id,
+      clinic_id: patient.clinic_id,
       file_name: fileForm.file_name,
       file_type: fileForm.file_type,
       file_url: fileForm.file_url || `/files/${fileForm.file_name}`,
@@ -142,7 +145,8 @@ const StaffPatientProfile = () => {
       const medicines = rxForm.medicines.filter(m => m.name.trim());
       // M1: pass the doctors.id, not the profile id.
       const result = await createPrescription({
-        patient_id: id,
+        patient_id: patient.auth_user_id || id,
+        patient_user_id: patient.auth_user_id,
         doctor_id: myDoctorId,
         diagnosis: rxForm.diagnosis,
         instructions: rxForm.instructions,
@@ -167,7 +171,7 @@ const StaffPatientProfile = () => {
       'استدعاء المريض',
       `يرجى التوجه إلى غرفة الفحص الآن - ${patient.full_name}`,
       'call',
-      { called_by: user?.id, called_by_name: user?.name || user?.full_name }
+      { clinic_id: patient.clinic_id, called_by: user?.id, called_by_name: user?.name || user?.full_name }
     );
     if (success) {
       alert('تم استدعاء المريض بنجاح');
@@ -198,7 +202,7 @@ const StaffPatientProfile = () => {
   return (
     <div className="page-padding animate-in">
       {/* Header */}
-      <button className="btn btn-ghost mb-md" onClick={() => navigate('/dashboard/patients')}>
+      <button className="btn btn-ghost mb-md" onClick={() => navigate('/dashboard/patients')} style={{ marginBottom: '1rem' }}>
         <ArrowLeft size={18} /> Back to Patients
       </button>
 
@@ -248,15 +252,15 @@ const StaffPatientProfile = () => {
         </div>
       </div>
 
-      {/* Tabs */}
-      <div className="flex gap-sm mb-xl">
-        <button className={`btn ${activeTab === 'timeline' ? 'btn-primary' : 'btn-outline'}`} onClick={() => setActiveTab('timeline')}>
+      {/* Tabs — scrollable on mobile */}
+      <div className="flex gap-sm mb-xl tabs-row" style={{ overflowX: 'auto', paddingBottom: 4 }}>
+        <button className={`btn ${activeTab === 'timeline' ? 'btn-primary' : 'btn-outline'}`} onClick={() => setActiveTab('timeline')} style={{ flexShrink: 0 }}>
           <Clock size={16} /> Visit Timeline
         </button>
-        <button className={`btn ${activeTab === 'files' ? 'btn-primary' : 'btn-outline'}`} onClick={() => setActiveTab('files')}>
+        <button className={`btn ${activeTab === 'files' ? 'btn-primary' : 'btn-outline'}`} onClick={() => setActiveTab('files')} style={{ flexShrink: 0 }}>
           <FileText size={16} /> Medical Files ({medicalFiles.length})
         </button>
-        <button className={`btn ${activeTab === 'prescriptions' ? 'btn-primary' : 'btn-outline'}`} onClick={() => setActiveTab('prescriptions')}>
+        <button className={`btn ${activeTab === 'prescriptions' ? 'btn-primary' : 'btn-outline'}`} onClick={() => setActiveTab('prescriptions')} style={{ flexShrink: 0 }}>
           <Pill size={16} /> {t('prescriptions')} ({prescriptions.length})
         </button>
       </div>
@@ -310,17 +314,21 @@ const StaffPatientProfile = () => {
               </div>
             ) : (
               medicalHistory.map((visit, idx) => (
-                <div key={visit.id} className="timeline-item" style={{ 
-                  position: 'relative', paddingLeft: '2.5rem', paddingBottom: '1.5rem',
-                  borderLeft: idx < medicalHistory.length - 1 ? '2px solid var(--primary-200)' : '2px solid transparent',
-                  marginLeft: '0.75rem'
+                <div key={visit.id} className="timeline-item" style={{
+                  position: 'relative',
+                  paddingInlineStart: '2.5rem',
+                  paddingBottom: '1.5rem',
+                  borderInlineStart: idx < medicalHistory.length - 1 ? '2px solid var(--primary-200)' : '2px solid transparent',
+                  marginInlineStart: '0.75rem'
                 }}>
                   {/* Timeline dot */}
                   <div style={{
-                    position: 'absolute', left: '-0.5rem', top: '0.25rem',
+                    position: 'absolute',
+                    insetInlineStart: '-0.5rem',
+                    top: '0.25rem',
                     width: '1rem', height: '1rem', borderRadius: '50%',
                     background: idx === 0 ? 'var(--primary)' : 'var(--primary-200)',
-                    border: '3px solid var(--bg-primary)'
+                    border: '3px solid var(--bg)'
                   }} />
                   
                   <div className="glass p-4" style={{ cursor: 'pointer' }}
@@ -333,7 +341,7 @@ const StaffPatientProfile = () => {
                           <span className="text-sm text-muted">{new Date(visit.visit_date).toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' })}</span>
                         </div>
                         <div className="text-sm text-muted">
-                          <Stethoscope size={12} style={{ display: 'inline', marginRight: 4 }} />
+                          <Stethoscope size={12} style={{ display: 'inline', marginInlineEnd: 4 }} />
                           Dr. {getDocName(visit.doctor_id)}
                         </div>
                       </div>

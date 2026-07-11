@@ -163,8 +163,9 @@ export const AppProvider = ({ children }) => {
           setAppointments(scopeToClinic(mergeById((apts || []).map(fromDbAppt), local), clinicDoctorIds));
         }
 
-        // Fetch Patients — staff (non-super_admin) see only their clinic's patients.
-        let patQuery = supabase.from('profiles').select('*').eq('role', 'patient').order('created_at', { ascending: false });
+        // Fetch Patients — staff (non-super_admin) see only their clinic's patient records.
+        // Medical history/files/appointments are keyed to public.patients.id, not profiles.id.
+        let patQuery = supabase.from('patients').select('*').order('created_at', { ascending: false });
         if (staffClinicId) {
           patQuery = patQuery.eq('clinic_id', staffClinicId);
         }
@@ -534,7 +535,9 @@ export const AppProvider = ({ children }) => {
 
   const addMedicalHistory = async (record) => {
     try {
-      const { data, error } = await supabase.from('medical_history').insert([record]).select().single();
+      const row = { ...record };
+      if (!row.clinic_id && user?.clinic_id) row.clinic_id = user.clinic_id;
+      const { data, error } = await supabase.from('medical_history').insert([row]).select().single();
       if (error) { console.error(error); return null; }
       return data;
     } catch (err) {
@@ -545,7 +548,9 @@ export const AppProvider = ({ children }) => {
 
   const addMedicalFile = async (record) => {
     try {
-      const { data, error } = await supabase.from('medical_files').insert([record]).select().single();
+      const row = { ...record };
+      if (!row.clinic_id && user?.clinic_id) row.clinic_id = user.clinic_id;
+      const { data, error } = await supabase.from('medical_files').insert([row]).select().single();
       if (error) { console.error(error); return null; }
       return data;
     } catch (err) {
@@ -597,10 +602,11 @@ export const AppProvider = ({ children }) => {
 
       const ar = i18n.language === 'ar';
       await sendNotification(
-        rx.patient_id,
+        rx.patient_user_id,
         ar ? 'وصفة طبية جديدة' : 'New prescription',
         ar ? 'أضاف طبيبك وصفة طبية جديدة إلى سجلك' : 'Your doctor added a new prescription to your record',
         'prescription_new',
+        { clinic_id: row.clinic_id },
       );
       return data;
     } catch (err) {

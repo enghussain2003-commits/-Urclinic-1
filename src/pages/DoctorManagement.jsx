@@ -3,7 +3,7 @@ import ReactDOM from 'react-dom';
 import { useTranslation } from 'react-i18next';
 import { useApp } from '../context/AppContext';
 import { supabase } from '../supabaseClient';
-import { Plus, Trash2, X, Stethoscope, MapPin, Clock } from 'lucide-react';
+import { Plus, Trash2, X, Stethoscope, MapPin, Clock, Mail } from 'lucide-react';
 
 const WEEK_DAYS = [
   { id: 'sat', label: 'Sat', labelAr: 'السبت' },
@@ -24,12 +24,9 @@ const DoctorManagement = () => {
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState(null);
 
-  // Doctors scoped to the logged-in admin's own clinic (super_admin sees all).
   const [doctors, setDoctors] = useState([]);
   const [loadingDocs, setLoadingDocs] = useState(true);
 
-  // Clinics for the super_admin dropdown — required for a successful insert
-  // (doctors.clinic_id is NOT NULL). Fixed in this commit for audit issue C3.
   const [clinics, setClinics] = useState([]);
   useEffect(() => {
     if (user?.role !== 'super_admin') return;
@@ -40,21 +37,18 @@ const DoctorManagement = () => {
   const loadClinicDoctors = useCallback(async () => {
     setLoadingDocs(true);
     try {
-      // 1) current auth user
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) { setDoctors([]); return; }
+      const { data: { user: authUser } } = await supabase.auth.getUser();
+      if (!authUser) { setDoctors([]); return; }
 
-      // 2) read this admin's clinic_id + role from profiles
       const { data: profile } = await supabase
         .from('profiles')
         .select('clinic_id, role')
-        .eq('id', user.id)
+        .eq('id', authUser.id)
         .single();
 
-      // 3) fetch doctors — super_admin sees every clinic; everyone else only their own
       let query = supabase.from('doctors').select('*').order('created_at', { ascending: false });
       if (profile?.role !== 'super_admin') {
-        if (!profile?.clinic_id) { setDoctors([]); return; }  // no clinic → nothing to show
+        if (!profile?.clinic_id) { setDoctors([]); return; }
         query = query.eq('clinic_id', profile.clinic_id);
       }
       const { data, error: fetchErr } = await query;
@@ -65,8 +59,10 @@ const DoctorManagement = () => {
     }
   }, []);
 
-  // eslint-disable-next-line react-hooks/set-state-in-effect
-  useEffect(() => { loadClinicDoctors(); }, [loadClinicDoctors]);
+  useEffect(() => {
+    const id = requestAnimationFrame(() => loadClinicDoctors());
+    return () => cancelAnimationFrame(id);
+  }, [loadClinicDoctors]);
 
   const [form, setForm] = useState({
     clinic_id: '',
@@ -110,9 +106,6 @@ const DoctorManagement = () => {
         setSaving(false);
         return;
       }
-      // Send only fields that exist in public.doctors. `clinic_name` and `duration`
-      // are intentionally dropped — they aren't columns and previously caused the
-      // insert to fail silently.
       await addDoctor({
         clinic_id: form.clinic_id,
         full_name: form.full_name,
@@ -132,7 +125,7 @@ const DoctorManagement = () => {
         fee: '', open_time: '09:00', close_time: '20:00', break_start: '13:00', break_end: '14:00',
         work_days: ['sat', 'sun', 'mon', 'tue', 'wed', 'thu'],
       });
-      await loadClinicDoctors();   // refresh the clinic-scoped list
+      await loadClinicDoctors();
     } catch (err) {
       setError(err.message);
     } finally {
@@ -143,8 +136,8 @@ const DoctorManagement = () => {
   const handleDelete = async (id) => {
     if (!window.confirm(isAr ? 'حذف هذا الطبيب؟' : 'Delete this doctor?')) return;
     try {
-      await deleteDoctor(id);            // throws for non-super_admin (also blocked by RLS)
-      await loadClinicDoctors();         // refresh the clinic-scoped list
+      await deleteDoctor(id);
+      await loadClinicDoctors();
     } catch (err) {
       alert(err.message);
     }
@@ -154,8 +147,9 @@ const DoctorManagement = () => {
 
   return (
     <div className="page-padding animate-in">
-      <div className="flex justify-between items-center mb-xl">
-        <h2>{t('manage_doctors')}</h2>
+      {/* Header */}
+      <div className="flex justify-between items-center mb-xl flex-wrap gap-md page-header-row">
+        <h2 style={{ margin: 0 }}>{t('manage_doctors')}</h2>
         {user?.role === 'super_admin' && (
           <button className="btn btn-primary" onClick={() => setShowModal(true)}>
             <Plus size={18} /> {t('add_doctor')}
@@ -163,77 +157,120 @@ const DoctorManagement = () => {
         )}
       </div>
 
-      <div className="glass p-6">
-        <div className="table-container">
-          <table>
-            <thead>
-              <tr>
-                <th>{t('doctor')}</th>
-                <th>{t('specialty')}</th>
-                <th>{isAr ? 'عنوان العيادة' : 'Clinic Address'}</th>
-                <th>{isAr ? 'الدوام' : 'Working Hours'}</th>
-                <th>{t('actions')}</th>
+      {/* ── Desktop table ── */}
+      <div className="glass p-6 table-container">
+        <table>
+          <thead>
+            <tr>
+              <th>{t('doctor')}</th>
+              <th>{t('specialty')}</th>
+              <th>{isAr ? 'عنوان العيادة' : 'Clinic Address'}</th>
+              <th>{isAr ? 'الدوام' : 'Working Hours'}</th>
+              <th>{t('actions')}</th>
+            </tr>
+          </thead>
+          <tbody>
+            {loadingDocs ? (
+              <tr><td colSpan="5" className="text-center text-muted">{isAr ? 'جارٍ التحميل...' : 'Loading...'}</td></tr>
+            ) : doctors.length === 0 ? (
+              <tr><td colSpan="5" className="text-center text-muted">{isAr ? 'لا يوجد أطباء في عيادتك بعد.' : 'No doctors in your clinic yet.'}</td></tr>
+            ) : doctors.map(doc => (
+              <tr key={doc.id}>
+                <td>
+                  <div className="flex items-center gap-md">
+                    <div style={{
+                      width: 40, height: 40, borderRadius: '50%',
+                      background: 'linear-gradient(135deg, var(--primary) 0%, var(--primary-dark) 100%)',
+                      display: 'flex', alignItems: 'center', justifyContent: 'center',
+                      color: '#fff', fontWeight: 700, fontSize: '1rem', flexShrink: 0
+                    }}>
+                      {(doc.full_name || doc.name || '?').charAt(0).toUpperCase()}
+                    </div>
+                    <span style={{ fontWeight: 600 }}>{doc.full_name || (isAr ? doc.nameAr : doc.name)}</span>
+                  </div>
+                </td>
+                <td>{t(doc.specialty) || doc.specialty}</td>
+                <td className="text-sm text-muted">{doc.clinic_address || doc.clinic_name || '-'}</td>
+                <td className="text-sm">
+                  {doc.open_time && doc.close_time ? `${doc.open_time} - ${doc.close_time}` : '-'}
+                </td>
+                <td>
+                  {canDelete ? (
+                    <button className="btn btn-ghost btn-icon" onClick={() => handleDelete(doc.id)} title={t('delete')}>
+                      <Trash2 size={16} style={{ color: 'var(--danger)' }} />
+                    </button>
+                  ) : (
+                    <span className="text-muted text-sm">—</span>
+                  )}
+                </td>
               </tr>
-            </thead>
-            <tbody>
-              {loadingDocs ? (
-                <tr><td colSpan="5" className="text-center text-muted">{isAr ? 'جارٍ التحميل...' : 'Loading...'}</td></tr>
-              ) : doctors.length === 0 ? (
-                <tr><td colSpan="5" className="text-center text-muted">{isAr ? 'لا يوجد أطباء في عيادتك بعد.' : 'No doctors in your clinic yet.'}</td></tr>
-              ) : doctors.map(doc => (
-                <tr key={doc.id}>
-                  <td>
-                    <div className="flex items-center gap-md">
-                      <div style={{
-                        width: 40, height: 40, borderRadius: '50%',
-                        background: 'linear-gradient(135deg, var(--primary) 0%, var(--primary-dark) 100%)',
-                        display: 'flex', alignItems: 'center', justifyContent: 'center',
-                        color: '#fff', fontWeight: 700, fontSize: '1rem', flexShrink: 0
-                      }}>
-                        {(doc.full_name || doc.name || '?').charAt(0).toUpperCase()}
-                      </div>
-                      <span style={{ fontWeight: 600 }}>{doc.full_name || (isAr ? doc.nameAr : doc.name)}</span>
-                    </div>
-                  </td>
-                  <td>{t(doc.specialty) || doc.specialty}</td>
-                  <td className="text-sm text-muted">{doc.clinic_address || doc.clinic_name || '-'}</td>
-                  <td className="text-sm">
-                    {doc.open_time && doc.close_time
-                      ? `${doc.open_time} - ${doc.close_time}`
-                      : '-'}
-                  </td>
-                  <td>
-                    <div className="flex gap-sm">
-                      {canDelete ? (
-                        <button className="btn btn-ghost btn-icon" onClick={() => handleDelete(doc.id)} title={t('delete')}>
-                          <Trash2 size={16} style={{ color: 'var(--danger)' }} />
-                        </button>
-                      ) : (
-                        <span className="text-muted text-sm">—</span>
-                      )}
-                    </div>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
+            ))}
+          </tbody>
+        </table>
       </div>
 
-      {/* Add Doctor Modal — rendered via Portal to escape transform stacking context */}
+      {/* ── Mobile card list ── */}
+      <div className="mobile-card-list">
+        {loadingDocs ? (
+          <div className="text-center text-muted" style={{ padding: '2rem' }}>{isAr ? 'جارٍ التحميل...' : 'Loading...'}</div>
+        ) : doctors.length === 0 ? (
+          <div className="card-flat text-center text-muted" style={{ padding: '2rem' }}>
+            <Stethoscope size={40} style={{ opacity: 0.2, margin: '0 auto 1rem' }} />
+            <p>{isAr ? 'لا يوجد أطباء في عيادتك بعد.' : 'No doctors in your clinic yet.'}</p>
+          </div>
+        ) : doctors.map(doc => (
+          <div key={doc.id} className="mobile-card-item">
+            <div className="flex items-center gap-sm" style={{ marginBottom: '0.75rem' }}>
+              <div style={{
+                width: 44, height: 44, borderRadius: '50%',
+                background: 'linear-gradient(135deg, var(--primary), var(--primary-dark))',
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                color: '#fff', fontWeight: 700, fontSize: '1.1rem', flexShrink: 0
+              }}>
+                {(doc.full_name || doc.name || '?').charAt(0).toUpperCase()}
+              </div>
+              <div style={{ flex: 1 }}>
+                <div style={{ fontWeight: 700 }}>{doc.full_name || (isAr ? doc.nameAr : doc.name)}</div>
+                <div className="text-sm text-muted">{t(doc.specialty) || doc.specialty}</div>
+              </div>
+              {canDelete && (
+                <button className="btn btn-ghost btn-icon" onClick={() => handleDelete(doc.id)}>
+                  <Trash2 size={16} style={{ color: 'var(--danger)' }} />
+                </button>
+              )}
+            </div>
+            {doc.clinic_address && (
+              <div className="mobile-card-row">
+                <span className="mobile-card-label"><MapPin size={12} /> {isAr ? 'العنوان' : 'Address'}</span>
+                <span className="mobile-card-value">{doc.clinic_address}</span>
+              </div>
+            )}
+            {doc.open_time && (
+              <div className="mobile-card-row">
+                <span className="mobile-card-label"><Clock size={12} /> {isAr ? 'الدوام' : 'Hours'}</span>
+                <span className="mobile-card-value">{doc.open_time} – {doc.close_time}</span>
+              </div>
+            )}
+            {doc.email && (
+              <div className="mobile-card-row">
+                <span className="mobile-card-label"><Mail size={12} /> Email</span>
+                <span className="mobile-card-value" style={{ fontSize: '0.8rem' }}>{doc.email}</span>
+              </div>
+            )}
+          </div>
+        ))}
+      </div>
+
+      {/* ── Add Doctor Modal ── */}
       {showModal && ReactDOM.createPortal(
-        <div style={{
-          position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.6)',
-          display: 'flex', alignItems: 'flex-start', justifyContent: 'center',
-          zIndex: 9999, overflowY: 'auto', padding: '2rem 1rem'
-        }}>
+        <div className="modal-overlay">
           <div className="glass p-8" style={{ width: '100%', maxWidth: 540 }}>
             <div className="flex justify-between items-center mb-xl">
-              <h3 style={{ margin: 0 }}><Stethoscope size={20} style={{ display: 'inline', marginRight: 8 }} />{t('add_doctor')}</h3>
+              <h3 style={{ margin: 0 }}><Stethoscope size={20} style={{ display: 'inline', marginInlineEnd: 8 }} />{t('add_doctor')}</h3>
               <button className="btn btn-ghost btn-icon" onClick={() => setShowModal(false)}><X size={20} /></button>
             </div>
 
-            {error && <div style={{ color: 'var(--danger)', marginBottom: '1rem', fontSize: '0.875rem' }}>{error}</div>}
+            {error && <div style={{ color: 'var(--danger)', marginBottom: '1rem', fontSize: '0.875rem', background: 'rgba(239,68,68,0.08)', padding: '0.75rem', borderRadius: 'var(--radius-md)' }}>{error}</div>}
 
             <form onSubmit={handleAddDoctor}>
               <div className="form-group">
@@ -261,9 +298,8 @@ const DoctorManagement = () => {
                   ))}
                 </select>
               </div>
-              {/* #2: Clinic address (replaces the old duration field) */}
               <div className="form-group">
-                <label className="form-label"><MapPin size={14} style={{ display: 'inline', marginInlineEnd: 4 }} />{isAr ? 'عنوان العيادة / مكان الحجز' : 'Clinic Address'} *</label>
+                <label className="form-label"><MapPin size={14} style={{ display: 'inline', marginInlineEnd: 4 }} />{isAr ? 'عنوان العيادة' : 'Clinic Address'} *</label>
                 <input className="input" name="clinic_address" required value={form.clinic_address} onChange={handleChange} placeholder={isAr ? 'بغداد، شارع الرشيد، بناية 12' : 'Baghdad, Al-Rashid St, Bldg 12'} />
               </div>
               <div className="form-group">
@@ -271,7 +307,7 @@ const DoctorManagement = () => {
                 <input className="input" name="fee" type="number" value={form.fee} onChange={handleChange} placeholder="50" />
               </div>
 
-              {/* #3: Working hours, days, break */}
+              {/* Working schedule */}
               <div className="card-flat bg-alt" style={{ marginBottom: '1rem' }}>
                 <h4 className="mb-md" style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
                   <Clock size={16} /> {isAr ? 'إعدادات الدوام' : 'Working Schedule'}

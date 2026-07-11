@@ -1,4 +1,3 @@
-import { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
 import { useApp } from '../context/AppContext';
@@ -182,6 +181,35 @@ const DoctorDashboard = () => {
                 ))}
               </tbody>
             </table>
+          </div>
+          
+          {/* Mobile Cards View */}
+          <div className="mobile-card-list">
+            {loading ? (
+              <div className="text-center text-muted py-xl">{t('loading')}</div>
+            ) : stats.todayList.length === 0 ? (
+              <div className="text-center text-muted py-xl card-flat bg-alt">
+                {t('no_appointments_today')}
+              </div>
+            ) : (
+              stats.todayList.map(apt => (
+                <div key={apt.id} className="mobile-card-item">
+                  <div className="mobile-card-row">
+                    <div style={{ fontWeight: 600, fontSize: '1.05rem' }}>{apt.patient_name || '—'}</div>
+                    <span className={`badge ${statusBadge(apt.status)}`}>
+                      {statusLabel(apt.status)}
+                    </span>
+                  </div>
+                  <div className="text-sm text-muted mb-md flex items-center">
+                    <Clock size={14} style={{ marginInlineEnd: 6 }} />
+                    {to12Hour(apt.time, isAr)}
+                  </div>
+                  <div className="mobile-card-actions">
+                    {renderActions(apt)}
+                  </div>
+                </div>
+              ))
+            )}
           </div>
         </div>
       </div>

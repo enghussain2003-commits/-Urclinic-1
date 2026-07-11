@@ -163,6 +163,57 @@ const EmployeeDashboard = () => {
             </tbody>
           </table>
         </div>
+
+        {/* Mobile Cards View */}
+        <div className="mobile-card-list">
+          {loading ? (
+            <div className="text-center text-muted py-xl">{t('loading')}</div>
+          ) : todayAppts.length === 0 ? (
+            <div className="text-center text-muted py-xl card-flat bg-alt">
+              {t('no_appointments_today')}
+            </div>
+          ) : (
+            todayAppts.map(apt => (
+              <div key={apt.id} className="mobile-card">
+                <div className="flex justify-between items-start mb-sm">
+                  <div style={{ fontWeight: 600, fontSize: '1.05rem' }}>{apt.patient_name || '—'}</div>
+                  <span className={`badge ${statusBadge(apt.status)}`}>
+                    {t(apt.status === 'no-show' ? 'no_show' : apt.status)}
+                  </span>
+                </div>
+                <div className="text-sm text-muted mb-xs flex items-center">
+                  <Clock size={14} style={{ marginInlineEnd: 6 }} />
+                  {to12Hour(apt.time, isAr)}
+                </div>
+                <div className="text-sm text-muted mb-md flex items-center">
+                  {docName(apt)}
+                </div>
+                <div className="mobile-card-actions">
+                  {apt.status === 'pending' ? (
+                    <div className="flex gap-sm">
+                      <button
+                        className="btn btn-sm"
+                        style={{ background: 'var(--success)', color: '#fff', flex: 1 }}
+                        onClick={() => changeStatus(apt.id, 'confirmed')}
+                      >
+                        <CheckCircle size={13} /> {t('approve')}
+                      </button>
+                      <button
+                        className="btn btn-sm btn-outline"
+                        style={{ borderColor: 'var(--danger)', color: 'var(--danger)', flex: 1 }}
+                        onClick={() => changeStatus(apt.id, 'rejected')}
+                      >
+                        <XCircle size={13} /> {t('reject')}
+                      </button>
+                    </div>
+                  ) : (
+                    <span className="text-muted text-sm">—</span>
+                  )}
+                </div>
+              </div>
+            ))
+          )}
+        </div>
       </div>
 
       {/* ── Upcoming ── */}
@@ -172,7 +223,7 @@ const EmployeeDashboard = () => {
             <h4>{t('upcoming_appointments')}</h4>
           </div>
           <div className="upcoming-list">
-            {upcoming.map((apt, i) => (
+            {upcoming.map((apt) => (
               <div key={apt.id} className="upcoming-item">
                 <div className="upcoming-date-block">
                   <div className="upcoming-date-day">

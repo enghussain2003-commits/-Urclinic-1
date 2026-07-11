@@ -8,7 +8,7 @@ import { useTranslation } from 'react-i18next';
  * The onChange callback receives the range id string — consumers decide what to do with it.
  */
 
-export const DATE_RANGE_OPTIONS = [
+const DATE_RANGE_OPTIONS = [
   { id: 'today',  labelEn: 'Today',      labelAr: 'اليوم',        active: true  },
   { id: 'week',   labelEn: 'This Week',  labelAr: 'هذا الأسبوع',  active: false }, // future
   { id: 'month',  labelEn: 'This Month', labelAr: 'هذا الشهر',    active: true  },

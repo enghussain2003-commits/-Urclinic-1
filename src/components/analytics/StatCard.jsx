@@ -23,7 +23,10 @@ const StatCard = ({
   const [count, setCount] = useState(0);
 
   useEffect(() => {
-    if (num === 0) { setCount(0); return; }
+    if (num === 0) {
+      const id = requestAnimationFrame(() => setCount(0));
+      return () => cancelAnimationFrame(id);
+    }
     let current = 0;
     const duration = 900;
     const step = num / (duration / 16);

@@ -105,7 +105,9 @@ export const useDashboardStats = ({
   // ── Fetch ONLY extra data (employees + expenses) — parallel, non-duplicate ──
   useEffect(() => {
     abortRef.current = false;
-    setExtraLoading(true);
+    const loadingFrame = requestAnimationFrame(() => {
+      if (!abortRef.current) setExtraLoading(true);
+    });
 
     const run = async () => {
       // Employee count query
@@ -152,7 +154,7 @@ export const useDashboardStats = ({
       if (!abortRef.current) setExtraLoading(false);
     });
 
-    return () => { abortRef.current = true; };
+    return () => { abortRef.current = true; cancelAnimationFrame(loadingFrame); };
   }, [clinicId]);
 
   // ── Derived stats — pure computation, zero Supabase calls ─────────────────

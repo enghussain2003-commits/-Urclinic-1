@@ -291,7 +291,6 @@ const resources = {
       cash: "Cash",
       no_data_available: "No data available yet.",
       expenses: "Expenses",
-      revenue: "Revenue",
       patients_this_month: "Patients This Month",
       appointments_per_week: "Appointments per Week",
     }
@@ -585,7 +584,6 @@ const resources = {
       cash: "نقداً",
       no_data_available: "لا توجد بيانات بعد.",
       expenses: "المصروفات",
-      revenue: "الإيرادات",
       patients_this_month: "مرضى هذا الشهر",
       appointments_per_week: "المواعيد أسبوعياً",
     }

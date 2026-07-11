@@ -42,8 +42,8 @@ const PatientProfile = () => {
     const doc = doctors.find(d => String(d.id) === String(id));
     return doc ? (isAr ? (doc.nameAr || doc.name) : (doc.name || doc.full_name)) : '-';
   };
-  const getDocNameByProfile = (profileId) => {
-    const doc = doctors.find(d => String(d.profile_id) === String(profileId));
+  const getDocNameById = (doctorId) => {
+    const doc = doctors.find(d => String(d.id) === String(doctorId));
     return doc ? (isAr ? (doc.nameAr || doc.name) : (doc.name || doc.full_name)) : '';
   };
 
@@ -143,7 +143,7 @@ const PatientProfile = () => {
                   key={rx.id}
                   rx={rx}
                   patientName={user?.name || ''}
-                  doctorName={getDocNameByProfile(rx.doctor_id)}
+                  doctorName={getDocNameById(rx.doctor_id)}
                 />
               ))}
             </div>

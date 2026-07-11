@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate, Link } from 'react-router-dom';
-import { Activity, User, Phone, Mail, Lock } from 'lucide-react';
+import { Activity } from 'lucide-react';
 import { supabase } from '../supabaseClient';
 import { useApp } from '../context/AppContext';
 
@@ -76,31 +76,19 @@ const SignUp = () => {
         <form onSubmit={handleSubmit}>
           <div className="form-group">
             <label className="form-label">{t('full_name') || 'Full Name'}</label>
-            <div style={{ display: 'flex', alignItems: 'center', background: 'var(--bg-secondary)', borderRadius: 'var(--radius-md)', padding: '0 0.75rem' }}>
-               <User size={18} color="var(--text-secondary)" />
-               <input type="text" required className="input" style={{ border: 'none', background: 'transparent' }} placeholder="John Doe" value={fullName} onChange={e => setFullName(e.target.value)} />
-            </div>
+            <input type="text" required className="input" placeholder="John Doe" value={fullName} onChange={e => setFullName(e.target.value)} />
           </div>
           <div className="form-group">
             <label className="form-label">{t('email')}</label>
-            <div style={{ display: 'flex', alignItems: 'center', background: 'var(--bg-secondary)', borderRadius: 'var(--radius-md)', padding: '0 0.75rem' }}>
-               <Mail size={18} color="var(--text-secondary)" />
-               <input type="email" required className="input" style={{ border: 'none', background: 'transparent' }} placeholder="john@example.com" value={email} onChange={e => setEmail(e.target.value)} />
-            </div>
+            <input type="email" required className="input" placeholder="john@example.com" value={email} onChange={e => setEmail(e.target.value)} />
           </div>
           <div className="form-group">
             <label className="form-label">{t('phone') || 'Phone Number'}</label>
-            <div style={{ display: 'flex', alignItems: 'center', background: 'var(--bg-secondary)', borderRadius: 'var(--radius-md)', padding: '0 0.75rem' }}>
-               <Phone size={18} color="var(--text-secondary)" />
-               <input type="tel" required className="input" style={{ border: 'none', background: 'transparent' }} placeholder="+964..." value={phone} onChange={e => setPhone(e.target.value)} />
-            </div>
+            <input type="tel" required className="input" placeholder="+964..." value={phone} onChange={e => setPhone(e.target.value)} />
           </div>
           <div className="form-group">
             <label className="form-label">{t('password')}</label>
-            <div style={{ display: 'flex', alignItems: 'center', background: 'var(--bg-secondary)', borderRadius: 'var(--radius-md)', padding: '0 0.75rem' }}>
-               <Lock size={18} color="var(--text-secondary)" />
-               <input type="password" required className="input" style={{ border: 'none', background: 'transparent' }} placeholder="••••••••" value={password} onChange={e => setPassword(e.target.value)} />
-            </div>
+            <input type="password" required className="input" placeholder="••••••••" value={password} onChange={e => setPassword(e.target.value)} />
           </div>
           
           <button type="submit" disabled={loading} className="btn btn-primary w-full" style={{ marginTop: '1rem' }}>

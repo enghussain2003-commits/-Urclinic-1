@@ -1,9 +1,13 @@
+import { useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link, useLocation } from 'react-router-dom';
-import { Activity, LayoutDashboard, CalendarDays, Users, Settings, Stethoscope, Globe, LogOut, User } from 'lucide-react';
+import {
+  Activity, LayoutDashboard, CalendarDays, Users,
+  Settings, Stethoscope, Globe, LogOut, User, X,
+} from 'lucide-react';
 import { useApp } from '../context/AppContext';
 
-const Sidebar = () => {
+const Sidebar = ({ isOpen, onClose }) => {
   const { t, i18n } = useTranslation();
   const location = useLocation();
   const { logout } = useApp();
@@ -12,6 +16,21 @@ const Sidebar = () => {
   const toggleLang = () => {
     i18n.changeLanguage(i18n.language === 'en' ? 'ar' : 'en');
   };
+
+  // Close sidebar on route change (mobile)
+  useEffect(() => {
+    onClose?.();
+  }, [location.pathname]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Trap scroll when sidebar is open on mobile
+  useEffect(() => {
+    if (isOpen) {
+      document.body.style.overflow = 'hidden';
+    } else {
+      document.body.style.overflow = '';
+    }
+    return () => { document.body.style.overflow = ''; };
+  }, [isOpen]);
 
   const items = [
     { path: '/dashboard', icon: LayoutDashboard, label: t('overview') },
@@ -24,33 +43,59 @@ const Sidebar = () => {
   ];
 
   return (
-    <aside className="sidebar">
-      <Link to="/" className="sidebar-logo">
-        <Activity size={26} />
-        UrClinic
-      </Link>
+    <>
+      {/* Mobile backdrop overlay */}
+      {isOpen && (
+        <div
+          className="sidebar-backdrop"
+          onClick={onClose}
+          aria-hidden="true"
+        />
+      )}
 
-      <div className="sidebar-section-title">{t('clinic_panel')}</div>
-      <nav className="sidebar-nav">
-        {items.map(item => (
-          <Link key={item.path} to={item.path} className={`sidebar-item ${isActive(item.path) ? 'active' : ''}`}>
-            <item.icon size={20} />
-            {item.label}
+      <aside className={`sidebar ${isOpen ? 'open' : ''}`} aria-label="Main navigation">
+        {/* Logo row + close button */}
+        <div className="sidebar-logo-row">
+          <Link to="/" className="sidebar-logo">
+            <Activity size={26} />
+            UrClinic
           </Link>
-        ))}
-      </nav>
+          {/* Close button — only visible on mobile */}
+          <button
+            className="sidebar-close-btn"
+            onClick={onClose}
+            aria-label="Close menu"
+          >
+            <X size={20} />
+          </button>
+        </div>
 
-      <div style={{ padding: '0.75rem', marginTop: 'auto', borderTop: '1px solid rgba(255,255,255,0.06)' }}>
-        <button onClick={toggleLang} className="sidebar-item" style={{ width: '100%' }}>
-          <Globe size={20} />
-          {t('lang')}
-        </button>
-        <Link to="/" onClick={logout} className="sidebar-item">
-          <LogOut size={20} />
-          {t('logout')}
-        </Link>
-      </div>
-    </aside>
+        <div className="sidebar-section-title">{t('clinic_panel')}</div>
+        <nav className="sidebar-nav">
+          {items.map(item => (
+            <Link
+              key={item.path}
+              to={item.path}
+              className={`sidebar-item ${isActive(item.path) ? 'active' : ''}`}
+            >
+              <item.icon size={20} />
+              <span>{item.label}</span>
+            </Link>
+          ))}
+        </nav>
+
+        <div className="sidebar-footer">
+          <button onClick={toggleLang} className="sidebar-item" style={{ width: '100%' }}>
+            <Globe size={20} />
+            <span>{t('lang')}</span>
+          </button>
+          <Link to="/" onClick={logout} className="sidebar-item sidebar-item--danger">
+            <LogOut size={20} />
+            <span>{t('logout')}</span>
+          </Link>
+        </div>
+      </aside>
+    </>
   );
 };
 

@@ -71,8 +71,8 @@ const AdminDashboard = () => {
       {/* ── Header ── */}
       <div className="dash-header">
         <div>
-          <h2 style={{ margin: 0 }}>{t('dashboard_title')}</h2>
-          <p className="text-muted" style={{ margin: '0.3rem 0 0' }}>{dateLabel}</p>
+          <h2 style={{ margin: 0, fontSize: 'clamp(1.25rem, 4vw, 2rem)' }}>{t('dashboard_title')}</h2>
+          <p className="text-muted" style={{ margin: '0.3rem 0 0', fontSize: 'clamp(0.8rem, 2.5vw, 0.9375rem)' }}>{dateLabel}</p>
         </div>
         <DateRangeFilter value={dateRange} onChange={setDateRange} />
       </div>
@@ -242,68 +242,122 @@ const AdminDashboard = () => {
             {t('view_all')} <ArrowRight size={13} />
           </button>
         </div>
-        <div className="table-container">
-          <table>
-            <thead>
-              <tr>
-                <th>{t('time')}</th>
-                <th>{t('patient')}</th>
-                <th>{t('doctor')}</th>
-                <th>{t('status')}</th>
-                <th>{t('actions')}</th>
-              </tr>
-            </thead>
-            <tbody>
-              {ctxLoading ? (
-                <tr><td colSpan="5" className="text-center text-muted">{t('loading')}</td></tr>
-              ) : todaySchedule.length === 0 ? (
+
+        {/* Desktop table */}
+        <div className="chart-card__body" style={{ padding: 0 }}>
+          <div className="table-container">
+            <table>
+              <thead>
                 <tr>
-                  <td colSpan="5" className="text-center text-muted" style={{ padding: '2rem' }}>
-                    {t('no_appointments_today')}
-                  </td>
+                  <th>{t('time')}</th>
+                  <th>{t('patient')}</th>
+                  <th>{t('doctor')}</th>
+                  <th>{t('status')}</th>
+                  <th>{t('actions')}</th>
                 </tr>
-              ) : todaySchedule.map(apt => {
-                const doc     = doctors.find(d => String(d.id) === String(apt.doctor_id));
-                const docName = isAr
-                  ? (doc?.nameAr || doc?.full_name || doc?.name || '—')
-                  : (doc?.name   || doc?.full_name || doc?.nameAr || '—');
-                return (
-                  <tr key={apt.id}>
-                    <td>{to12Hour(apt.time, isAr)}</td>
-                    <td style={{ fontWeight: 600 }}>{apt.patient_name || '—'}</td>
-                    <td>{docName}</td>
-                    <td>
-                      <span className={`badge ${statusBadge(apt.status)}`}>
-                        {t(apt.status === 'no-show' ? 'no_show' : apt.status)}
-                      </span>
-                    </td>
-                    <td>
-                      {apt.status === 'pending' ? (
-                        <div className="flex gap-sm">
-                          <button
-                            className="btn btn-sm"
-                            style={{ background: 'var(--success)', color: '#fff' }}
-                            onClick={() => changeStatus(apt.id, 'confirmed')}
-                          >
-                            <CheckCircle size={13} /> {t('approve')}
-                          </button>
-                          <button
-                            className="btn btn-sm btn-outline"
-                            style={{ borderColor: 'var(--danger)', color: 'var(--danger)' }}
-                            onClick={() => changeStatus(apt.id, 'rejected')}
-                          >
-                            <XCircle size={13} /> {t('reject')}
-                          </button>
-                        </div>
-                      ) : (
-                        <span className="text-muted text-sm">—</span>
-                      )}
+              </thead>
+              <tbody>
+                {ctxLoading ? (
+                  <tr><td colSpan="5" className="text-center text-muted" style={{ padding: '1.5rem' }}>{t('loading')}</td></tr>
+                ) : todaySchedule.length === 0 ? (
+                  <tr>
+                    <td colSpan="5" className="text-center text-muted" style={{ padding: '2rem' }}>
+                      {t('no_appointments_today')}
                     </td>
                   </tr>
-                );
-              })}
-            </tbody>
-          </table>
+                ) : todaySchedule.map(apt => {
+                  const doc     = doctors.find(d => String(d.id) === String(apt.doctor_id));
+                  const docName = isAr
+                    ? (doc?.nameAr || doc?.full_name || doc?.name || '—')
+                    : (doc?.name   || doc?.full_name || doc?.nameAr || '—');
+                  return (
+                    <tr key={apt.id}>
+                      <td>{to12Hour(apt.time, isAr)}</td>
+                      <td style={{ fontWeight: 600 }}>{apt.patient_name || '—'}</td>
+                      <td>{docName}</td>
+                      <td>
+                        <span className={`badge ${statusBadge(apt.status)}`}>
+                          {t(apt.status === 'no-show' ? 'no_show' : apt.status)}
+                        </span>
+                      </td>
+                      <td>
+                        {apt.status === 'pending' ? (
+                          <div className="flex gap-sm">
+                            <button
+                              className="btn btn-sm"
+                              style={{ background: 'var(--success)', color: '#fff' }}
+                              onClick={() => changeStatus(apt.id, 'confirmed')}
+                            >
+                              <CheckCircle size={13} /> {t('approve')}
+                            </button>
+                            <button
+                              className="btn btn-sm btn-outline"
+                              style={{ borderColor: 'var(--danger)', color: 'var(--danger)' }}
+                              onClick={() => changeStatus(apt.id, 'rejected')}
+                            >
+                              <XCircle size={13} /> {t('reject')}
+                            </button>
+                          </div>
+                        ) : (
+                          <span className="text-muted text-sm">—</span>
+                        )}
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+
+          {/* Mobile card list */}
+          <div className="mobile-card-list" style={{ padding: '0.75rem' }}>
+            {ctxLoading ? (
+              <div className="text-center text-muted" style={{ padding: '1.5rem' }}>{t('loading')}</div>
+            ) : todaySchedule.length === 0 ? (
+              <div className="text-center text-muted" style={{ padding: '2rem' }}>{t('no_appointments_today')}</div>
+            ) : todaySchedule.map(apt => {
+              const doc     = doctors.find(d => String(d.id) === String(apt.doctor_id));
+              const docName = isAr
+                ? (doc?.nameAr || doc?.full_name || doc?.name || '—')
+                : (doc?.name   || doc?.full_name || doc?.nameAr || '—');
+              return (
+                <div key={apt.id} className="mobile-card-item">
+                  <div className="flex items-center justify-between mb-sm">
+                    <div style={{ fontWeight: 700 }}>{apt.patient_name || '—'}</div>
+                    <span className={`badge ${statusBadge(apt.status)}`}>
+                      {t(apt.status === 'no-show' ? 'no_show' : apt.status)}
+                    </span>
+                  </div>
+                  <div className="mobile-card-row">
+                    <span className="mobile-card-label">{t('doctor')}</span>
+                    <span className="mobile-card-value">{docName}</span>
+                  </div>
+                  <div className="mobile-card-row">
+                    <span className="mobile-card-label">{t('time')}</span>
+                    <span className="mobile-card-value">{to12Hour(apt.time, isAr)}</span>
+                  </div>
+                  {apt.status === 'pending' && (
+                    <div className="mobile-card-actions">
+                      <button
+                        className="btn btn-sm"
+                        style={{ background: 'var(--success)', color: '#fff', flex: 1 }}
+                        onClick={() => changeStatus(apt.id, 'confirmed')}
+                      >
+                        <CheckCircle size={13} /> {t('approve')}
+                      </button>
+                      <button
+                        className="btn btn-sm btn-outline"
+                        style={{ borderColor: 'var(--danger)', color: 'var(--danger)', flex: 1 }}
+                        onClick={() => changeStatus(apt.id, 'rejected')}
+                      >
+                        <XCircle size={13} /> {t('reject')}
+                      </button>
+                    </div>
+                  )}
+                </div>
+              );
+            })}
+          </div>
         </div>
       </div>
     </div>

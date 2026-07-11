@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate, useLocation } from 'react-router-dom';
 import { AppProvider, useApp } from './context/AppContext';
 import Navbar from './components/Navbar';
@@ -18,24 +19,45 @@ import ClinicSettings from './pages/ClinicSettings';
 import ForgotPassword from './pages/ForgotPassword';
 import ResetPassword from './pages/ResetPassword';
 import UserSettings from './pages/UserSettings';
+import { Menu } from 'lucide-react';
 
 const Layout = ({ children }) => {
   const location = useLocation();
   const isDashboard = location.pathname.startsWith('/dashboard');
+  const [sidebarOpen, setSidebarOpen] = useState(false);
 
   return (
     <div className="app-layout">
-      {isDashboard ? <Sidebar /> : null}
+      {isDashboard ? (
+        <Sidebar isOpen={sidebarOpen} onClose={() => setSidebarOpen(false)} />
+      ) : null}
+
       <main className={`app-main ${isDashboard ? 'with-sidebar' : ''}`}>
-        {!isDashboard && <div className="container"><Navbar /></div>}
-        {isDashboard && (
-          <div style={{
-            display: 'flex', justifyContent: 'flex-end', alignItems: 'center',
-            padding: '0.75rem 1.5rem', borderBottom: '1px solid var(--border)',
-          }}>
-            <NotificationBell />
+        {/* Public page navbar */}
+        {!isDashboard && (
+          <div className="container">
+            <Navbar />
           </div>
         )}
+
+        {/* Dashboard top bar */}
+        {isDashboard && (
+          <div className="dashboard-topbar">
+            {/* Hamburger — only visible on mobile via CSS */}
+            <button
+              className="dashboard-menu-btn"
+              onClick={() => setSidebarOpen(true)}
+              aria-label="Open menu"
+            >
+              <Menu size={22} />
+            </button>
+            <span className="dashboard-topbar-brand">UrClinic</span>
+            <div className="dashboard-topbar-actions">
+              <NotificationBell />
+            </div>
+          </div>
+        )}
+
         {children}
       </main>
     </div>
@@ -123,6 +145,7 @@ function App() {
                 <UserSettings />
               </ProtectedRoute>
             } />
+            <Route path="*" element={<Navigate to="/" replace />} />
           </Routes>
         </Layout>
       </Router>

@@ -19,31 +19,15 @@ const SvgDonutChart = ({ segments = [], size = 160 }) => {
 
   const total = segments.reduce((s, seg) => s + (seg.value || 0), 0) || 1;
 
-  // Build arc data (start angle, end angle)
-  let offset = -90; // start at the top
   const arcs = segments
     .filter(s => (s.value || 0) > 0)
-    .map(seg => {
+    .reduce((acc, seg) => {
+      const startAngle = acc.length ? acc[acc.length - 1].endAngle : -90;
       const pct   = seg.value / total;
       const sweep = pct * 360;
-      const arc   = { ...seg, pct: Math.round(pct * 100), startAngle: offset, endAngle: offset + sweep };
-      offset += sweep;
-      return arc;
-    });
-
-  // Polar → Cartesian helper
-  const p2c = (angleDeg) => {
-    const rad = ((angleDeg - 90) * Math.PI) / 180;
-    return { x: cx + R * Math.cos(rad), y: cy + R * Math.sin(rad) };
-  };
-
-  // SVG arc path for a segment
-  const arcPath = (start, end) => {
-    const s    = p2c(start);
-    const e    = p2c(end);
-    const large = end - start > 180 ? 1 : 0;
-    return `M ${s.x} ${s.y} A ${R} ${R} 0 ${large} 1 ${e.x} ${e.y}`;
-  };
+      acc.push({ ...seg, pct: Math.round(pct * 100), startAngle, endAngle: startAngle + sweep });
+      return acc;
+    }, []);
 
   // Circumference of the ring (for stroke-dasharray animation)
   const circ = 2 * Math.PI * R;

@@ -135,8 +135,20 @@ const Booking = () => {
         payment_method: paymentMethod,
         fee: selectedDoctor.fee,
       });
-      // The DB-generated uuid is the real booking id — short-display the suffix so
-      // the success card stays compact while still being a stable, persistent id.
+
+      // Send confirmation email if email is provided
+      if (patientData.email) {
+        import('../services/emailService').then(({ sendAppointmentConfirmation }) => {
+          sendAppointmentConfirmation(
+            patientData.email,
+            patientData.name,
+            selectedDate,
+            to12Hour(selectedTime, isAr),
+            isAr ? selectedDoctor.nameAr : selectedDoctor.name
+          ).catch(err => console.error('Failed to send confirmation email', err));
+        });
+      }
+
       setBookingId(created?.id || '');
       setStep(6);
     } catch (err) {

@@ -40,13 +40,15 @@ const RecentActivity = ({ userId, limit = 7 }) => {
 
   useEffect(() => {
     let cancelled = false;
-    setLoading(true);
+    const id = requestAnimationFrame(() => {
+      if (!cancelled) setLoading(true);
+    });
 
     fetchRecentActivity({ userId, limit }).then(({ data }) => {
       if (!cancelled) { setItems(data); setLoading(false); }
     });
 
-    return () => { cancelled = true; };
+    return () => { cancelled = true; cancelAnimationFrame(id); };
   }, [userId, limit]);
 
   if (loading) {

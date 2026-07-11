@@ -1,14 +1,13 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Search, User, Phone, ChevronRight } from 'lucide-react';
+import { Search, User, Phone, ChevronRight, Calendar } from 'lucide-react';
 import { useApp } from '../context/AppContext';
 
 const PatientsList = () => {
-
   const navigate = useNavigate();
   const { patients, loading } = useApp();
-
   const [searchQuery, setSearchQuery] = useState('');
+  const todayMs = new Date().getTime();
 
   const filteredPatients = patients.filter(p => {
     const q = searchQuery.toLowerCase();
@@ -21,24 +20,35 @@ const PatientsList = () => {
 
   const calculateAge = (dob) => {
     if (!dob) return '-';
-    // eslint-disable-next-line react-hooks/purity
-    const diff = Date.now() - new Date(dob).getTime();
+    const diff = todayMs - new Date(dob).getTime();
     return Math.floor(diff / (1000 * 60 * 60 * 24 * 365.25));
   };
 
+  const Avatar = ({ name }) => (
+    <div style={{
+      width: 40, height: 40, borderRadius: '50%',
+      background: 'linear-gradient(135deg, var(--primary) 0%, var(--primary-dark) 100%)',
+      display: 'flex', alignItems: 'center', justifyContent: 'center',
+      color: '#fff', fontWeight: 700, fontSize: '0.9rem', flexShrink: 0
+    }}>
+      {name?.charAt(0)?.toUpperCase() || 'P'}
+    </div>
+  );
+
   return (
     <div className="page-padding animate-in">
-      <div className="flex justify-between items-center mb-xl flex-wrap gap-md">
+      {/* Header */}
+      <div className="flex justify-between items-center mb-xl flex-wrap gap-md page-header-row">
         <h2 style={{ margin: 0 }}>Patients / المرضى</h2>
-        <div style={{ position: 'relative', width: '320px' }}>
-          <Search size={18} style={{ position: 'absolute', top: 12, left: 12, color: 'var(--text-secondary)' }} />
+        <div style={{ position: 'relative' }} className="search-box">
+          <Search size={18} style={{ position: 'absolute', top: '50%', transform: 'translateY(-50%)', insetInlineStart: 12, color: 'var(--text-secondary)' }} />
           <input
             type="text"
             className="input"
             placeholder="Search by name or phone..."
             value={searchQuery}
             onChange={e => setSearchQuery(e.target.value)}
-            style={{ paddingLeft: '2.5rem' }}
+            style={{ paddingInlineStart: '2.5rem', minWidth: 220 }}
           />
         </div>
       </div>
@@ -51,8 +61,9 @@ const PatientsList = () => {
           <p className="text-muted">{searchQuery ? 'No patients match your search.' : 'No registered patients yet.'}</p>
         </div>
       ) : (
-        <div className="glass p-4">
-          <div className="table-container">
+        <>
+          {/* ── Desktop table ── */}
+          <div className="glass p-4 table-container">
             <table>
               <thead>
                 <tr>
@@ -66,18 +77,14 @@ const PatientsList = () => {
               </thead>
               <tbody>
                 {filteredPatients.map(patient => (
-                  <tr key={patient.id} style={{ cursor: 'pointer' }}
-                    onClick={() => navigate(`/dashboard/patients/${patient.id}`)}>
+                  <tr
+                    key={patient.id}
+                    style={{ cursor: 'pointer' }}
+                    onClick={() => navigate(`/dashboard/patients/${patient.id}`)}
+                  >
                     <td>
                       <div className="flex items-center gap-sm">
-                        <div style={{
-                          width: 36, height: 36, borderRadius: '50%',
-                          background: 'linear-gradient(135deg, var(--primary) 0%, var(--primary-dark) 100%)',
-                          display: 'flex', alignItems: 'center', justifyContent: 'center',
-                          color: '#fff', fontWeight: 700, fontSize: '0.85rem', flexShrink: 0
-                        }}>
-                          {patient.full_name?.charAt(0)?.toUpperCase() || 'P'}
-                        </div>
+                        <Avatar name={patient.full_name} />
                         <div>
                           <div style={{ fontWeight: 600 }}>{patient.full_name}</div>
                           <div className="text-sm text-muted">{patient.email}</div>
@@ -85,20 +92,51 @@ const PatientsList = () => {
                       </div>
                     </td>
                     <td>
-                      <span className="flex items-center gap-sm"><Phone size={14} className="text-muted" /> {patient.phone || '-'}</span>
+                      <span className="flex items-center gap-sm"><Phone size={14} style={{ color: 'var(--text-muted)' }} /> {patient.phone || '-'}</span>
                     </td>
                     <td>{patient.gender || '-'}</td>
                     <td>{calculateAge(patient.date_of_birth)}</td>
                     <td className="text-sm text-muted">{new Date(patient.created_at).toLocaleDateString()}</td>
-                    <td>
-                      <ChevronRight size={18} className="text-muted" />
-                    </td>
+                    <td><ChevronRight size={18} style={{ color: 'var(--text-muted)' }} /></td>
                   </tr>
                 ))}
               </tbody>
             </table>
           </div>
-        </div>
+
+          {/* ── Mobile card list ── */}
+          <div className="mobile-card-list">
+            {filteredPatients.map(patient => (
+              <div
+                key={patient.id}
+                className="mobile-card-item"
+                style={{ cursor: 'pointer' }}
+                onClick={() => navigate(`/dashboard/patients/${patient.id}`)}
+              >
+                <div className="flex items-center gap-sm" style={{ marginBottom: '0.75rem' }}>
+                  <Avatar name={patient.full_name} />
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <div style={{ fontWeight: 700 }}>{patient.full_name}</div>
+                    <div className="text-sm text-muted" style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{patient.email}</div>
+                  </div>
+                  <ChevronRight size={18} style={{ color: 'var(--text-muted)', flexShrink: 0 }} />
+                </div>
+                <div className="mobile-card-row">
+                  <span className="mobile-card-label"><Phone size={12} /> Phone</span>
+                  <span className="mobile-card-value" dir="ltr">{patient.phone || '-'}</span>
+                </div>
+                <div className="mobile-card-row">
+                  <span className="mobile-card-label">Gender / Age</span>
+                  <span className="mobile-card-value">{patient.gender || '-'} • {calculateAge(patient.date_of_birth)} yrs</span>
+                </div>
+                <div className="mobile-card-row">
+                  <span className="mobile-card-label"><Calendar size={12} /> Registered</span>
+                  <span className="mobile-card-value">{new Date(patient.created_at).toLocaleDateString()}</span>
+                </div>
+              </div>
+            ))}
+          </div>
+        </>
       )}
     </div>
   );
