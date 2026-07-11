@@ -1,9 +1,8 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useTranslation } from 'react-i18next';
-import { FileText, Calendar, Clock, User, Phone, Mail, CheckCircle, XCircle, Hourglass, Download, Eye } from 'lucide-react';
+import { FileText, Calendar, Clock, User, Phone, Mail, CheckCircle, XCircle, Hourglass, Download, Eye, Printer, Stethoscope, Pill } from 'lucide-react';
 import { useApp } from '../context/AppContext';
 import { supabase } from '../supabaseClient';
-import PrescriptionViewer from '../components/PrescriptionViewer';
 import Countdown from '../components/Countdown';
 import { to12Hour } from '../components/TimeSlotGrid';
 import { downloadPrescriptionPdf } from '../utils/prescriptionPdf';
@@ -101,6 +100,10 @@ const PatientProfile = () => {
   };
 
   const medicineCount = (rx) => Array.isArray(rx?.medicines) ? rx.medicines.length : 0;
+  const firstMedicineName = (rx) => {
+    const meds = Array.isArray(rx?.medicines) ? rx.medicines : [];
+    return meds.find(m => m?.name)?.name || (isAr ? 'لا يوجد دواء مسجل' : 'No medicine listed');
+  };
   const previewText = (text, fallback = '-') => {
     if (!text) return fallback;
     return text.length > 90 ? `${text.slice(0, 90)}...` : text;
@@ -214,20 +217,25 @@ const PatientProfile = () => {
                 {visiblePrescriptions.map((rx, idx) => {
                   const dt = rxDateTime(rx);
                   const doctorName = getDocNameById(rx.doctor_id) || (isAr ? 'طبيب العيادة' : 'Clinic doctor');
+                  const count = medicineCount(rx);
                   return (
                     <article key={rx.id} className={`prescription-summary-card ${idx === 0 ? 'prescription-summary-card--latest' : ''}`}>
                       <div className="flex justify-between items-start gap-sm mb-md">
                         <div className="rx-symbol" style={{ fontSize: '1.4rem' }}>℞</div>
                         {idx === 0 && <span className="badge badge-primary">{isAr ? 'أحدث وصفة' : 'Latest'}</span>}
                       </div>
+                      <h4 className="prescription-doctor">{doctorName}</h4>
                       <div className="prescription-meta">
                         <span><Calendar size={14} /> {isAr ? 'التاريخ' : 'Date'}: {dt.date}</span>
                         <span><Clock size={14} /> {isAr ? 'الوقت' : 'Time'}: {dt.time}</span>
                       </div>
-                      <h4 className="prescription-doctor">{doctorName}</h4>
+                      <div className="prescription-main-med">
+                        <Pill size={16} />
+                        <span>{firstMedicineName(rx)}</span>
+                      </div>
                       <p className="prescription-diagnosis">{previewText(rx.diagnosis, isAr ? 'لا يوجد تشخيص مسجل' : 'No diagnosis recorded')}</p>
                       <div className="prescription-meta">
-                        <span>{isAr ? 'عدد الأدوية' : 'Medicines'}: {medicineCount(rx)}</span>
+                        <span>{isAr ? 'عدد الأدوية' : 'Medicines'}: {count}</span>
                         <span>{previewText(rx.instructions, isAr ? 'لا توجد تعليمات إضافية' : 'No extra instructions')}</span>
                       </div>
                       <div className="flex gap-sm mt-md flex-wrap">
@@ -258,17 +266,99 @@ const PatientProfile = () => {
       </div>
 
       {selectedRx && (
-        <div className="modal-overlay" onClick={() => setSelectedRx(null)}>
-          <div className="glass p-6" style={{ width: 'min(720px, 100%)' }} onClick={e => e.stopPropagation()}>
-            <div className="flex justify-between items-center gap-md mb-md">
-              <h3 style={{ margin: 0 }}>{isAr ? 'تفاصيل الوصفة' : 'Prescription details'}</h3>
-              <button className="btn btn-sm btn-ghost" onClick={() => setSelectedRx(null)}>{isAr ? 'إغلاق' : 'Close'}</button>
-            </div>
-            <PrescriptionViewer
-              rx={selectedRx}
-              patientName={user?.name || ''}
-              doctorName={getDocNameById(selectedRx.doctor_id)}
-            />
+        <div className="modal-overlay rx-modal-overlay" onClick={() => setSelectedRx(null)}>
+          <div className="rx-detail-modal" onClick={e => e.stopPropagation()}>
+            {(() => {
+              const doctorName = getDocNameById(selectedRx.doctor_id) || (isAr ? 'طبيب العيادة' : 'Clinic doctor');
+              const dt = rxDateTime(selectedRx);
+              const meds = Array.isArray(selectedRx.medicines) ? selectedRx.medicines : [];
+              return (
+                <>
+                  <header className="rx-detail-header">
+                    <div className="rx-detail-mark">℞</div>
+                    <div className="rx-detail-title">
+                      <h3>{isAr ? 'وصفة طبية' : 'Prescription'}</h3>
+                      <p><Stethoscope size={14} /> {doctorName}</p>
+                    </div>
+                    <div className="rx-detail-date">
+                      <span>{dt.date}</span>
+                      <strong>{dt.time}</strong>
+                    </div>
+                  </header>
+
+                  <div className="rx-detail-body">
+                    <section className="rx-info-grid">
+                      <div>
+                        <span>{isAr ? 'الطبيب' : 'Doctor'}</span>
+                        <strong>{doctorName}</strong>
+                      </div>
+                      <div>
+                        <span>{isAr ? 'المريض' : 'Patient'}</span>
+                        <strong>{user?.name || '-'}</strong>
+                      </div>
+                      <div>
+                        <span>{isAr ? 'التاريخ' : 'Date'}</span>
+                        <strong>{dt.date}</strong>
+                      </div>
+                      <div>
+                        <span>{isAr ? 'الوقت' : 'Time'}</span>
+                        <strong>{dt.time}</strong>
+                      </div>
+                    </section>
+
+                    <section className="rx-detail-section">
+                      <h4>{isAr ? 'التشخيص' : 'Diagnosis'}</h4>
+                      <p>{selectedRx.diagnosis || (isAr ? 'لا يوجد تشخيص مسجل' : 'No diagnosis recorded')}</p>
+                    </section>
+
+                    <section className="rx-detail-section">
+                      <div className="rx-section-title-row">
+                        <h4>{isAr ? 'الأدوية' : 'Medicines'}</h4>
+                        <span className="badge badge-primary">{meds.length}</span>
+                      </div>
+                      <div className="rx-medicine-list">
+                        {meds.length === 0 ? (
+                          <div className="rx-medicine-row rx-medicine-row--empty">
+                            {isAr ? 'لا توجد أدوية مسجلة' : 'No medicines listed'}
+                          </div>
+                        ) : meds.map((med, index) => (
+                          <article key={`${med.name || 'medicine'}-${index}`} className="rx-medicine-row">
+                            <div className="rx-medicine-index">{index + 1}</div>
+                            <div className="rx-medicine-content">
+                              <h5>{med.name || (isAr ? 'دواء غير مسمى' : 'Unnamed medicine')}</h5>
+                              <div className="rx-medicine-fields">
+                                <span><strong>{isAr ? 'الجرعة' : 'Dosage'}:</strong> {med.dosage || '-'}</span>
+                                <span><strong>{isAr ? 'التعليمات' : 'Instructions'}:</strong> {med.instructions || '-'}</span>
+                              </div>
+                            </div>
+                          </article>
+                        ))}
+                      </div>
+                    </section>
+
+                    <section className="rx-detail-section">
+                      <h4>{isAr ? 'تعليمات عامة' : 'General instructions'}</h4>
+                      <p>{selectedRx.instructions || (isAr ? 'لا توجد تعليمات إضافية' : 'No extra instructions')}</p>
+                    </section>
+                  </div>
+
+                  <footer className="rx-detail-footer">
+                    <button
+                      className="btn btn-primary"
+                      onClick={() => downloadPrescriptionPdf(selectedRx, { isAr, doctorName, patientName: user?.name || '' })}
+                    >
+                      <Download size={16} /> {t('download_pdf')}
+                    </button>
+                    <button className="btn btn-outline" onClick={() => window.print()}>
+                      <Printer size={16} /> {isAr ? 'طباعة' : 'Print'}
+                    </button>
+                    <button className="btn btn-ghost" onClick={() => setSelectedRx(null)}>
+                      {isAr ? 'إغلاق' : 'Close'}
+                    </button>
+                  </footer>
+                </>
+              );
+            })()}
           </div>
         </div>
       )}
