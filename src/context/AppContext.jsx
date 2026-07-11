@@ -1,5 +1,5 @@
 /* eslint-disable react-refresh/only-export-components */
-import { createContext, useContext, useState, useEffect, useRef } from 'react';
+import { createContext, useContext, useState, useEffect, useRef, useCallback } from 'react';
 import { supabase } from '../supabaseClient';
 import i18n from '../i18n';
 import { getUser, logoutUser, specialties, doctors as mockDoctors, mockPatients } from '../data/mockData';
@@ -47,6 +47,14 @@ const fromDbAppt = (row) => row && ({
   time: row.time ?? row.appointment_time,
 });
 
+const sortNotifications = (list = []) =>
+  [...list].sort((a, b) => (b.created_at || '').localeCompare(a.created_at || ''));
+
+const fetchNotificationsForUser = (uid) =>
+  supabase.from('notifications').select('*')
+    .eq('user_id', uid)
+    .order('created_at', { ascending: false })
+    .limit(50);
 
 export const AppProvider = ({ children }) => {
   const [user, setUser] = useState(getUser());
@@ -238,6 +246,31 @@ export const AppProvider = ({ children }) => {
     // logged-in clinic would see the previous session's appointments.
   }, [user?.id, user?.clinic_id, user?.role]);
 
+  const refreshNotifications = useCallback(async () => {
+    try {
+      const { data: { user: authUser } } = await supabase.auth.getUser();
+      if (!authUser) {
+        setNotifications([]);
+        return [];
+      }
+
+      const { data, error } = await fetchNotificationsForUser(authUser.id);
+      if (error) {
+        console.warn('notifications fetch error:', error.message);
+        setNotifications([]);
+        return [];
+      }
+
+      const next = data || [];
+      setNotifications(next);
+      return next;
+    } catch (err) {
+      console.warn('notifications load failed:', err);
+      setNotifications([]);
+      return [];
+    }
+  }, []);
+
   // Sync with Supabase auth session: if the stored user has no active session, sign them out.
   useEffect(() => {
     supabase.auth.getSession().then(({ data: { session } }) => {
@@ -245,6 +278,7 @@ export const AppProvider = ({ children }) => {
         // No valid session → clear any leftover/stale stored user.
         logoutUser();
         setUser(null);
+        setNotifications([]);
       }
     });
 
@@ -252,11 +286,15 @@ export const AppProvider = ({ children }) => {
       if (event === 'SIGNED_OUT') {
         logoutUser();
         setUser(null);
+        setNotifications([]);
+      }
+      if (event === 'INITIAL_SESSION' || event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED') {
+        refreshNotifications();
       }
     });
 
     return () => subscription?.unsubscribe();
-  }, []);
+  }, [refreshNotifications]);
 
   // ---- Notifications: real DB-driven, scoped per user (RLS returns only user_id = auth.uid) ----
   // Replaces the old mock notifications. Each user — patient, doctor, admin — only ever
@@ -265,18 +303,12 @@ export const AppProvider = ({ children }) => {
     let active = true;
     let channel;
 
-    const fetchForUser = (uid) =>
-      supabase.from('notifications').select('*')
-        .eq('user_id', uid)
-        .order('created_at', { ascending: false })
-        .limit(50);
-
     const load = async () => {
       try {
         const { data: { user: authUser } } = await supabase.auth.getUser();
         if (!authUser) { if (active) setNotifications([]); return; }
 
-        const { data, error } = await fetchForUser(authUser.id);
+        const { data, error } = await fetchNotificationsForUser(authUser.id);
         if (!active) return;
         if (error) { console.warn('notifications fetch error:', error.message); setNotifications([]); }
         else setNotifications(data || []);
@@ -284,8 +316,23 @@ export const AppProvider = ({ children }) => {
         channel = supabase
           .channel(`notifications:${authUser.id}`)
           .on('postgres_changes',
-            { event: '*', schema: 'public', table: 'notifications', filter: `user_id=eq.${authUser.id}` },
-            () => { fetchForUser(authUser.id).then(({ data: d }) => { if (active) setNotifications(d || []); }); })
+            { event: 'INSERT', schema: 'public', table: 'notifications', filter: `user_id=eq.${authUser.id}` },
+            (payload) => {
+              if (!active || !payload.new) return;
+              setNotifications(prev => sortNotifications(mergeById([payload.new], prev)));
+            })
+          .on('postgres_changes',
+            { event: 'UPDATE', schema: 'public', table: 'notifications', filter: `user_id=eq.${authUser.id}` },
+            (payload) => {
+              if (!active || !payload.new) return;
+              setNotifications(prev => sortNotifications(mergeById([payload.new], prev)));
+            })
+          .on('postgres_changes',
+            { event: 'DELETE', schema: 'public', table: 'notifications', filter: `user_id=eq.${authUser.id}` },
+            (payload) => {
+              if (!active || !payload.old?.id) return;
+              setNotifications(prev => prev.filter(n => String(n.id) !== String(payload.old.id)));
+            })
           .subscribe();
       } catch (err) {
         console.warn('notifications load failed:', err);
@@ -624,7 +671,7 @@ export const AppProvider = ({ children }) => {
       createAppointment, changeStatus,
       addDoctor, deleteDoctor,
       addMedicalHistory, addMedicalFile, sendNotification, createPrescription,
-      notifications, readAllNotifications, markNotificationRead, markAllNotificationsRead, unreadCount,
+      notifications, refreshNotifications, readAllNotifications, markNotificationRead, markAllNotificationsRead, unreadCount,
     }}>
       {children}
     </AppContext.Provider>

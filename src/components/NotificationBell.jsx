@@ -3,7 +3,7 @@ import { Bell, CheckCheck, Volume2, CalendarPlus, RefreshCw, XCircle } from 'luc
 import { useApp } from '../context/AppContext';
 
 const NotificationBell = () => {
-  const { notifications, unreadCount, markNotificationRead, markAllNotificationsRead } = useApp();
+  const { notifications, unreadCount, refreshNotifications, markNotificationRead, markAllNotificationsRead } = useApp();
   const [isOpen, setIsOpen] = useState(false);
   const dropdownRef = useRef(null);
 
@@ -39,11 +39,17 @@ const NotificationBell = () => {
     return `${Math.floor(hours / 24)}d ago`;
   };
 
+  const toggleOpen = () => {
+    const nextOpen = !isOpen;
+    setIsOpen(nextOpen);
+    if (nextOpen) refreshNotifications();
+  };
+
   return (
     <div style={{ position: 'relative' }} ref={dropdownRef}>
       <button
         className="btn btn-ghost btn-icon"
-        onClick={() => setIsOpen(!isOpen)}
+        onClick={toggleOpen}
         style={{ position: 'relative' }}
       >
         <Bell size={20} />

@@ -1,4 +1,5 @@
 import { useTranslation } from 'react-i18next';
+import { useEffect } from 'react';
 import { useApp } from '../context/AppContext';
 import { Bell, Clock } from 'lucide-react';
 
@@ -16,7 +17,11 @@ const timeAgo = (dateStr, ar) => {
 const NotificationCenter = () => {
   const { t, i18n } = useTranslation();
   const ar = i18n.language === 'ar';
-  const { notifications, markNotificationRead, markAllNotificationsRead } = useApp();
+  const { notifications, refreshNotifications, markNotificationRead, markAllNotificationsRead } = useApp();
+
+  useEffect(() => {
+    refreshNotifications();
+  }, [refreshNotifications]);
 
   return (
     <div className="notif-dropdown">
