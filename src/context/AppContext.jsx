@@ -687,11 +687,9 @@ export const AppProvider = ({ children }) => {
     };
 
     console.info('before notification insert', notificationRow);
-    const { data: insertedNotification, error: notifError } = await supabase
+    const { error: notifError } = await supabase
       .from('notifications')
-      .insert([notificationRow])
-      .select('id, clinic_id, user_id, title, message, type, is_read, prescription_id')
-      .single();
+      .insert([notificationRow]);
 
     if (notifError) {
       const formatted = formatSupabaseError(notifError);
@@ -702,7 +700,7 @@ export const AppProvider = ({ children }) => {
       throw new Error(`Prescription notification insert failed: ${formatted}`);
     }
 
-    console.info('after notification insert', insertedNotification);
+    console.info('after notification insert');
 
     return data;
   };
