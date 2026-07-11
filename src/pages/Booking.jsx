@@ -42,6 +42,7 @@ const Booking = () => {
   const [bookingCode, setBookingCode] = useState('');
   const [submitting, setSubmitting] = useState(false);
   const [bookedSlotsByDate, setBookedSlotsByDate] = useState({});
+  const [availabilityLoading, setAvailabilityLoading] = useState(false);
 
   const paymentMethods = [
     { id: 'cash', Icon: Banknote, label: 'Cash at Clinic', labelAr: 'كاش في العيادة', desc: 'Pay on arrival', descAr: 'الدفع عند الحضور' },
@@ -85,6 +86,38 @@ const Booking = () => {
     setBookedSlotsByDate({});
   };
 
+  const groupOccupiedSlots = (rows) => {
+    const grouped = {};
+    (rows || []).forEach(row => {
+      const date = row.appointment_date;
+      const time = String(row.appointment_time || '').slice(0, 5);
+      if (!date || !time) return;
+      if (!grouped[date]) grouped[date] = new Set();
+      grouped[date].add(time);
+    });
+    return Object.fromEntries(
+      Object.entries(grouped).map(([date, set]) => [date, Array.from(set)])
+    );
+  };
+
+  const fetchOccupiedSlots = async (startDate, endDate = startDate) => {
+    if (!selectedDoctor?.id || !startDate) return {};
+    setAvailabilityLoading(true);
+    const { data, error } = await supabase.rpc('active_appointment_slots', {
+      p_doctor_id: selectedDoctor.id,
+      p_start: startDate,
+      p_end: endDate,
+    });
+    setAvailabilityLoading(false);
+    if (error) {
+      console.warn('availability fetch error:', error.message);
+      return {};
+    }
+    const grouped = groupOccupiedSlots(data);
+    setBookedSlotsByDate(prev => ({ ...prev, ...grouped, [startDate]: grouped[startDate] || [] }));
+    return grouped;
+  };
+
   useEffect(() => {
     if (!selectedDoctor?.id) return;
 
@@ -93,29 +126,21 @@ const Booking = () => {
     end.setDate(start.getDate() + 90);
     const fmt = (d) => d.toISOString().slice(0, 10);
 
-    supabase.rpc('active_appointment_slots', {
-      p_doctor_id: selectedDoctor.id,
-      p_start: fmt(start),
-      p_end: fmt(end),
-    }).then(({ data, error }) => {
-      if (error) {
-        console.warn('availability fetch error:', error.message);
-        setBookedSlotsByDate({});
-        return;
-      }
-      const grouped = {};
-      (data || []).forEach(row => {
-        const date = row.appointment_date;
-        const time = String(row.appointment_time || '').slice(0, 5);
-        if (!date || !time) return;
-        if (!grouped[date]) grouped[date] = new Set();
-        grouped[date].add(time);
-      });
-      setBookedSlotsByDate(Object.fromEntries(
-        Object.entries(grouped).map(([date, set]) => [date, Array.from(set)])
-      ));
-    });
+    const timer = window.setTimeout(() => {
+      fetchOccupiedSlots(fmt(start), fmt(end));
+    }, 0);
+    return () => window.clearTimeout(timer);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selectedDoctor]);
+
+  useEffect(() => {
+    if (!selectedDoctor?.id || !selectedDate) return;
+    const timer = window.setTimeout(() => {
+      fetchOccupiedSlots(selectedDate);
+    }, 0);
+    return () => window.clearTimeout(timer);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectedDoctor?.id, selectedDate]);
 
   // Validation helpers
   const cleanPhone = patientData.phone.replace(/\D/g, ''); // digits only
@@ -147,7 +172,25 @@ const Booking = () => {
     return true;
   };
 
-  const handleNext = () => {
+  const validateSelectedSlot = async () => {
+    if (!selectedDoctor || !selectedDate || !selectedTime) return false;
+    const latest = await fetchOccupiedSlots(selectedDate);
+    const occupied = latest[selectedDate] || bookedSlotsByDate[selectedDate] || [];
+    const slots = generateTimeSlots(selectedDoctor, selectedDate, occupied);
+    const slot = slots.find(s => s.time === selectedTime);
+    if (!slot || slot.status !== 'available') {
+      setSelectedTime('');
+      setFormError(isAr
+        ? 'هذا الموعد غير متاح الآن. يرجى اختيار وقت آخر.'
+        : 'This appointment time is no longer available. Please choose another time.');
+      return false;
+    }
+    setFormError('');
+    return true;
+  };
+
+  const handleNext = async () => {
+    if (step === 3 && !(await validateSelectedSlot())) return;
     if (step === 4 && !validateStep3()) return;
     setStep(step + 1);
   };
@@ -194,7 +237,10 @@ const Booking = () => {
     } catch (err) {
       // Show the real error instead of silently falling back to localStorage.
       const msg = err?.message || (isAr ? 'تعذّر إكمال الحجز' : 'Booking failed');
-      setFormError(isAr ? `تعذّر إكمال الحجز: ${msg}` : `Booking failed: ${msg}`);
+      const conflictMsg = isAr ? 'عذراً، تم حجز هذا الموعد قبل لحظات.' : 'Sorry, this appointment was just booked.';
+      setFormError(msg.includes(conflictMsg)
+        ? msg
+        : (isAr ? `تعذّر إكمال الحجز: ${msg}` : `Booking failed: ${msg}`));
     } finally {
       setSubmitting(false);
     }
@@ -229,7 +275,7 @@ const Booking = () => {
     : ['sat', 'sun', 'mon', 'tue', 'wed', 'thu'];
 
   // #3: Build slots from the doctor's working-hours settings.
-  const generateTimeSlots = (doc, dateStr) => {
+  const generateTimeSlots = (doc, dateStr, occupiedOverride = null) => {
     const open = doc.open_time || '09:00';
     const close = doc.close_time || '17:00';
     const breakStart = doc.break_start || null;
@@ -245,7 +291,7 @@ const Booking = () => {
     for (let m = toMinutes(open); m + step <= toMinutes(close); m += step) {
       const time = toHHMM(m);
       const inBreak = breakStart && breakEnd && m >= toMinutes(breakStart) && m < toMinutes(breakEnd);
-      const booked = (bookedSlotsByDate[dateStr] || []).includes(time);
+      const booked = (occupiedOverride || bookedSlotsByDate[dateStr] || []).includes(time);
       const past = isToday(dateStr) && m <= nowMinutes();
       const status = inBreak ? 'break' : past ? 'past' : booked ? 'booked' : 'available';
       slots.push({ time, status });
@@ -263,7 +309,8 @@ const Booking = () => {
     const slots = generateTimeSlots(selectedDoctor, dateStr);
     const bookable = slots.filter(s => s.status === 'available').length;
     if (bookable === 0) {
-      const allBooked = slots.length > 0 && slots.every(s => s.status === 'booked');
+      const schedulable = slots.filter(s => s.status !== 'break' && s.status !== 'unavailable');
+      const allBooked = schedulable.length > 0 && schedulable.every(s => s.status === 'booked');
       return {
         status: allBooked ? 'full' : 'closed',
         disabled: true,
@@ -406,7 +453,12 @@ const Booking = () => {
                 </div>
                 <div style={{ flex: '1 1 300px' }}>
                   {selectedDate ? (
-                    <TimeSlotGrid slots={availableSlots} selectedTime={selectedTime} onSelectTime={setSelectedTime} />
+                    <>
+                      {availabilityLoading && (
+                        <p className="text-sm text-muted mb-sm">{isAr ? 'جارٍ تحديث المواعيد المتاحة...' : 'Refreshing availability...'}</p>
+                      )}
+                      <TimeSlotGrid slots={availableSlots} selectedTime={selectedTime} onSelectTime={(time) => { setFormError(''); setSelectedTime(time); }} />
+                    </>
                   ) : (
                     <div className="text-center text-muted mt-xl">
                       <CalendarIcon size={48} opacity={0.2} className="mb-sm" style={{ margin: '0 auto' }}/>
@@ -415,9 +467,18 @@ const Booking = () => {
                   )}
                 </div>
               </div>
+              {formError && (
+                <div style={{
+                  background: 'rgba(239,68,68,0.08)', border: '1px solid var(--danger)',
+                  color: 'var(--danger)', padding: '0.75rem 1rem', borderRadius: 'var(--radius-md)',
+                  marginTop: '1rem', fontSize: '0.9rem', whiteSpace: 'pre-line'
+                }}>
+                  {formError}
+                </div>
+              )}
               <div className="flex justify-between mt-xl">
                 <button className="btn btn-ghost" onClick={handlePrev}>{t('previous')}</button>
-                <button className="btn btn-primary" disabled={!selectedDate || !selectedTime} onClick={handleNext}>
+                <button className="btn btn-primary" disabled={!selectedDate || !selectedTime || availabilityLoading} onClick={handleNext}>
                   {t('next_step')} <ChevronRight size={18} />
                 </button>
               </div>
@@ -436,7 +497,7 @@ const Booking = () => {
                 <div style={{
                   background: 'rgba(239,68,68,0.08)', border: '1px solid var(--danger)',
                   color: 'var(--danger)', padding: '0.75rem 1rem', borderRadius: 'var(--radius-md)',
-                  marginBottom: '1rem', fontSize: '0.9rem'
+                  marginBottom: '1rem', fontSize: '0.9rem', whiteSpace: 'pre-line'
                 }}>
                   {formError}
                 </div>
@@ -560,7 +621,7 @@ const Booking = () => {
                 <div style={{
                   background: 'rgba(239,68,68,0.08)', border: '1px solid var(--danger)',
                   color: 'var(--danger)', padding: '0.75rem 1rem', borderRadius: 'var(--radius-md)',
-                  marginBottom: '1rem', fontSize: '0.9rem'
+                  marginBottom: '1rem', fontSize: '0.9rem', whiteSpace: 'pre-line'
                 }}>
                   {formError}
                 </div>

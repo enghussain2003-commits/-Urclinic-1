@@ -488,7 +488,7 @@ export const AppProvider = ({ children }) => {
         || (error.message || '').includes('appointments_doctor_slot_uniq');
       if (isSlotConflict) {
         throw new Error(i18n.language === 'ar'
-          ? 'عذراً، تم حجز هذا الموعد قبل لحظات. اختر وقتاً آخر.'
+          ? 'عذراً، تم حجز هذا الموعد قبل لحظات.\nيرجى اختيار وقت آخر.'
           : 'Sorry, this appointment was just booked. Please choose another time.');
       }
       throw error;
