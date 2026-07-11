@@ -19,7 +19,7 @@ const DoctorDashboard = () => {
   const stats = useDoctorStats({ appointments, doctors, patients, user });
 
   const statusBadge = s => ({
-    pending: 'badge-warning', confirmed: 'badge-info', in_progress: 'badge-primary',
+    pending: 'badge-warning', approved: 'badge-info', confirmed: 'badge-info', in_progress: 'badge-primary',
     completed: 'badge-success', cancelled: 'badge-danger', rejected: 'badge-danger',
     'no-show': 'badge-danger', no_show: 'badge-danger',
   }[s] || 'badge-warning');
@@ -28,15 +28,22 @@ const DoctorDashboard = () => {
 
   const renderActions = apt => {
     const s = apt.status;
-    if (s === 'pending' || s === 'confirmed') {
+    if (s === 'pending' || s === 'approved' || s === 'confirmed') {
       return (
-        <div className="flex gap-sm">
+        <div className="flex gap-sm flex-wrap">
           <button
             className="btn btn-sm"
             style={{ background: 'var(--primary)', color: '#fff' }}
             onClick={() => changeStatus(apt.id, 'in_progress')}
           >
             <Play size={13} /> {t('start_visit')}
+          </button>
+          <button
+            className="btn btn-sm"
+            style={{ background: 'var(--success)', color: '#fff' }}
+            onClick={() => changeStatus(apt.id, 'completed')}
+          >
+            <CheckCircle size={13} /> {t('complete_visit')}
           </button>
           <button
             className="btn btn-sm btn-outline"

@@ -182,7 +182,7 @@ export const useDashboardStats = ({
     // Status distribution (all time — for donut chart)
     const statusCounts = {
       pending:     appointments.filter(a => a.status === 'pending').length,
-      confirmed:   appointments.filter(a => a.status === 'confirmed').length,
+      confirmed:   appointments.filter(a => a.status === 'confirmed' || a.status === 'approved').length,
       in_progress: appointments.filter(a => a.status === 'in_progress').length,
       completed:   appointments.filter(a => a.status === 'completed').length,
       cancelled:   appointments.filter(a => a.status === 'cancelled').length,

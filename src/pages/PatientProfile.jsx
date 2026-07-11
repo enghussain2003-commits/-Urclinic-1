@@ -111,15 +111,23 @@ const PatientProfile = () => {
 
   const visiblePrescriptions = prescriptions.slice(0, visibleRxCount);
 
-  // Normalize the various status spellings into one of: pending | confirmed | rejected.
-  const normalize = (s) =>
-    s === 'confirmed' || s === 'in_progress' || s === 'completed' ? 'confirmed'
-    : s === 'rejected' || s === 'cancelled' || s === 'no-show' || s === 'no_show' ? 'rejected'
-    : 'pending';
+  const activeStatuses = ['pending', 'approved', 'in_progress', 'confirmed'];
+  const activeAppointment = [...myAppointments]
+    .filter(a => activeStatuses.includes(a.status))
+    .sort((a, b) =>
+      (a.date || '').localeCompare(b.date || '') ||
+      (a.time || '').localeCompare(b.time || '')
+    )[0] || null;
+  const completedAppointments = [...myAppointments]
+    .filter(a => a.status === 'completed')
+    .sort((a, b) => new Date(b.completed_at || b.date || 0) - new Date(a.completed_at || a.date || 0));
 
   const statusMeta = {
     pending: { cls: 'badge-warning', icon: <Hourglass size={14} />, label: t('pending_approval') },
-    confirmed: { cls: 'badge-success', icon: <CheckCircle size={14} />, label: t('confirmed') },
+    approved: { cls: 'badge-success', icon: <CheckCircle size={14} />, label: isAr ? 'مقبول' : 'Approved' },
+    confirmed: { cls: 'badge-success', icon: <CheckCircle size={14} />, label: isAr ? 'مقبول' : 'Approved' },
+    in_progress: { cls: 'badge-primary', icon: <Clock size={14} />, label: t('in_progress') },
+    completed: { cls: 'badge-success', icon: <CheckCircle size={14} />, label: isAr ? 'مكتمل' : 'Completed' },
     rejected: { cls: 'badge-danger', icon: <XCircle size={14} />, label: t('rejected') },
   };
 
@@ -150,45 +158,53 @@ const PatientProfile = () => {
       </div>
 
       <div className="flex gap-xl flex-wrap">
-        {/* Appointments List */}
+        {/* Appointments */}
         <div style={{ flex: '2 1 500px' }}>
-          <h3 className="mb-md"><Calendar size={20} style={{ display: 'inline', verticalAlign: 'text-bottom', marginInlineEnd: 8 }}/> {t('my_appointments')}</h3>
+          <h3 className="mb-md"><Calendar size={20} style={{ display: 'inline', verticalAlign: 'text-bottom', marginInlineEnd: 8 }}/> {isAr ? 'الموعد القادم' : 'Upcoming Appointment'}</h3>
+          {activeAppointment ? (
+            <div className="card" style={{ borderInlineStart: '3px solid var(--primary)' }}>
+              <div className="flex justify-between items-start flex-wrap gap-md">
+                <div>
+                  <h4 className="mb-sm">{getDocName(activeAppointment.doctor_id)}</h4>
+                  <p className="text-sm mb-xs text-muted">{isAr ? 'رقم الحجز' : 'Booking'}: {activeAppointment.booking_code || '-'}</p>
+                  <p className="text-sm mb-0 flex items-center gap-sm"><Clock size={14}/> {activeAppointment.date} — {to12Hour(activeAppointment.time, isAr)}</p>
+                </div>
+                <span className={`badge ${statusMeta[activeAppointment.status]?.cls || 'badge-warning'} flex items-center gap-sm`}>
+                  {statusMeta[activeAppointment.status]?.icon} {statusMeta[activeAppointment.status]?.label || activeAppointment.status}
+                </span>
+              </div>
+
+              {(activeAppointment.status === 'approved' || activeAppointment.status === 'confirmed') && (
+                <div className="mt-md" style={{ borderTop: '1px solid var(--border)', paddingTop: '0.85rem' }}>
+                  <div className="text-sm text-muted mb-sm">{t('time_until_appointment')}</div>
+                  <Countdown date={activeAppointment.date} time={activeAppointment.time} />
+                </div>
+              )}
+            </div>
+          ) : (
+            <div className="card-flat bg-alt text-muted">{t('no_upcoming')}</div>
+          )}
+
+          <h3 className="mb-md mt-xl"><CheckCircle size={20} style={{ display: 'inline', verticalAlign: 'text-bottom', marginInlineEnd: 8 }}/> {isAr ? 'سجل الزيارات' : 'Visit History'}</h3>
           <div className="flex flex-col gap-md">
-            {myAppointments.length === 0 ? (
-              <p className="text-muted">{t('no_upcoming')}</p>
-            ) : (
-              myAppointments.map(apt => {
-                const status = normalize(apt.status);
-                const meta = statusMeta[status];
-                return (
-                  <div key={apt.id} className="card" style={status === 'rejected' ? { opacity: 0.85, borderInlineStart: '3px solid var(--danger)' } : status === 'confirmed' ? { borderInlineStart: '3px solid var(--success)' } : {}}>
-                    <div className="flex justify-between items-start flex-wrap gap-md">
-                      <div>
-                        <h4 className="mb-sm">{getDocName(apt.doctor_id)}</h4>
-                        <p className="text-sm mb-xs text-muted">{isAr ? 'رقم الحجز' : 'Booking'}: {apt.booking_code || '-'}</p>
-                        <p className="text-sm mb-0 flex items-center gap-sm"><Clock size={14}/> {apt.date} — {to12Hour(apt.time, isAr)}</p>
-                      </div>
-                      <span className={`badge ${meta.cls} flex items-center gap-sm`}>{meta.icon} {meta.label}</span>
-                    </div>
-
-                    {/* Confirmed → show details + live countdown */}
-                    {status === 'confirmed' && (
-                      <div className="mt-md" style={{ borderTop: '1px solid var(--border)', paddingTop: '0.85rem' }}>
-                        <div className="text-sm text-muted mb-sm">{t('time_until_appointment')}</div>
-                        <Countdown date={apt.date} time={apt.time} />
-                      </div>
-                    )}
-
-                    {/* Rejected → clear note in history */}
-                    {status === 'rejected' && (
-                      <div className="mt-sm text-sm" style={{ color: 'var(--danger)' }}>
-                        {t('appointment_rejected_note')}
-                      </div>
-                    )}
+            {completedAppointments.length === 0 ? (
+              <div className="card-flat bg-alt text-muted">{isAr ? 'لا توجد زيارات مكتملة بعد.' : 'No completed visits yet.'}</div>
+            ) : completedAppointments.map(apt => (
+              <div key={apt.id} className="card" style={{ borderInlineStart: '3px solid var(--success)' }}>
+                <div className="flex justify-between items-start flex-wrap gap-md">
+                  <div>
+                    <h4 className="mb-sm">{getDocName(apt.doctor_id)}</h4>
+                    <p className="text-sm mb-xs text-muted">{isAr ? 'رقم الحجز' : 'Booking'}: {apt.booking_code || '-'}</p>
+                    <p className="text-sm mb-0 flex items-center gap-sm">
+                      <Clock size={14}/> {apt.date} — {to12Hour(apt.time, isAr)}
+                    </p>
                   </div>
-                );
-              })
-            )}
+                  <span className="badge badge-success flex items-center gap-sm">
+                    <CheckCircle size={14} /> {isAr ? 'مكتمل' : 'Completed'}
+                  </span>
+                </div>
+              </div>
+            ))}
           </div>
         </div>
 

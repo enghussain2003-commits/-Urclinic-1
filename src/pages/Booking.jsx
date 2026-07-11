@@ -156,16 +156,15 @@ const Booking = () => {
       setFormError(isAr ? 'رقم الهاتف يجب أن يتكون من 11 رقماً' : 'Phone number must be exactly 11 digits');
       return false;
     }
-    // Prevent double-booking: same phone with an active (pending/confirmed) appointment for the same doctor
-    const activeWithDoctor = appointments.find(a =>
-      a.doctor_id === selectedDoctor?.id &&
+    // Professional lifecycle: a patient may have only one active appointment at a time.
+    const activeAppointment = appointments.find(a =>
       (a.patient_phone === patientData.phone || a.patient_name === patientData.name.trim()) &&
-      (a.status === 'pending' || a.status === 'confirmed')
+      ['pending', 'approved', 'in_progress', 'confirmed'].includes(a.status)
     );
-    if (activeWithDoctor) {
+    if (activeAppointment) {
       setFormError(isAr
-        ? `لديك حجز نشط بالفعل مع هذا الطبيب (${activeWithDoctor.date} - ${activeWithDoctor.time}). لا يمكنك الحجز مرة أخرى حتى ينتهي موعدك الحالي.`
-        : `You already have an active booking with this doctor (${activeWithDoctor.date} - ${activeWithDoctor.time}). You cannot book again until it is completed.`);
+        ? 'لديك موعد نشط بالفعل. يرجى الانتظار حتى تكتمل زيارتك الحالية.'
+        : 'You already have an active appointment. Please wait until your current visit is completed.');
       return false;
     }
     setFormError('');
@@ -238,7 +237,9 @@ const Booking = () => {
       // Show the real error instead of silently falling back to localStorage.
       const msg = err?.message || (isAr ? 'تعذّر إكمال الحجز' : 'Booking failed');
       const conflictMsg = isAr ? 'عذراً، تم حجز هذا الموعد قبل لحظات.' : 'Sorry, this appointment was just booked.';
+      const activeMsg = isAr ? 'لديك موعد نشط بالفعل.' : 'You already have an active appointment.';
       setFormError(msg.includes(conflictMsg)
+        || msg.includes(activeMsg)
         ? msg
         : (isAr ? `تعذّر إكمال الحجز: ${msg}` : `Booking failed: ${msg}`));
     } finally {

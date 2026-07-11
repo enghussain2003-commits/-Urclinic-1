@@ -44,7 +44,7 @@ const AdminDashboard = () => {
   });
 
   const statusBadge = s => ({
-    pending: 'badge-warning', confirmed: 'badge-info', in_progress: 'badge-primary',
+    pending: 'badge-warning', approved: 'badge-info', confirmed: 'badge-info', in_progress: 'badge-primary',
     completed: 'badge-success', cancelled: 'badge-danger', rejected: 'badge-danger',
   }[s] || 'badge-warning');
 
@@ -288,7 +288,7 @@ const AdminDashboard = () => {
                             <button
                               className="btn btn-sm"
                               style={{ background: 'var(--success)', color: '#fff' }}
-                              onClick={() => changeStatus(apt.id, 'confirmed')}
+                            onClick={() => changeStatus(apt.id, 'approved')}
                             >
                               <CheckCircle size={13} /> {t('approve')}
                             </button>
@@ -300,9 +300,15 @@ const AdminDashboard = () => {
                               <XCircle size={13} /> {t('reject')}
                             </button>
                           </div>
-                        ) : (
-                          <span className="text-muted text-sm">—</span>
-                        )}
+                        ) : ['approved', 'confirmed', 'in_progress'].includes(apt.status) ? (
+                          <button
+                            className="btn btn-sm"
+                            style={{ background: 'var(--success)', color: '#fff' }}
+                            onClick={() => changeStatus(apt.id, 'completed')}
+                          >
+                            <CheckCircle size={13} /> {isAr ? 'إكمال' : 'Complete'}
+                          </button>
+                        ) : <span className="text-muted text-sm">—</span>}
                       </td>
                     </tr>
                   );
@@ -347,7 +353,7 @@ const AdminDashboard = () => {
                       <button
                         className="btn btn-sm"
                         style={{ background: 'var(--success)', color: '#fff', flex: 1 }}
-                        onClick={() => changeStatus(apt.id, 'confirmed')}
+                        onClick={() => changeStatus(apt.id, 'approved')}
                       >
                         <CheckCircle size={13} /> {t('approve')}
                       </button>
@@ -357,6 +363,17 @@ const AdminDashboard = () => {
                         onClick={() => changeStatus(apt.id, 'rejected')}
                       >
                         <XCircle size={13} /> {t('reject')}
+                      </button>
+                    </div>
+                  )}
+                  {['approved', 'confirmed', 'in_progress'].includes(apt.status) && (
+                    <div className="mobile-card-actions">
+                      <button
+                        className="btn btn-sm"
+                        style={{ background: 'var(--success)', color: '#fff', flex: 1 }}
+                        onClick={() => changeStatus(apt.id, 'completed')}
+                      >
+                        <CheckCircle size={13} /> {isAr ? 'إكمال' : 'Complete'}
                       </button>
                     </div>
                   )}

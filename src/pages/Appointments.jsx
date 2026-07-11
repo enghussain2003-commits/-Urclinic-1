@@ -21,7 +21,10 @@ const Appointments = () => {
   const statusBadge = (status) => {
     const map = {
       pending: 'badge-warning',
+      approved: 'badge-success',
       confirmed: 'badge-success',
+      in_progress: 'badge-primary',
+      completed: 'badge-success',
       cancelled: 'badge-danger',
       rejected: 'badge-danger',
       'no-show': 'badge-danger',
@@ -31,7 +34,9 @@ const Appointments = () => {
 
   const statusLabel = (status) => {
     if (status === 'pending')   return isAr ? 'بانتظار الموافقة' : 'Pending';
-    if (status === 'confirmed') return isAr ? 'مقبول' : 'Approved';
+    if (status === 'approved' || status === 'confirmed') return isAr ? 'مقبول' : 'Approved';
+    if (status === 'in_progress') return isAr ? 'قيد الكشف' : 'In progress';
+    if (status === 'completed') return isAr ? 'مكتمل' : 'Completed';
     if (status === 'cancelled') return isAr ? 'ملغي' : 'Cancelled';
     return isAr ? 'مرفوض' : 'Rejected';
   };
@@ -40,7 +45,8 @@ const Appointments = () => {
     const matchesFilter =
       filter === 'all' ? true :
       filter === 'pending' ? a.status === 'pending' :
-      filter === 'confirmed' ? a.status === 'confirmed' :
+      filter === 'confirmed' ? (a.status === 'approved' || a.status === 'confirmed' || a.status === 'in_progress') :
+      filter === 'completed' ? a.status === 'completed' :
       filter === 'rejected' ? (a.status === 'rejected' || a.status === 'cancelled') : true;
     const q = query.toLowerCase();
     const matchesQuery = !q ||
@@ -52,7 +58,8 @@ const Appointments = () => {
   const counts = {
     all: appointments.length,
     pending: appointments.filter(a => a.status === 'pending').length,
-    confirmed: appointments.filter(a => a.status === 'confirmed').length,
+    confirmed: appointments.filter(a => ['approved', 'confirmed', 'in_progress'].includes(a.status)).length,
+    completed: appointments.filter(a => a.status === 'completed').length,
     rejected: appointments.filter(a => a.status === 'rejected' || a.status === 'cancelled').length,
   };
 
@@ -60,25 +67,36 @@ const Appointments = () => {
     { id: 'all', label: isAr ? 'الكل' : 'All' },
     { id: 'pending', label: isAr ? 'بانتظار الموافقة' : 'Pending' },
     { id: 'confirmed', label: isAr ? 'مقبولة' : 'Approved' },
+    { id: 'completed', label: isAr ? 'مكتملة' : 'Completed' },
     { id: 'rejected', label: isAr ? 'مرفوضة' : 'Rejected' },
   ];
 
   const ActionButtons = ({ apt }) => {
-    if (apt.status !== 'pending') {
+    if (apt.status === 'completed') {
       return (
-        <span className="text-muted text-sm">
-          {apt.status === 'confirmed'
-            ? (isAr ? '✓ تمت الموافقة' : '✓ Approved')
-            : (isAr ? '✕ مرفوض' : '✕ Rejected')}
+        <span className="badge badge-success">
+          <CheckCircle size={14} /> {isAr ? 'مكتمل' : 'Completed'}
         </span>
       );
     }
+    if (apt.status === 'approved' || apt.status === 'confirmed' || apt.status === 'in_progress') {
+      return (
+        <button
+          className="btn btn-sm"
+          style={{ background: 'var(--success)', color: '#fff' }}
+          onClick={() => changeStatus(apt.id, 'completed')}
+        >
+          <CheckCircle size={15} /> {isAr ? 'إكمال' : 'Complete'}
+        </button>
+      );
+    }
+    if (apt.status !== 'pending') return <span className="text-muted text-sm">—</span>;
     return (
       <div className="flex gap-sm flex-wrap">
         <button
           className="btn btn-sm"
           style={{ background: 'var(--success)', color: '#fff', flex: 1 }}
-          onClick={() => changeStatus(apt.id, 'confirmed')}
+          onClick={() => changeStatus(apt.id, 'approved')}
         >
           <CheckCircle size={15} /> {isAr ? 'قبول' : 'Approve'}
         </button>

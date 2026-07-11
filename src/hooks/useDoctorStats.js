@@ -8,7 +8,7 @@
 import { useMemo } from 'react';
 
 const isoToday = () => new Date().toISOString().slice(0, 10);
-const VOID = ['cancelled', 'rejected'];
+const VOID = ['cancelled', 'rejected', 'completed'];
 
 // Patient identity key (appointments carry no patients.id for legacy bookings)
 const patientKey = a => a.patient_phone || a.patient_name || String(a.id);
@@ -70,7 +70,7 @@ export const useDoctorStats = ({ appointments = [], doctors = [], patients = [],
 
     // Stats
     const completedToday = todayAppts.filter(a => a.status === 'completed').length;
-    const waitingToday   = todayAppts.filter(a => ['pending', 'confirmed', 'in_progress'].includes(a.status)).length;
+    const waitingToday   = todayAppts.filter(a => ['pending', 'approved', 'confirmed', 'in_progress'].includes(a.status)).length;
 
     const patientsThisMonth = new Set(
       myAppointments

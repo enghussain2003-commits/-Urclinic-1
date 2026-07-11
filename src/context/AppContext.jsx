@@ -46,7 +46,10 @@ const fromDbAppt = (row) => row && ({
   date: row.date ?? row.appointment_date,
   time: row.time ?? row.appointment_time,
   booking_code: row.booking_code ?? row.bookingCode ?? '',
+  completed_at: row.completed_at ?? null,
 });
+
+const ACTIVE_APPOINTMENT_STATUSES = ['pending', 'approved', 'in_progress', 'confirmed'];
 
 const sortNotifications = (list = []) =>
   [...list].sort((a, b) => (b.created_at || '').localeCompare(a.created_at || ''));
@@ -468,6 +471,30 @@ export const AppProvider = ({ children }) => {
       clinic_id, full_name: patient_name, phone: patient_phone, email: patient_email,
     });
 
+    const { data: { user: authUser } } = await supabase.auth.getUser();
+    if (authUser) {
+      const { data: patientRows, error: patientRowsErr } = await supabase
+        .from('patients')
+        .select('id')
+        .eq('auth_user_id', authUser.id);
+      if (patientRowsErr) throw patientRowsErr;
+      const patientIds = (patientRows || []).map(p => p.id).filter(Boolean);
+      if (patientIds.length) {
+        const { data: activeRows, error: activeErr } = await supabase
+          .from('appointments')
+          .select('id,status')
+          .in('patient_id', patientIds)
+          .in('status', ACTIVE_APPOINTMENT_STATUSES)
+          .limit(1);
+        if (activeErr) throw activeErr;
+        if ((activeRows || []).length > 0) {
+          throw new Error(i18n.language === 'ar'
+            ? 'لديك موعد نشط بالفعل. يرجى الانتظار حتى تكتمل زيارتك الحالية.'
+            : 'You already have an active appointment. Please wait until your current visit is completed.');
+        }
+      }
+    }
+
     const row = {
       clinic_id,
       patient_id: patientId,
@@ -486,6 +513,13 @@ export const AppProvider = ({ children }) => {
       const isSlotConflict = error.code === '23505'
         || (error.message || '').includes('appointments_doctor_active_slot_uniq')
         || (error.message || '').includes('appointments_doctor_slot_uniq');
+      const isActiveAppointmentConflict = error.code === '23514'
+        || (error.message || '').includes('patient already has an active appointment');
+      if (isActiveAppointmentConflict) {
+        throw new Error(i18n.language === 'ar'
+          ? 'لديك موعد نشط بالفعل. يرجى الانتظار حتى تكتمل زيارتك الحالية.'
+          : 'You already have an active appointment. Please wait until your current visit is completed.');
+      }
       if (isSlotConflict) {
         throw new Error(i18n.language === 'ar'
           ? 'عذراً، تم حجز هذا الموعد قبل لحظات.\nيرجى اختيار وقت آخر.'
@@ -547,9 +581,10 @@ export const AppProvider = ({ children }) => {
 
   const changeStatus = async (id, status) => {
     const apt = appointments.find(a => a.id === id);
+    const completedAt = status === 'completed' ? new Date().toISOString() : null;
     // Update in-memory + local storage immediately (re-scope as a safety net).
-    setAppointments(prev => scopeToClinic(prev.map(a => a.id === id ? { ...a, status } : a), clinicDoctorIdsRef.current));
-    writeLocalBookings(readLocalBookings().map(a => a.id === id ? { ...a, status } : a));
+    setAppointments(prev => scopeToClinic(prev.map(a => a.id === id ? { ...a, status, completed_at: completedAt } : a), clinicDoctorIdsRef.current));
+    writeLocalBookings(readLocalBookings().map(a => a.id === id ? { ...a, status, completed_at: completedAt } : a));
 
     // Best-effort persist to Supabase.
     try {
@@ -560,11 +595,11 @@ export const AppProvider = ({ children }) => {
     }
 
     // Notify the patient when staff approve / reject their request (best-effort).
-    if (status === 'confirmed' || status === 'rejected') {
+    if (status === 'approved' || status === 'confirmed' || status === 'rejected') {
       const uid = await resolvePatientUserId(apt);
       if (uid) {
         const ar = i18n.language === 'ar';
-        const ok = status === 'confirmed';
+        const ok = status === 'approved' || status === 'confirmed';
         // The notification must carry the appointment's clinic_id so the 0005
         // RLS policy admits it for staff/doctor inserters.
         await sendNotification(
