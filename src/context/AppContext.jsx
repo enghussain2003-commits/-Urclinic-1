@@ -56,6 +56,16 @@ const fetchNotificationsForUser = (uid) =>
     .order('created_at', { ascending: false })
     .limit(50);
 
+const formatSupabaseError = (error) => {
+  if (!error) return 'Unknown Supabase error';
+  return [
+    error.message,
+    error.code ? `code=${error.code}` : null,
+    error.details ? `details=${error.details}` : null,
+    error.hint ? `hint=${error.hint}` : null,
+  ].filter(Boolean).join(' | ');
+};
+
 export const AppProvider = ({ children }) => {
   const [user, setUser] = useState(getUser());
   const [doctors, setDoctors] = useState([]);
@@ -632,50 +642,65 @@ export const AppProvider = ({ children }) => {
   // prescriptions.patient_id follows the table's RLS contract: it is the patient's
   // auth/profile UUID (auth.uid()), not the clinic-scoped patients.id row.
   const createPrescription = async (rx) => {
-    try {
-      const patientUserId = rx.patient_user_id || rx.patient_id;
-      if (!patientUserId) {
-        throw new Error('Cannot create prescription: patient account is not linked to an auth user');
-      }
-
-      const row = {
-        patient_id: patientUserId,
-        doctor_id: rx.doctor_id || null,
-        diagnosis: rx.diagnosis || '',
-        medicines: rx.medicines || [],
-        instructions: rx.instructions || '',
-        prescribed_date: rx.prescribed_date || new Date().toISOString().slice(0, 10),
-      };
-      row.clinic_id = rx.clinic_id || user?.clinic_id || null;
-      const { data, error } = await supabase.from('prescriptions').insert([row]).select().single();
-      if (error) { console.warn('prescription insert failed:', error.message); return null; }
-
-      const notificationRow = {
-        user_id: patientUserId,
-        clinic_id: row.clinic_id,
-        title: 'تم إصدار وصفة طبية جديدة',
-        message: 'تم إصدار وصفة طبية جديدة لك من العيادة',
-        type: 'prescription_created',
-        is_read: false,
-        prescription_id: data.id,
-      };
-
-      const { error: notifError } = await supabase.from('notifications').insert([notificationRow]);
-      if (notifError?.code === '42703') {
-        const fallbackNotification = { ...notificationRow };
-        delete fallbackNotification.prescription_id;
-        const { error: fallbackError } = await supabase.from('notifications').insert([fallbackNotification]);
-        if (fallbackError && fallbackError.code !== '23505') {
-          console.warn('prescription notification insert failed:', fallbackError.message);
-        }
-      } else if (notifError && notifError.code !== '23505') {
-        console.warn('prescription notification insert failed:', notifError.message);
-      }
-      return data;
-    } catch (err) {
-      console.warn(err);
-      return null;
+    const patientUserId = rx.patient_user_id || rx.patient_id;
+    if (!patientUserId) {
+      throw new Error('Cannot create prescription: patient account is not linked to an auth user');
     }
+
+    const row = {
+      clinic_id: rx.clinic_id || user?.clinic_id || null,
+      patient_id: patientUserId,
+      doctor_id: rx.doctor_id || null,
+      diagnosis: rx.diagnosis || '',
+      medicines: rx.medicines || [],
+      instructions: rx.instructions || '',
+      prescribed_date: rx.prescribed_date || new Date().toISOString().slice(0, 10),
+    };
+
+    if (!row.clinic_id) {
+      throw new Error('Cannot create prescription: missing clinic_id');
+    }
+    if (user?.role !== 'super_admin' && user?.clinic_id && String(user.clinic_id) !== String(row.clinic_id)) {
+      throw new Error('Cannot create prescription: patient clinic does not match the logged-in clinic');
+    }
+
+    if (import.meta.env.DEV) {
+      console.info('[UrClinic] prescription insert payload', {
+        row,
+        actor: { id: user?.id, role: user?.role, clinic_id: user?.clinic_id },
+      });
+    }
+
+    const { data, error } = await supabase.from('prescriptions').insert([row]).select().single();
+    if (error) {
+      const formatted = formatSupabaseError(error);
+      console.error('[UrClinic] prescription insert failed', { error, row });
+      throw new Error(`Prescription insert failed: ${formatted}`);
+    }
+
+    const notificationRow = {
+      user_id: patientUserId,
+      clinic_id: row.clinic_id,
+      title: 'تم إصدار وصفة طبية جديدة',
+      message: 'تم إصدار وصفة طبية جديدة لك من العيادة',
+      type: 'prescription_created',
+      is_read: false,
+      prescription_id: data.id,
+    };
+
+    const { error: notifError } = await supabase.from('notifications').insert([notificationRow]);
+    if (notifError?.code === '42703') {
+      const fallbackNotification = { ...notificationRow };
+      delete fallbackNotification.prescription_id;
+      const { error: fallbackError } = await supabase.from('notifications').insert([fallbackNotification]);
+      if (fallbackError && fallbackError.code !== '23505') {
+        console.warn('prescription notification insert failed:', formatSupabaseError(fallbackError));
+      }
+    } else if (notifError && notifError.code !== '23505') {
+      console.warn('prescription notification insert failed:', formatSupabaseError(notifError));
+    }
+
+    return data;
   };
 
   const unreadCount = notifications.filter(n => !n.is_read).length;

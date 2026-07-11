@@ -22,6 +22,7 @@ const StaffPatientProfile = () => {
   const [activeTab, setActiveTab] = useState('timeline');
   const [showAddRx, setShowAddRx] = useState(false);
   const [savingRx, setSavingRx] = useState(false);
+  const [rxError, setRxError] = useState('');
   const [rxForm, setRxForm] = useState({
     diagnosis: '', instructions: '',
     medicines: [{ name: '', dosage: '', instructions: '' }],
@@ -144,8 +145,19 @@ const StaffPatientProfile = () => {
 
   const handleAddPrescription = async (e) => {
     e.preventDefault();
+    setRxError('');
+    if (import.meta.env.DEV) {
+      console.info('[UrClinic] prescription submit handler called', {
+        patient_id: id,
+        patient_auth_user_id: patient?.auth_user_id,
+        patient_clinic_id: patient?.clinic_id,
+        actor: { id: user?.id, role: user?.role, clinic_id: user?.clinic_id },
+      });
+    }
     if (!patient.auth_user_id) {
-      alert('Cannot deliver prescription: this patient record is not linked to a login account / لا يمكن إرسال الوصفة لأن ملف المريض غير مرتبط بحساب دخول');
+      const message = 'Cannot deliver prescription: this patient record is not linked to a login account / لا يمكن إرسال الوصفة لأن ملف المريض غير مرتبط بحساب دخول';
+      setRxError(message);
+      alert(message);
       return;
     }
     setSavingRx(true);
@@ -160,13 +172,13 @@ const StaffPatientProfile = () => {
         instructions: rxForm.instructions,
         medicines,
       });
-      if (result) {
-        setPrescriptions(prev => [result, ...prev]);
-        setShowAddRx(false);
-        setRxForm({ diagnosis: '', instructions: '', medicines: [{ name: '', dosage: '', instructions: '' }] });
-      } else {
-        alert('Failed to save prescription / تعذّر حفظ الوصفة');
-      }
+      setPrescriptions(prev => [result, ...prev]);
+      setShowAddRx(false);
+      setRxForm({ diagnosis: '', instructions: '', medicines: [{ name: '', dosage: '', instructions: '' }] });
+    } catch (err) {
+      const message = err?.message || 'Failed to save prescription / تعذّر حفظ الوصفة';
+      setRxError(message);
+      alert(message);
     } finally {
       setSavingRx(false);
     }
@@ -486,6 +498,20 @@ const StaffPatientProfile = () => {
           {showAddRx && (
             <div className="glass p-6 mb-xl animate-in" style={{ borderInlineStart: '4px solid #10b981' }}>
               <h4 className="mb-md">{t('new_prescription')}</h4>
+              {rxError && (
+                <div style={{
+                  background: 'rgba(239,68,68,0.08)',
+                  border: '1px solid var(--danger)',
+                  color: 'var(--danger)',
+                  padding: '0.75rem 1rem',
+                  borderRadius: 'var(--radius-md)',
+                  marginBottom: '1rem',
+                  fontSize: '0.875rem',
+                  whiteSpace: 'pre-wrap'
+                }}>
+                  {rxError}
+                </div>
+              )}
               <form onSubmit={handleAddPrescription}>
                 <div className="form-group">
                   <label className="form-label">{t('diagnosis')} *</label>
