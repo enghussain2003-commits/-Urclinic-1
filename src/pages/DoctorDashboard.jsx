@@ -1,10 +1,26 @@
+import { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
 import { useApp } from '../context/AppContext';
 import { useDoctorStats } from '../hooks/useDoctorStats';
 import {
-  Calendar, CheckCircle, Clock, Users, Play, X,
-  ChevronRight, Phone, Stethoscope, TrendingUp,
+  Bell,
+  Calendar,
+  CheckCircle,
+  ChevronRight,
+  Clock,
+  FileText,
+  NotebookPen,
+  Phone,
+  Play,
+  Search,
+  ShieldCheck,
+  Stethoscope,
+  Timer,
+  TrendingUp,
+  UserRound,
+  Users,
+  X,
 } from 'lucide-react';
 import StatCard from '../components/analytics/StatCard';
 import SvgBarChart from '../components/analytics/SvgBarChart';
@@ -14,7 +30,13 @@ const DoctorDashboard = () => {
   const { t, i18n } = useTranslation();
   const isAr = i18n.language === 'ar';
   const navigate = useNavigate();
-  const { user, appointments, doctors, patients, changeStatus, loading } = useApp();
+  const { user, appointments, doctors, patients, notifications, changeStatus, loading } = useApp();
+  const [patientQuery, setPatientQuery] = useState('');
+
+  useEffect(() => {
+    document.documentElement.dir = isAr ? 'rtl' : 'ltr';
+    document.documentElement.lang = i18n.language;
+  }, [i18n.language, isAr]);
 
   const stats = useDoctorStats({ appointments, doctors, patients, user });
 
@@ -30,26 +52,14 @@ const DoctorDashboard = () => {
     const s = apt.status;
     if (s === 'pending' || s === 'approved' || s === 'confirmed') {
       return (
-        <div className="flex gap-sm flex-wrap">
-          <button
-            className="btn btn-sm"
-            style={{ background: 'var(--primary)', color: '#fff' }}
-            onClick={() => changeStatus(apt.id, 'in_progress')}
-          >
+        <div className="doctor-action-row">
+          <button className="btn btn-sm btn-primary" onClick={() => changeStatus(apt.id, 'in_progress')}>
             <Play size={13} /> {t('start_visit')}
           </button>
-          <button
-            className="btn btn-sm"
-            style={{ background: 'var(--success)', color: '#fff' }}
-            onClick={() => changeStatus(apt.id, 'completed')}
-          >
+          <button className="btn btn-sm btn-success" onClick={() => changeStatus(apt.id, 'completed')}>
             <CheckCircle size={13} /> {t('complete_visit')}
           </button>
-          <button
-            className="btn btn-sm btn-outline"
-            style={{ borderColor: 'var(--danger)', color: 'var(--danger)' }}
-            onClick={() => changeStatus(apt.id, 'cancelled')}
-          >
+          <button className="btn btn-sm btn-outline doctor-btn-danger" onClick={() => changeStatus(apt.id, 'cancelled')}>
             <X size={13} /> {t('cancel')}
           </button>
         </div>
@@ -57,19 +67,11 @@ const DoctorDashboard = () => {
     }
     if (s === 'in_progress') {
       return (
-        <div className="flex gap-sm">
-          <button
-            className="btn btn-sm"
-            style={{ background: 'var(--success)', color: '#fff' }}
-            onClick={() => changeStatus(apt.id, 'completed')}
-          >
+        <div className="doctor-action-row">
+          <button className="btn btn-sm btn-success" onClick={() => changeStatus(apt.id, 'completed')}>
             <CheckCircle size={13} /> {t('complete_visit')}
           </button>
-          <button
-            className="btn btn-sm btn-outline"
-            style={{ borderColor: 'var(--danger)', color: 'var(--danger)' }}
-            onClick={() => changeStatus(apt.id, 'cancelled')}
-          >
+          <button className="btn btn-sm btn-outline doctor-btn-danger" onClick={() => changeStatus(apt.id, 'cancelled')}>
             <X size={13} /> {t('cancel')}
           </button>
         </div>
@@ -83,193 +85,276 @@ const DoctorDashboard = () => {
   });
 
   const drPrefix = isAr ? 'د. ' : 'Dr. ';
+  const nextPatient = stats.todayList.find(a => ['pending', 'approved', 'confirmed', 'in_progress'].includes(a.status));
+  const waitingQueue = stats.todayList.filter(a => ['pending', 'approved', 'confirmed', 'in_progress'].includes(a.status)).slice(0, 5);
+  const recentNotifications = notifications.slice(0, 4);
+
+  const filteredPatients = useMemo(() => {
+    const q = patientQuery.trim().toLowerCase();
+    if (!q) return stats.recentPatients;
+    return stats.recentPatients.filter(p =>
+      (p.name || '').toLowerCase().includes(q) ||
+      (p.phone || '').toLowerCase().includes(q)
+    );
+  }, [patientQuery, stats.recentPatients]);
+
+  const quickActions = [
+    {
+      label: t('today_appointments'),
+      desc: t('daily_schedule'),
+      icon: <Calendar size={18} />,
+      onClick: () => document.querySelector('.doctor-schedule-list')?.scrollIntoView({ behavior: 'smooth', block: 'start' }),
+    },
+    { label: t('prescription'), desc: t('prescription_shortcuts'), icon: <NotebookPen size={18} />, onClick: () => navigate('/dashboard/patients') },
+    { label: t('patients_menu'), desc: t('open_profile'), icon: <Users size={18} />, onClick: () => navigate('/dashboard/patients') },
+  ];
 
   return (
-    <div className="page-padding animate-in">
-
-      {/* ── Header ── */}
-      <div className="dash-header">
-        <div>
-          <h2 style={{ margin: 0, display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-            <Stethoscope size={24} color="var(--primary)" />
-            {t('doctor_dashboard')}
-          </h2>
-          <p className="text-muted" style={{ margin: '0.3rem 0 0' }}>
-            {user?.name ? `${drPrefix}${user.name} · ` : ''}{dateLabel}
-          </p>
+    <div className="page-padding doctor-dashboard-page animate-in">
+      <section className="doctor-hero">
+        <div className="doctor-hero__copy">
+          <span className="doctor-kicker">
+            <ShieldCheck size={16} />
+            {t('doctor_workspace')}
+          </span>
+          <h1>{t('doctor_dashboard')}</h1>
+          <p>{user?.name ? `${drPrefix}${user.name} · ` : ''}{dateLabel}</p>
         </div>
-      </div>
-
-      {/* ── Stats ── */}
-      <div className="analytics-stats-grid">
-        <StatCard
-          icon={<Calendar size={20} />}
-          iconBg="rgba(13,148,136,0.12)"  accent="var(--primary)"
-          value={stats.todayTotal}         label={t('today_appointments')}
-        />
-        <StatCard
-          icon={<CheckCircle size={20} />}
-          iconBg="rgba(16,185,129,0.12)"  accent="#10b981"
-          value={stats.completedToday}     label={t('completed_visits')}
-        />
-        <StatCard
-          icon={<Clock size={20} />}
-          iconBg="rgba(245,158,11,0.12)"  accent="#f59e0b"
-          value={stats.waitingToday}       label={t('waiting_appointments')}
-        />
-        <StatCard
-          icon={<Users size={20} />}
-          iconBg="rgba(99,102,241,0.12)"  accent="#6366f1"
-          value={stats.patientsThisMonth} label={t('patients_this_month')}
-        />
-      </div>
-
-      {/* ── Chart + Today's list ── */}
-      <div className="analytics-charts-grid">
-
-        {/* Weekly bar chart */}
-        <div className="chart-card">
-          <div className="chart-card__header">
-            <TrendingUp size={16} color="var(--primary)" />
-            <h4>{t('appointments_per_week')}</h4>
-          </div>
-          <div className="chart-card__body">
-            {stats.weeklyData.some(d => d.count > 0) ? (
-              <SvgBarChart
-                data={stats.weeklyData.map(d => ({ label: d.label, value: d.count }))}
-                color="var(--primary)"
-                height={190}
-              />
-            ) : (
-              <div className="chart-empty">{t('no_data_available')}</div>
-            )}
-          </div>
+        <div className="doctor-hero__status">
+          <span>{t('daily_workload')}</span>
+          <strong>{stats.todayTotal}</strong>
+          <em>{t('today_appointments')}</em>
         </div>
+      </section>
 
-        {/* Today's schedule */}
-        <div className="chart-card">
-          <div className="chart-card__header">
-            <Calendar size={16} color="var(--primary)" />
-            <h4>{t('today_appointments')}</h4>
+      <section className="doctor-focus-grid">
+        <article className="doctor-next-card">
+          <div className="doctor-panel-header">
+            <div>
+              <span className="doctor-section-label">{t('next_patient')}</span>
+              <h2>{nextPatient?.patient_name || t('no_appointments_today')}</h2>
+            </div>
+            <div className="doctor-next-icon">
+              <UserRound size={22} />
+            </div>
           </div>
-          <div className="table-container" style={{ maxHeight: 280, overflowY: 'auto' }}>
-            <table>
-              <thead>
-                <tr>
-                  <th>{t('time')}</th>
-                  <th>{t('patient')}</th>
-                  <th>{t('status')}</th>
-                  <th>{t('actions')}</th>
-                </tr>
-              </thead>
-              <tbody>
-                {loading ? (
-                  <tr><td colSpan="4" className="text-center text-muted">{t('loading')}</td></tr>
-                ) : stats.todayList.length === 0 ? (
-                  <tr>
-                    <td colSpan="4" className="text-center text-muted" style={{ padding: '1.5rem' }}>
-                      {t('no_appointments_today')}
-                    </td>
-                  </tr>
-                ) : stats.todayList.map(apt => (
-                  <tr key={apt.id}>
-                    <td style={{ whiteSpace: 'nowrap' }}>
-                      <Clock size={13} className="text-muted" style={{ marginInlineEnd: 4 }} />
-                      {to12Hour(apt.time, isAr)}
-                    </td>
-                    <td>
-                      <div style={{ fontWeight: 600 }}>{apt.patient_name || '—'}</div>
-                      <div className="text-muted text-sm" style={{ fontFamily: 'monospace' }}>{apt.booking_code || '-'}</div>
-                    </td>
-                    <td>
-                      <span className={`badge ${statusBadge(apt.status)}`}>
-                        {statusLabel(apt.status)}
-                      </span>
-                    </td>
-                    <td>{renderActions(apt)}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-          
-          {/* Mobile Cards View */}
-          <div className="mobile-card-list">
-            {loading ? (
-              <div className="text-center text-muted py-xl">{t('loading')}</div>
-            ) : stats.todayList.length === 0 ? (
-              <div className="text-center text-muted py-xl card-flat bg-alt">
-                {t('no_appointments_today')}
+          {nextPatient ? (
+            <>
+              <div className="doctor-next-meta">
+                <span><Clock size={15} />{to12Hour(nextPatient.time, isAr)}</span>
+                <span className={`badge ${statusBadge(nextPatient.status)}`}>{statusLabel(nextPatient.status)}</span>
+                <span dir="ltr">{nextPatient.booking_code || '-'}</span>
               </div>
-            ) : (
-              stats.todayList.map(apt => (
-                <div key={apt.id} className="mobile-card-item">
-                  <div className="mobile-card-row">
-                    <div style={{ fontWeight: 600, fontSize: '1.05rem' }}>{apt.patient_name || '—'}</div>
-                    <span className={`badge ${statusBadge(apt.status)}`}>
-                      {statusLabel(apt.status)}
-                    </span>
-                  </div>
-                  <div className="text-sm text-muted mb-xs" style={{ fontFamily: 'monospace' }}>
-                    {isAr ? 'رقم الحجز' : 'Booking #'}: {apt.booking_code || '-'}
-                  </div>
-                  <div className="text-sm text-muted mb-md flex items-center">
-                    <Clock size={14} style={{ marginInlineEnd: 6 }} />
-                    {to12Hour(apt.time, isAr)}
-                  </div>
-                  <div className="mobile-card-actions">
-                    {renderActions(apt)}
-                  </div>
-                </div>
-              ))
-            )}
-          </div>
-        </div>
-      </div>
+              <div className="doctor-next-actions">
+                {renderActions(nextPatient)}
+              </div>
+            </>
+          ) : (
+            <div className="doctor-empty-inline">
+              <Calendar size={22} />
+              <span>{t('no_appointments_today')}</span>
+            </div>
+          )}
+        </article>
 
-      {/* ── Recent patients ── */}
-      <div className="chart-card" style={{ marginTop: '1.5rem' }}>
-        <div className="chart-card__header">
-          <Users size={16} color="var(--primary)" />
-          <h4>{t('recent_patients')}</h4>
-        </div>
-        <div className="chart-card__body">
-          {stats.recentPatients.length === 0 ? (
-            <div className="analytics-empty-state">
-              <Users size={28} />
-              <p>{t('no_recent_patients')}</p>
+        <article className="doctor-queue-card">
+          <div className="doctor-panel-header">
+            <div>
+              <span className="doctor-section-label">{t('waiting_queue')}</span>
+              <h3>{t('waiting_appointments')}</h3>
+            </div>
+            <Timer size={18} />
+          </div>
+          {waitingQueue.length === 0 ? (
+            <div className="doctor-empty-inline">
+              <CheckCircle size={22} />
+              <span>{t('no_appointments_today')}</span>
             </div>
           ) : (
-            <div className="doctor-patient-list">
-              {stats.recentPatients.map((p, idx) => (
-                <div key={idx} className="doctor-patient-item">
-                  <div className="doctor-patient-avatar">
-                    {(p.name || '?').charAt(0).toUpperCase()}
-                  </div>
-                  <div className="doctor-patient-info">
-                    <div style={{ fontWeight: 600 }}>{p.name}</div>
-                    {p.phone && (
-                      <div className="text-sm text-muted flex items-center gap-sm" dir="ltr">
-                        <Phone size={11} /> {p.phone}
-                      </div>
-                    )}
-                    <div className="text-sm text-muted">
-                      {t('last_visit')}: {p.lastDate || '—'}
-                    </div>
-                  </div>
-                  <button
-                    className="btn btn-sm btn-outline"
-                    disabled={!p.profileId}
-                    onClick={() => p.profileId && navigate(`/dashboard/patients/${p.profileId}`)}
-                  >
-                    {t('open_profile')} <ChevronRight size={13} />
-                  </button>
+            <div className="doctor-queue-list">
+              {waitingQueue.map(apt => (
+                <div key={apt.id}>
+                  <span>{to12Hour(apt.time, isAr)}</span>
+                  <strong>{apt.patient_name || '—'}</strong>
+                  <em className={`badge ${statusBadge(apt.status)}`}>{statusLabel(apt.status)}</em>
                 </div>
               ))}
             </div>
           )}
+        </article>
+      </section>
+
+      <section className="analytics-stats-grid doctor-stats-grid">
+        <StatCard icon={<Calendar size={20} />} iconBg="rgba(37,99,235,0.12)" accent="#2563eb" value={stats.todayTotal} label={t('today_appointments')} />
+        <StatCard icon={<CheckCircle size={20} />} iconBg="rgba(16,185,129,0.12)" accent="#10b981" value={stats.completedToday} label={t('completed_visits')} />
+        <StatCard icon={<Clock size={20} />} iconBg="rgba(245,158,11,0.12)" accent="#f59e0b" value={stats.waitingToday} label={t('waiting_appointments')} />
+        <StatCard icon={<Users size={20} />} iconBg="rgba(8,145,178,0.12)" accent="#0891b2" value={stats.patientsThisMonth} label={t('patients_this_month')} />
+      </section>
+
+      <section className="doctor-main-grid">
+        <div className="doctor-main-column">
+          <div className="doctor-card-panel">
+            <div className="doctor-panel-header">
+              <div>
+                <span className="doctor-section-label">{t('daily_schedule')}</span>
+                <h3>{t('today_appointments')}</h3>
+              </div>
+              <Calendar size={18} />
+            </div>
+            <div className="doctor-schedule-list">
+              {loading ? (
+                <div className="doctor-loading-state">
+                  <span></span><span></span><span></span>
+                </div>
+              ) : stats.todayList.length === 0 ? (
+                <div className="doctor-empty-state">
+                  <Calendar size={28} />
+                  <p>{t('no_appointments_today')}</p>
+                </div>
+              ) : stats.todayList.map(apt => (
+                <article key={apt.id} className="doctor-appointment-row">
+                  <div className="doctor-time-block">
+                    <Clock size={14} />
+                    <strong>{to12Hour(apt.time, isAr)}</strong>
+                  </div>
+                  <div className="doctor-appointment-main">
+                    <strong>{apt.patient_name || '—'}</strong>
+                    <span dir="ltr">{apt.booking_code || '-'}</span>
+                  </div>
+                  <span className={`badge ${statusBadge(apt.status)}`}>{statusLabel(apt.status)}</span>
+                  {renderActions(apt)}
+                </article>
+              ))}
+            </div>
+          </div>
+
+          <div className="doctor-card-panel">
+            <div className="doctor-panel-header">
+              <div>
+                <span className="doctor-section-label">{t('workload_summary')}</span>
+                <h3>{t('appointments_per_week')}</h3>
+              </div>
+              <TrendingUp size={18} />
+            </div>
+            <div className="doctor-chart-body">
+              {stats.weeklyData.some(d => d.count > 0) ? (
+                <SvgBarChart data={stats.weeklyData.map(d => ({ label: d.label, value: d.count }))} color="var(--primary)" height={190} />
+              ) : (
+                <div className="chart-empty">{t('no_data_available')}</div>
+              )}
+            </div>
+          </div>
         </div>
-      </div>
+
+        <aside className="doctor-side-column">
+          <div className="doctor-card-panel">
+            <div className="doctor-panel-header">
+              <div>
+                <span className="doctor-section-label">{t('clinical_quick_actions')}</span>
+                <h3>{t('doctor_workspace')}</h3>
+              </div>
+              <Stethoscope size={18} />
+            </div>
+            <div className="doctor-quick-list">
+              {quickActions.map(action => (
+                <button key={action.label} type="button" onClick={action.onClick}>
+                  <span>{action.icon}</span>
+                  <div>
+                    <strong>{action.label}</strong>
+                    <em>{action.desc}</em>
+                  </div>
+                  <ChevronRight size={15} />
+                </button>
+              ))}
+            </div>
+          </div>
+
+          <div className="doctor-card-panel">
+            <div className="doctor-panel-header">
+              <div>
+                <span className="doctor-section-label">{t('patient_quick_search')}</span>
+                <h3>{t('recent_patients')}</h3>
+              </div>
+              <Search size={18} />
+            </div>
+            <label className="doctor-search-box">
+              <Search size={16} />
+              <input
+                value={patientQuery}
+                onChange={event => setPatientQuery(event.target.value)}
+                placeholder={t('search_patients')}
+              />
+            </label>
+            {filteredPatients.length === 0 ? (
+              <div className="doctor-empty-inline">
+                <Users size={22} />
+                <span>{t('no_recent_patients')}</span>
+              </div>
+            ) : (
+              <div className="doctor-patient-list doctor-patient-list--premium">
+                {filteredPatients.slice(0, 5).map((p, idx) => (
+                  <div key={`${p.name}-${idx}`} className="doctor-patient-item">
+                    <div className="doctor-patient-avatar">{(p.name || '?').charAt(0).toUpperCase()}</div>
+                    <div className="doctor-patient-info">
+                      <div style={{ fontWeight: 700 }}>{p.name}</div>
+                      {p.phone && <div className="text-sm text-muted flex items-center gap-sm" dir="ltr"><Phone size={11} /> {p.phone}</div>}
+                      <div className="text-sm text-muted">{t('last_visit')}: {p.lastDate || '—'}</div>
+                    </div>
+                    <button className="btn btn-sm btn-outline" disabled={!p.profileId} onClick={() => p.profileId && navigate(`/dashboard/patients/${p.profileId}`)}>
+                      {t('open_profile')} <ChevronRight size={13} />
+                    </button>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+
+          <div className="doctor-card-panel">
+            <div className="doctor-panel-header">
+              <div>
+                <span className="doctor-section-label">{t('prescription_shortcuts')}</span>
+                <h3>{t('prescription')}</h3>
+              </div>
+              <FileText size={18} />
+            </div>
+            <div className="doctor-prescription-card">
+              <NotebookPen size={20} />
+              <div>
+                <strong>{t('new_prescription')}</strong>
+                <p>{t('prescription_shortcuts_desc')}</p>
+              </div>
+            </div>
+          </div>
+
+          <div className="doctor-card-panel">
+            <div className="doctor-panel-header">
+              <div>
+                <span className="doctor-section-label">{t('notifications')}</span>
+                <h3>{t('notification_preview')}</h3>
+              </div>
+              <Bell size={18} />
+            </div>
+            {recentNotifications.length === 0 ? (
+              <div className="doctor-empty-inline">
+                <Bell size={22} />
+                <span>{t('no_notifications')}</span>
+              </div>
+            ) : (
+              <div className="doctor-notification-list">
+                {recentNotifications.map(item => (
+                  <div key={item.id} className={item.is_read ? '' : 'unread'}>
+                    <span></span>
+                    <div>
+                      <strong>{t(item.title) || item.title}</strong>
+                      <p>{t(item.message) || item.message}</p>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        </aside>
+      </section>
     </div>
   );
 };
