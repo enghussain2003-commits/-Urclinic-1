@@ -1,7 +1,23 @@
-import { useState, useEffect, Fragment } from 'react';
+import { useState, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
-import { CheckCircle, CreditCard, User, Stethoscope, Calendar as CalendarIcon, Clock, ChevronRight, Banknote, Smartphone, Building2 } from 'lucide-react';
+import {
+  AlertCircle,
+  Banknote,
+  Building2,
+  Calendar as CalendarIcon,
+  CheckCircle,
+  ChevronRight,
+  Clock,
+  CreditCard,
+  Mail,
+  MapPin,
+  Phone,
+  ShieldCheck,
+  Smartphone,
+  Stethoscope,
+  User,
+} from 'lucide-react';
 import { specialties } from '../data/specialties';
 import { useApp } from '../context/AppContext';
 import { supabase } from '../supabaseClient';
@@ -9,6 +25,13 @@ import DoctorCard from '../components/DoctorCard';
 import CalendarPicker from '../components/CalendarPicker';
 import TimeSlotGrid, { to12Hour } from '../components/TimeSlotGrid';
 import SpecialtyIcon from '../components/SpecialtyIcon';
+
+const BookingErrorMessage = ({ children }) => children ? (
+  <div className="booking-error-message">
+    <AlertCircle size={17} />
+    <span>{children}</span>
+  </div>
+) : null;
 
 const Booking = () => {
   const { t, i18n } = useTranslation();
@@ -329,79 +352,110 @@ const Booking = () => {
     ? generateTimeSlots(selectedDoctor, selectedDate)
     : [];
 
+  const selectedDoctorName = selectedDoctor
+    ? (isAr ? (selectedDoctor.nameAr || selectedDoctor.name) : (selectedDoctor.name || selectedDoctor.nameAr))
+    : '';
+  const selectedPayment = paymentMethods.find(p => p.id === paymentMethod);
+  const stepLabels = [
+    isAr ? 'العيادة' : 'Clinic',
+    isAr ? 'الطبيب' : 'Doctor',
+    isAr ? 'الموعد' : 'Date',
+    isAr ? 'البيانات' : 'Details',
+    isAr ? 'التأكيد' : 'Confirm',
+    isAr ? 'تم' : 'Done',
+  ];
+  const activeStepLabel = stepLabels[Math.min(step - 1, stepLabels.length - 1)];
+
   return (
-    <div className="page-padding">
-      <div className="container" style={{ maxWidth: 900 }}>
-        <h2 className="text-center mb-xl">{t('booking_title')}</h2>
+    <div className="page-padding booking-page">
+      <div className="booking-shell">
+        <header className="booking-hero">
+          <div>
+            <span className="booking-kicker"><ShieldCheck size={15} /> {isAr ? 'حجز طبي آمن' : 'Secure medical booking'}</span>
+            <h1>{t('booking_title')}</h1>
+            <p>{isAr ? 'اختر العيادة والطبيب والوقت المناسب بخطوات واضحة.' : 'Choose a clinic, doctor, and time in a clear guided flow.'}</p>
+          </div>
+          <div className="booking-hero-card">
+            <span>{isAr ? 'الخطوة الحالية' : 'Current step'}</span>
+            <strong>{step}/6</strong>
+            <em>{activeStepLabel}</em>
+          </div>
+        </header>
 
-        {/* Stepper */}
-        <div className="stepper">
-          {[1, 2, 3, 4, 5, 6].map(num => (
-            <Fragment key={num}>
-              <div className={`step-circle ${step === num ? 'active' : step > num ? 'completed' : 'pending'}`}>
-                {step > num ? <CheckCircle size={20} /> : num}
+        <nav className="booking-stepper" aria-label={isAr ? 'خطوات الحجز' : 'Booking progress'}>
+          {stepLabels.map((label, index) => {
+            const num = index + 1;
+            const state = step === num ? 'active' : step > num ? 'completed' : 'pending';
+            return (
+              <div key={label} className={`booking-step booking-step--${state}`}>
+                <span>{step > num ? <CheckCircle size={16} /> : num}</span>
+                <strong>{label}</strong>
               </div>
-              {num < 6 && <div className={`step-line ${step > num ? 'active' : ''}`}></div>}
-            </Fragment>
-          ))}
-        </div>
+            );
+          })}
+        </nav>
 
-        <div className="glass p-8">
+        <div className="booking-layout">
+          <main className="booking-workspace">
           
           {/* STEP 1: Choose Clinic */}
           {step === 1 && (
-            <div className="animate-in">
-              <h3 className="mb-md">
-                <Building2 size={20} style={{ display: 'inline', verticalAlign: 'text-bottom', marginInlineEnd: 8 }} />
-                {isAr ? 'اختر العيادة' : 'Choose Clinic'}
-              </h3>
+            <section className="booking-panel">
+              <div className="booking-panel-head">
+                <div>
+                  <span>{isAr ? 'الخطوة 1' : 'Step 1'}</span>
+                  <h2><Building2 size={20} /> {isAr ? 'اختر العيادة' : 'Choose clinic'}</h2>
+                </div>
+                <p>{isAr ? 'اختر العيادة التي تريد الحجز لديها.' : 'Select the clinic where you want to book.'}</p>
+              </div>
               {loadingClinics ? (
-                <p className="text-center text-muted">{isAr ? 'جارٍ التحميل...' : 'Loading...'}</p>
+                <div className="booking-loading"><span></span><span></span><span></span></div>
               ) : clinics.length === 0 ? (
-                <p className="text-center text-muted">{isAr ? 'لا توجد عيادات متاحة حالياً' : 'No clinics available'}</p>
+                <div className="booking-empty-state">
+                  <Building2 size={30} />
+                  <p>{isAr ? 'لا توجد عيادات متاحة حالياً' : 'No clinics available'}</p>
+                </div>
               ) : (
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(240px, 1fr))', gap: '1rem', marginBottom: '2rem' }}>
+                <div className="booking-clinic-grid">
                   {clinics.map(clinic => (
                     <button
                       key={clinic.id}
                       type="button"
                       onClick={() => { setSelectedClinic(clinic); setSelectedDoctor(null); setSelectedDate(''); setSelectedTime(''); setBookedSlotsByDate({}); setSelectedSpecialty(''); }}
-                      className="card-flat"
-                      style={{
-                        cursor: 'pointer', textAlign: isAr ? 'right' : 'left', padding: '1.25rem',
-                        border: `2px solid ${selectedClinic?.id === clinic.id ? 'var(--primary)' : 'var(--border)'}`,
-                        background: selectedClinic?.id === clinic.id ? 'var(--primary-50)' : 'var(--surface)',
-                        transition: 'var(--transition)', borderRadius: 'var(--radius-md)'
-                      }}
+                      className={`booking-clinic-card ${selectedClinic?.id === clinic.id ? 'selected' : ''}`}
                     >
-                      <div style={{
-                        width: 44, height: 44, borderRadius: '50%',
-                        background: 'linear-gradient(135deg, var(--primary) 0%, var(--primary-dark) 100%)',
-                        display: 'flex', alignItems: 'center', justifyContent: 'center',
-                        color: '#fff', fontWeight: 700, fontSize: '1.1rem', marginBottom: '0.75rem'
-                      }}>
+                      <div className="booking-clinic-avatar">
                         {(clinic.name || '?').charAt(0).toUpperCase()}
                       </div>
-                      <div style={{ fontWeight: 700, marginBottom: '0.25rem' }}>{clinic.name}</div>
-                      {clinic.address && <div className="text-sm text-muted">{clinic.address}</div>}
-                      {clinic.phone && <div className="text-sm text-muted" dir="ltr">{clinic.phone}</div>}
+                      <div className="booking-clinic-main">
+                        <strong>{clinic.name}</strong>
+                        {clinic.address && <span><MapPin size={14} /> {clinic.address}</span>}
+                        {clinic.phone && <span dir="ltr"><Phone size={14} /> {clinic.phone}</span>}
+                      </div>
+                      {selectedClinic?.id === clinic.id && <CheckCircle size={20} />}
                     </button>
                   ))}
                 </div>
               )}
-              <div className="flex justify-center mt-xl">
+              <div className="booking-actions booking-actions--end">
                 <button className="btn btn-primary" disabled={!selectedClinic} onClick={handleNext}>
                   {t('next_step')} <ChevronRight size={18} />
                 </button>
               </div>
-            </div>
+            </section>
           )}
 
           {/* STEP 2: Specialty & Doctor */}
           {step === 2 && (
-            <div className="animate-in">
-              <h3 className="mb-md"><Stethoscope size={20} style={{ display: 'inline', verticalAlign: 'text-bottom', marginInlineEnd: 8 }}/> {t('choose_specialty')}</h3>
-              <div className="specialty-row mb-xl">
+            <section className="booking-panel">
+              <div className="booking-panel-head">
+                <div>
+                  <span>{isAr ? 'الخطوة 2' : 'Step 2'}</span>
+                  <h2><Stethoscope size={20} /> {t('choose_doctor')}</h2>
+                </div>
+                <p>{isAr ? 'صفّ الأطباء حسب التخصص ثم اختر الطبيب المناسب.' : 'Filter by specialty and select the right doctor.'}</p>
+              </div>
+              <div className="specialty-row booking-specialties">
                 <button className={`chip ${selectedSpecialty === '' ? 'chip-active' : ''}`} onClick={() => setSelectedSpecialty('')}>
                   {isAr ? 'الكل' : 'All'}
                 </button>
@@ -417,11 +471,13 @@ const Booking = () => {
                 ))}
               </div>
 
-              <h3 className="mb-md">{t('choose_doctor')}</h3>
               {loadingDoctors ? (
-                <p className="text-center text-muted">{isAr ? 'جارٍ تحميل الأطباء...' : 'Loading doctors...'}</p>
+                <div className="booking-loading"><span></span><span></span><span></span></div>
               ) : filteredDoctors.length === 0 ? (
-                <p className="text-center text-muted">{isAr ? 'لا يوجد أطباء في هذه العيادة' : 'No doctors in this clinic'}</p>
+                <div className="booking-empty-state">
+                  <Stethoscope size={30} />
+                  <p>{isAr ? 'لا يوجد أطباء في هذه العيادة' : 'No doctors in this clinic'}</p>
+                </div>
               ) : (
                 <div className="doctors-grid">
                   {filteredDoctors.map(doc => (
@@ -430,82 +486,76 @@ const Booking = () => {
                       doctor={doc}
                       selected={selectedDoctor?.id === doc.id}
                       onSelect={handleSelectDoctor}
+                      bookingVariant
                     />
                   ))}
                 </div>
               )}
 
-              <div className="flex justify-between mt-xl">
+              <div className="booking-actions">
                 <button className="btn btn-ghost" onClick={handlePrev}>{t('previous')}</button>
                 <button className="btn btn-primary" disabled={!selectedDoctor} onClick={handleNext}>
                   {t('next_step')} <ChevronRight size={18} />
                 </button>
               </div>
-            </div>
+            </section>
           )}
 
           {/* STEP 3: Date & Time */}
           {step === 3 && (
-            <div className="animate-in">
-              <h3 className="mb-md"><CalendarIcon size={20} style={{ display: 'inline', verticalAlign: 'text-bottom', marginInlineEnd: 8 }}/> {t('select_date_time')}</h3>
-              <div className="flex gap-xl flex-wrap">
-                <div style={{ flex: '1 1 300px' }}>
+            <section className="booking-panel">
+              <div className="booking-panel-head">
+                <div>
+                  <span>{isAr ? 'الخطوة 3' : 'Step 3'}</span>
+                  <h2><CalendarIcon size={20} /> {t('select_date_time')}</h2>
+                </div>
+                <p>{isAr ? 'الأيام غير المتاحة والمواعيد المحجوزة تظهر بوضوح.' : 'Unavailable days and occupied times are clearly marked.'}</p>
+              </div>
+              <div className="booking-date-time-grid">
+                <div>
                   <CalendarPicker selectedDate={selectedDate} onSelectDate={(date) => { setSelectedDate(date); setSelectedTime(''); }} getDateMeta={getDateMeta} />
                 </div>
-                <div style={{ flex: '1 1 300px' }}>
+                <div>
                   {selectedDate ? (
                     <>
                       {availabilityLoading && (
-                        <p className="text-sm text-muted mb-sm">{isAr ? 'جارٍ تحديث المواعيد المتاحة...' : 'Refreshing availability...'}</p>
+                        <p className="booking-refreshing">{isAr ? 'جارٍ تحديث المواعيد المتاحة...' : 'Refreshing availability...'}</p>
                       )}
                       <TimeSlotGrid slots={availableSlots} selectedTime={selectedTime} onSelectTime={(time) => { setFormError(''); setSelectedTime(time); }} />
                     </>
                   ) : (
-                    <div className="text-center text-muted mt-xl">
-                      <CalendarIcon size={48} opacity={0.2} className="mb-sm" style={{ margin: '0 auto' }}/>
-                      <p>{t('choose_date')} first</p>
+                    <div className="booking-empty-state booking-empty-state--tall">
+                      <CalendarIcon size={34} />
+                      <p>{isAr ? 'اختر التاريخ أولاً' : 'Choose a date first'}</p>
                     </div>
                   )}
                 </div>
               </div>
-              {formError && (
-                <div style={{
-                  background: 'rgba(239,68,68,0.08)', border: '1px solid var(--danger)',
-                  color: 'var(--danger)', padding: '0.75rem 1rem', borderRadius: 'var(--radius-md)',
-                  marginTop: '1rem', fontSize: '0.9rem', whiteSpace: 'pre-line'
-                }}>
-                  {formError}
-                </div>
-              )}
-              <div className="flex justify-between mt-xl">
+              <BookingErrorMessage>{formError}</BookingErrorMessage>
+              <div className="booking-actions">
                 <button className="btn btn-ghost" onClick={handlePrev}>{t('previous')}</button>
                 <button className="btn btn-primary" disabled={!selectedDate || !selectedTime || availabilityLoading} onClick={handleNext}>
                   {t('next_step')} <ChevronRight size={18} />
                 </button>
               </div>
-            </div>
+            </section>
           )}
 
           {/* STEP 4: Patient Details */}
           {step === 4 && (
-            <div className="animate-in">
-              <h3 className="mb-xl" style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                <User size={22} color="var(--primary)" />
-                {isAr ? 'بيانات المريض' : 'Patient Details'}
-              </h3>
-
-              {formError && (
-                <div style={{
-                  background: 'rgba(239,68,68,0.08)', border: '1px solid var(--danger)',
-                  color: 'var(--danger)', padding: '0.75rem 1rem', borderRadius: 'var(--radius-md)',
-                  marginBottom: '1rem', fontSize: '0.9rem', whiteSpace: 'pre-line'
-                }}>
-                  {formError}
+            <section className="booking-panel">
+              <div className="booking-panel-head">
+                <div>
+                  <span>{isAr ? 'الخطوة 4' : 'Step 4'}</span>
+                  <h2><User size={20} /> {isAr ? 'بيانات المريض' : 'Patient details'}</h2>
                 </div>
-              )}
+                <p>{isAr ? 'سنستخدم هذه البيانات لإرسال الطلب للعيادة.' : 'These details are used to send the request to the clinic.'}</p>
+              </div>
 
-              <div className="flex gap-md flex-wrap mb-md">
-                <div className="form-group" style={{ flex: 1, minWidth: 220 }}>
+              <BookingErrorMessage>{formError}</BookingErrorMessage>
+
+              <div className="booking-form-grid">
+                <div className="form-group">
                   <label className="form-label">{t('full_name')} *</label>
                   <input
                     className="input"
@@ -513,13 +563,13 @@ const Booking = () => {
                     placeholder={isAr ? 'أحمد محمد العلي' : 'John Doe'}
                     value={patientData.name}
                     onChange={e => setPatientData({...patientData, name: e.target.value})}
-                    style={{ borderColor: patientData.name && !nameIsValid ? 'var(--danger)' : undefined }}
+                    aria-invalid={Boolean(patientData.name && !nameIsValid)}
                   />
                   {patientData.name && !nameIsValid && (
-                    <span style={{ color: 'var(--danger)', fontSize: '0.75rem' }}>{isAr ? 'أحرف فقط، 3 على الأقل' : 'Letters only, min 3'}</span>
+                    <span className="booking-field-hint booking-field-hint--error">{isAr ? 'أحرف فقط، 3 على الأقل' : 'Letters only, min 3'}</span>
                   )}
                 </div>
-                <div className="form-group" style={{ flex: 1, minWidth: 220 }}>
+                <div className="form-group">
                   <label className="form-label">{t('phone_number')} *</label>
                   <input
                     className="input"
@@ -529,54 +579,49 @@ const Booking = () => {
                     placeholder="07XXXXXXXXX"
                     value={patientData.phone}
                     onChange={e => setPatientData({...patientData, phone: e.target.value.replace(/\D/g, '')})}
-                    style={{ borderColor: patientData.phone && !phoneIsValid ? 'var(--danger)' : undefined }}
+                    aria-invalid={Boolean(patientData.phone && !phoneIsValid)}
                   />
-                  <span style={{ color: patientData.phone && !phoneIsValid ? 'var(--danger)' : 'var(--text-muted)', fontSize: '0.75rem' }}>
+                  <span className={`booking-field-hint ${patientData.phone && !phoneIsValid ? 'booking-field-hint--error' : ''}`}>
                     {isAr ? `11 رقماً (${cleanPhone.length}/11)` : `11 digits (${cleanPhone.length}/11)`}
                   </span>
                 </div>
+                <div className="form-group booking-form-grid__wide">
+                  <label className="form-label">{t('email')} <span className="booking-field-optional">({isAr ? 'اختياري' : 'optional'})</span></label>
+                  <input className="input" type="email" placeholder="example@email.com" value={patientData.email} onChange={e => setPatientData({...patientData, email: e.target.value})} />
+                </div>
               </div>
-              <div className="form-group">
-                <label className="form-label">{t('email')} <span style={{ color: 'var(--text-muted)', fontSize: '0.8rem' }}>({isAr ? 'اختياري' : 'optional'})</span></label>
-                <input className="input" type="email" placeholder="example@email.com" value={patientData.email} onChange={e => setPatientData({...patientData, email: e.target.value})} />
-              </div>
-              <div className="flex justify-between mt-xl">
+              <div className="booking-actions">
                 <button className="btn btn-ghost" onClick={handlePrev}>{t('previous')}</button>
                 <button className="btn btn-primary" disabled={!nameIsValid || !phoneIsValid} onClick={handleNext}>
                   {t('next_step')} <ChevronRight size={18} />
                 </button>
               </div>
-            </div>
+            </section>
           )}
 
           {/* STEP 5: Payment */}
           {step === 5 && (
-            <div className="animate-in">
-              <h3 className="mb-xl text-center">
-                <CreditCard size={24} style={{ display: 'inline', verticalAlign: 'text-bottom', marginInlineEnd: 8 }}/>
-                {isAr ? 'اختر طريقة الدفع' : 'Choose Payment Method'}
-              </h3>
+            <section className="booking-panel">
+              <div className="booking-panel-head">
+                <div>
+                  <span>{isAr ? 'الخطوة 5' : 'Step 5'}</span>
+                  <h2><CreditCard size={20} /> {isAr ? 'تأكيد الحجز' : 'Confirm booking'}</h2>
+                </div>
+                <p>{isAr ? 'راجع التفاصيل واختر طريقة الدفع قبل إرسال الطلب.' : 'Review the details and choose a payment method before submitting.'}</p>
+              </div>
 
               {/* Payment Methods */}
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))', gap: '1rem', marginBottom: '2rem' }}>
+              <div className="booking-payment-grid">
                 {paymentMethods.map(pm => (
                   <button
                     key={pm.id}
                     type="button"
                     onClick={() => setPaymentMethod(pm.id)}
-                    className="card-flat"
-                    style={{
-                      cursor: 'pointer', textAlign: 'center', padding: '1.5rem 1rem',
-                      border: `2px solid ${paymentMethod === pm.id ? 'var(--primary)' : 'var(--border)'}`,
-                      background: paymentMethod === pm.id ? 'var(--primary-50)' : 'var(--surface)',
-                      transition: 'var(--transition)'
-                    }}
+                    className={`booking-payment-card ${paymentMethod === pm.id ? 'selected' : ''}`}
                   >
-                    <div style={{ marginBottom: '0.5rem', display: 'flex', justifyContent: 'center' }}>
-                      <pm.Icon size={28} color={paymentMethod === pm.id ? 'var(--primary)' : 'var(--text-secondary)'} />
-                    </div>
-                    <div style={{ fontWeight: 700 }}>{isAr ? pm.labelAr : pm.label}</div>
-                    <div className="text-sm text-muted">{isAr ? pm.descAr : pm.desc}</div>
+                    <pm.Icon size={24} />
+                    <strong>{isAr ? pm.labelAr : pm.label}</strong>
+                    <span>{isAr ? pm.descAr : pm.desc}</span>
                   </button>
                 ))}
               </div>
@@ -603,32 +648,19 @@ const Booking = () => {
               )}
 
               {/* Summary */}
-              <div className="card-flat bg-alt text-center mb-xl">
-                <h4 className="mb-sm">{t('booking_summary')}</h4>
-                <p>{isAr ? selectedDoctor?.nameAr : selectedDoctor?.name}</p>
-                <p className="mb-sm">{selectedDate} — {to12Hour(selectedTime, isAr)}</p>
-                <p className="text-sm text-muted mb-md">
-                  {isAr ? 'طريقة الدفع: ' : 'Payment: '}
-                  {isAr
-                    ? paymentMethods.find(p => p.id === paymentMethod)?.labelAr
-                    : paymentMethods.find(p => p.id === paymentMethod)?.label}
-                </p>
-                <div style={{ fontSize: '1.5rem', fontWeight: 800, color: 'var(--primary)' }}>
-                  {t('total')}: ${selectedDoctor?.fee}
-                </div>
+              <div className="booking-confirm-card">
+                <h3>{t('booking_summary')}</h3>
+                <div><span>{isAr ? 'العيادة' : 'Clinic'}</span><strong>{selectedClinic?.name || '-'}</strong></div>
+                <div><span>{t('doctor')}</span><strong>{selectedDoctorName || '-'}</strong></div>
+                <div><span>{isAr ? 'التاريخ والوقت' : 'Date and time'}</span><strong>{selectedDate} · {to12Hour(selectedTime, isAr)}</strong></div>
+                <div><span>{t('patient')}</span><strong>{patientData.name}</strong></div>
+                <div><span>{isAr ? 'طريقة الدفع' : 'Payment'}</span><strong>{isAr ? selectedPayment?.labelAr : selectedPayment?.label}</strong></div>
+                <div className="booking-confirm-total"><span>{t('total')}</span><strong>${selectedDoctor?.fee}</strong></div>
               </div>
 
-              {formError && (
-                <div style={{
-                  background: 'rgba(239,68,68,0.08)', border: '1px solid var(--danger)',
-                  color: 'var(--danger)', padding: '0.75rem 1rem', borderRadius: 'var(--radius-md)',
-                  marginBottom: '1rem', fontSize: '0.9rem', whiteSpace: 'pre-line'
-                }}>
-                  {formError}
-                </div>
-              )}
+              <BookingErrorMessage>{formError}</BookingErrorMessage>
 
-              <div className="flex justify-between">
+              <div className="booking-actions">
                 <button className="btn btn-ghost" onClick={handlePrev} disabled={submitting}>{t('previous')}</button>
                 <button className="btn btn-primary btn-lg" onClick={confirmBooking} disabled={submitting}>
                   {submitting
@@ -638,64 +670,64 @@ const Booking = () => {
                         : t('pay_now'))}
                 </button>
               </div>
-            </div>
+            </section>
           )}
 
           {/* STEP 6: Success */}
           {step === 6 && (
-            <div className="animate-in text-center py-xl">
-              <div style={{
-                width: 90, height: 90, borderRadius: '50%',
-                background: 'rgba(245,158,11,0.12)',
-                display: 'flex', alignItems: 'center', justifyContent: 'center',
-                margin: '0 auto 1.5rem'
-              }}>
-                <Clock size={48} color="#f59e0b" />
+            <section className="booking-panel booking-success-panel">
+              <div className="booking-success-icon">
+                <Clock size={44} />
               </div>
-              <h2 className="mb-md" style={{ color: '#f59e0b' }}>
+              <h2>
                 {isAr ? 'طلب الحجز قيد المراجعة' : 'Booking Request Received'}
               </h2>
-              <p className="text-muted mb-xl" style={{ maxWidth: 400, margin: '0 auto 2rem' }}>
+              <p>
                 {isAr
                   ? 'تم إرسال طلب حجزك بنجاح. سيقوم فريق العيادة بمراجعته وتأكيده في أقرب وقت.'
                   : 'Your booking request has been sent. The clinic team will review and confirm it shortly.'}
               </p>
-              <div className="card-flat bg-alt mb-xl" style={{ display: 'inline-block', minWidth: 340, textAlign: isAr ? 'right' : 'left' }}>
-                <p className="mb-sm" style={{ display: 'flex', justifyContent: 'space-between', gap: '1.5rem' }}>
-                  <strong>{isAr ? 'رقم الحجز' : t('booking_id')}:</strong> <span style={{ fontFamily: 'monospace', color: 'var(--primary)', fontWeight: 700 }}>{bookingCode}</span>
-                </p>
-                <p className="mb-sm" style={{ display: 'flex', justifyContent: 'space-between', gap: '1.5rem' }}>
-                  <strong>{t('patient')}:</strong> <span>{patientData.name}</span>
-                </p>
-                <p className="mb-sm" style={{ display: 'flex', justifyContent: 'space-between', gap: '1.5rem' }}>
-                  <strong>{isAr ? 'الهاتف' : 'Phone'}:</strong> <span dir="ltr">{patientData.phone}</span>
-                </p>
-                <p className="mb-sm" style={{ display: 'flex', justifyContent: 'space-between', gap: '1.5rem' }}>
-                  <strong>{t('doctor')}:</strong> <span>{isAr ? selectedDoctor?.nameAr : selectedDoctor?.name}</span>
-                </p>
-                <p className="mb-sm" style={{ display: 'flex', justifyContent: 'space-between', gap: '1.5rem' }}>
-                  <strong>{isAr ? 'التاريخ والوقت' : 'Date & Time'}:</strong> <span>{selectedDate} — {to12Hour(selectedTime, isAr)}</span>
-                </p>
-                <p className="mb-sm" style={{ display: 'flex', justifyContent: 'space-between', gap: '1.5rem', alignItems: 'center' }}>
-                  <strong>{isAr ? 'طريقة الدفع' : 'Payment'}:</strong>
-                  <span style={{ display: 'inline-flex', alignItems: 'center', gap: '0.4rem' }}>
+              <div className="booking-success-summary">
+                <div><span>{isAr ? 'رقم الحجز' : t('booking_id')}</span><strong dir="ltr">{bookingCode}</strong></div>
+                <div><span>{t('patient')}</span><strong>{patientData.name}</strong></div>
+                <div><span>{isAr ? 'الهاتف' : 'Phone'}</span><strong dir="ltr">{patientData.phone}</strong></div>
+                <div><span>{isAr ? 'العيادة' : 'Clinic'}</span><strong>{selectedClinic?.name || '-'}</strong></div>
+                <div><span>{t('doctor')}</span><strong>{selectedDoctorName}</strong></div>
+                <div><span>{isAr ? 'التاريخ والوقت' : 'Date & Time'}</span><strong>{selectedDate} · {to12Hour(selectedTime, isAr)}</strong></div>
+                <div>
+                  <span>{isAr ? 'طريقة الدفع' : 'Payment'}</span>
+                  <strong>
                     {(() => { const PM = paymentMethods.find(p => p.id === paymentMethod); return PM ? <><PM.Icon size={16} /> {isAr ? PM.labelAr : PM.label}</> : null; })()}
-                  </span>
-                </p>
-                <p className="mb-sm" style={{ display: 'flex', justifyContent: 'space-between', gap: '1.5rem' }}>
-                  <strong>{isAr ? 'المبلغ' : 'Amount'}:</strong> <span style={{ fontWeight: 700 }}>${selectedDoctor?.fee}</span>
-                </p>
-                <p style={{ display: 'flex', justifyContent: 'space-between', gap: '1.5rem' }}>
-                  <strong>{t('status')}:</strong> <span className="badge badge-warning">{isAr ? 'بانتظار التأكيد' : 'Pending'}</span>
-                </p>
+                  </strong>
+                </div>
+                <div><span>{isAr ? 'المبلغ' : 'Amount'}</span><strong>${selectedDoctor?.fee}</strong></div>
+                <div><span>{t('status')}</span><strong><span className="badge badge-warning">{isAr ? 'بانتظار التأكيد' : 'Pending'}</span></strong></div>
               </div>
-              <div className="flex justify-center gap-md">
+              <div className="booking-success-actions">
                 <button className="btn btn-outline" onClick={() => navigate('/')}>{t('back_to_home')}</button>
                 <button className="btn btn-primary" onClick={() => navigate('/profile')}>{t('my_appointments')}</button>
               </div>
-            </div>
+            </section>
           )}
 
+          </main>
+
+          {step < 6 && (
+            <aside className="booking-summary-rail">
+              <div className="booking-rail-card">
+                <span>{t('booking_summary')}</span>
+                <h2>{activeStepLabel}</h2>
+                <div className="booking-rail-list">
+                  <div><Building2 size={15} /><span>{selectedClinic?.name || (isAr ? 'اختر العيادة' : 'Choose clinic')}</span></div>
+                  <div><Stethoscope size={15} /><span>{selectedDoctorName || (isAr ? 'اختر الطبيب' : 'Choose doctor')}</span></div>
+                  <div><CalendarIcon size={15} /><span>{selectedDate || (isAr ? 'اختر التاريخ' : 'Choose date')}</span></div>
+                  <div><Clock size={15} /><span>{selectedTime ? to12Hour(selectedTime, isAr) : (isAr ? 'اختر الوقت' : 'Choose time')}</span></div>
+                  <div><User size={15} /><span>{patientData.name || (isAr ? 'بيانات المريض' : 'Patient details')}</span></div>
+                  {patientData.email && <div><Mail size={15} /><span>{patientData.email}</span></div>}
+                </div>
+              </div>
+            </aside>
+          )}
         </div>
       </div>
     </div>

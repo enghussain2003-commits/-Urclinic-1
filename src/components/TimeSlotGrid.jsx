@@ -25,29 +25,46 @@ const TimeSlotGrid = ({ slots, selectedTime, onSelectTime }) => {
   const isAr = i18n.language === 'ar';
 
   if (!slots || slots.length === 0) {
-    return <p style={{ textAlign: 'center', padding: '2rem', color: 'var(--text-muted)' }}>{t('no_slots')}</p>;
+    return (
+      <div className="timeslots-empty">
+        <p>{t('no_slots')}</p>
+      </div>
+    );
   }
 
+  const groups = [
+    { id: 'morning', label: isAr ? 'الصباح' : 'Morning', slots: slots.filter(slot => Number(slot.time.slice(0, 2)) < 12) },
+    { id: 'afternoon', label: isAr ? 'بعد الظهر' : 'Afternoon', slots: slots.filter(slot => Number(slot.time.slice(0, 2)) >= 12) },
+  ].filter(group => group.slots.length > 0);
+
   return (
-    <div>
-      <h4 style={{ marginBottom: '0.75rem' }}>{t('available_slots')}</h4>
-      <div className="timeslots-grid">
-        {slots.map(slot => {
-          const disabled = slot.status !== 'available';
-          return (
-            <button
-              key={slot.time}
-              className={`timeslot timeslot--${slot.status || 'available'} ${selectedTime === slot.time ? 'selected' : ''}`}
-              onClick={() => !disabled && onSelectTime(slot.time)}
-              disabled={disabled}
-              title={stateLabel(slot, isAr)}
-            >
-              <span>{to12Hour(slot.time, isAr)}</span>
-              {slot.status !== 'available' && <small>{stateLabel(slot, isAr)}</small>}
-            </button>
-          );
-        })}
+    <div className="timeslots-panel">
+      <div className="timeslots-panel__head">
+        <h4>{t('available_slots')}</h4>
+        <span>{slots.filter(slot => slot.status === 'available').length}</span>
       </div>
+      {groups.map(group => (
+        <section key={group.id} className="timeslot-group">
+          <div className="timeslot-group__label">{group.label}</div>
+          <div className="timeslots-grid">
+            {group.slots.map(slot => {
+              const disabled = slot.status !== 'available';
+              return (
+                <button
+                  key={slot.time}
+                  className={`timeslot timeslot--${slot.status || 'available'} ${selectedTime === slot.time ? 'selected' : ''}`}
+                  onClick={() => !disabled && onSelectTime(slot.time)}
+                  disabled={disabled}
+                  title={stateLabel(slot, isAr)}
+                >
+                  <span>{to12Hour(slot.time, isAr)}</span>
+                  <small>{stateLabel(slot, isAr)}</small>
+                </button>
+              );
+            })}
+          </div>
+        </section>
+      ))}
     </div>
   );
 };

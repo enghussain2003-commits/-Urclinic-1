@@ -1,7 +1,7 @@
 import { useTranslation } from 'react-i18next';
-import { Clock, CheckCircle, MapPin } from 'lucide-react';
+import { Clock, CheckCircle, MapPin, Stethoscope } from 'lucide-react';
 
-const DoctorCard = ({ doctor, onSelect, selected }) => {
+const DoctorCard = ({ doctor, onSelect, selected, bookingVariant = false }) => {
   const { t, i18n } = useTranslation();
   const isAr = i18n.language === 'ar';
 
@@ -14,9 +14,12 @@ const DoctorCard = ({ doctor, onSelect, selected }) => {
 
   // Clinic location comes from the doctor's database record.
   const clinicLocation = doctor.clinic_address || doctor.clinic_name || (isAr ? 'العيادة الرئيسية' : 'Main Clinic');
+  const workingHours = `${doctor.open_time || '09:00'} - ${doctor.close_time || '17:00'}`;
+  const CardTag = onSelect ? 'button' : 'div';
 
   return (
-    <div
+    <CardTag
+      {...(onSelect ? { type: 'button' } : {})}
       className={`doctor-card ${selected ? 'selected' : ''}`}
       onClick={() => onSelect && onSelect(doctor)}
     >
@@ -28,12 +31,21 @@ const DoctorCard = ({ doctor, onSelect, selected }) => {
       </div>
 
       <div className="doctor-name">{name}</div>
-      <div className="doctor-specialty">{t(doctor.specialty) || doctor.specialty}</div>
+      <div className="doctor-specialty">
+        {bookingVariant && <Stethoscope size={14} />}
+        {t(doctor.specialty) || doctor.specialty}
+      </div>
 
       <div className="doctor-meta">
         <MapPin size={14} />
         <span>{clinicLocation}</span>
       </div>
+      {bookingVariant && (
+        <div className="doctor-meta">
+          <Clock size={14} />
+          <span dir="ltr">{workingHours}</span>
+        </div>
+      )}
 
       <div className="doctor-card-foot">
         <span className="doctor-availability">
@@ -41,8 +53,9 @@ const DoctorCard = ({ doctor, onSelect, selected }) => {
             ? <><CheckCircle size={14} /> {t('available')}</>
             : <><Clock size={14} /> {doctor.nextSlot}</>}
         </span>
+        {bookingVariant && selected && <span className="doctor-selected-mark"><CheckCircle size={14} /></span>}
       </div>
-    </div>
+    </CardTag>
   );
 };
 
