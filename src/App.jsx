@@ -20,6 +20,10 @@ import ClinicSettings from './pages/ClinicSettings';
 import ForgotPassword from './pages/ForgotPassword';
 import ResetPassword from './pages/ResetPassword';
 import UserSettings from './pages/UserSettings';
+import SuperAdminClinics from './pages/SuperAdminClinics';
+import SuperAdminClinicProvision from './pages/SuperAdminClinicProvision';
+import SuperAdminClinicDetails from './pages/SuperAdminClinicDetails';
+import ForceChangePassword from './pages/ForceChangePassword';
 import { Menu } from 'lucide-react';
 
 const Layout = ({ children }) => {
@@ -67,13 +71,19 @@ const Layout = ({ children }) => {
 
 const ProtectedRoute = ({ children, requiredRole }) => {
   const { user } = useApp();
+  const location = useLocation();
   const staffRoles = ['super_admin', 'clinic_admin', 'employee', 'doctor'];
   const isStaff = user && staffRoles.includes(user.role);
 
   if (!user) return <Navigate to="/login" />;
+  if (user.must_change_password && location.pathname !== '/change-password') {
+    return <Navigate to="/change-password" replace />;
+  }
+  if (user.status === 'suspended') return <Navigate to="/login" replace />;
 
   // Staff-only pages (dashboard): block non-staff.
   if (requiredRole === 'clinic' && !isStaff) return <Navigate to="/" />;
+  if (requiredRole === 'super_admin' && user.role !== 'super_admin') return <Navigate to="/dashboard" />;
 
   // Patient-only pages (booking): block staff and send them to their dashboard.
   if (requiredRole === 'patient' && user.role !== 'patient') {
@@ -95,6 +105,11 @@ function App() {
             <Route path="/signup" element={<SignUp />} />
             <Route path="/forgot-password" element={<ForgotPassword />} />
             <Route path="/reset-password" element={<ResetPassword />} />
+            <Route path="/change-password" element={
+              <ProtectedRoute>
+                <ForceChangePassword />
+              </ProtectedRoute>
+            } />
             <Route path="/booking" element={
               <ProtectedRoute requiredRole="patient">
                 <Booking />
@@ -140,6 +155,21 @@ function App() {
             <Route path="/dashboard/settings" element={
               <ProtectedRoute requiredRole="clinic">
                 <ClinicSettings />
+              </ProtectedRoute>
+            } />
+            <Route path="/dashboard/super-admin/clinics" element={
+              <ProtectedRoute requiredRole="super_admin">
+                <SuperAdminClinics />
+              </ProtectedRoute>
+            } />
+            <Route path="/dashboard/super-admin/clinics/new" element={
+              <ProtectedRoute requiredRole="super_admin">
+                <SuperAdminClinicProvision />
+              </ProtectedRoute>
+            } />
+            <Route path="/dashboard/super-admin/clinics/:id" element={
+              <ProtectedRoute requiredRole="super_admin">
+                <SuperAdminClinicDetails />
               </ProtectedRoute>
             } />
             <Route path="/settings" element={

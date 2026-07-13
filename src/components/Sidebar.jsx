@@ -3,14 +3,14 @@ import { useTranslation } from 'react-i18next';
 import { Link, useLocation } from 'react-router-dom';
 import {
   Activity, LayoutDashboard, CalendarDays, Users,
-  Settings, Stethoscope, Globe, LogOut, User, X,
+  Settings, Stethoscope, Globe, LogOut, User, X, Building2, PlusCircle, ShieldCheck,
 } from 'lucide-react';
 import { useApp } from '../context/AppContext';
 
 const Sidebar = ({ isOpen, onClose }) => {
   const { t, i18n } = useTranslation();
   const location = useLocation();
-  const { logout } = useApp();
+  const { logout, user } = useApp();
   const isActive = (path) => location.pathname === path;
 
   const toggleLang = () => {
@@ -40,6 +40,12 @@ const Sidebar = ({ isOpen, onClose }) => {
     { path: '/dashboard/schedule', icon: CalendarDays, label: t('schedule_menu') },
     { path: '/dashboard/settings', icon: Settings, label: t('settings') || 'Settings' },
     { path: '/settings', icon: User, label: t('user_settings') || 'Account Settings' },
+  ];
+
+  const superAdminItems = [
+    { path: '/dashboard/super-admin/clinics', icon: Building2, label: i18n.language === 'ar' ? 'العيادات' : 'Clinics' },
+    { path: '/dashboard/super-admin/clinics/new', icon: PlusCircle, label: i18n.language === 'ar' ? 'إضافة عيادة' : 'Add New Clinic' },
+    { path: '/dashboard/super-admin/clinics', icon: ShieldCheck, label: i18n.language === 'ar' ? 'إدارة الحسابات' : 'Account Management' },
   ];
 
   return (
@@ -72,6 +78,23 @@ const Sidebar = ({ isOpen, onClose }) => {
 
         <div className="sidebar-section-title">{t('clinic_panel')}</div>
         <nav className="sidebar-nav">
+          {user?.role === 'super_admin' && (
+            <>
+              <div className="sidebar-section-title sidebar-section-title--nested">
+                {i18n.language === 'ar' ? 'إدارة العيادات' : 'Clinic Management'}
+              </div>
+              {superAdminItems.map(item => (
+                <Link
+                  key={`${item.path}-${item.label}`}
+                  to={item.path}
+                  className={`sidebar-item ${isActive(item.path) ? 'active' : ''}`}
+                >
+                  <item.icon size={20} />
+                  <span>{item.label}</span>
+                </Link>
+              ))}
+            </>
+          )}
           {items.map(item => (
             <Link
               key={item.path}

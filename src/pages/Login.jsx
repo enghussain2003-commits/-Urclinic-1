@@ -1,15 +1,15 @@
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate, Link } from 'react-router-dom';
-import { Activity, AlertCircle, Eye, EyeOff, LockKeyhole, Mail, ShieldCheck, Stethoscope, User } from 'lucide-react';
+import { Activity, AlertCircle, Eye, EyeOff, LockKeyhole, Mail, ShieldCheck, User } from 'lucide-react';
 import { supabase } from '../supabaseClient';
 import { useApp } from '../context/AppContext';
+import { routeForRole } from '../services/superAdminService';
 
 const Login = () => {
   const { t } = useTranslation();
   const navigate = useNavigate();
   const { login } = useApp();
-  const [role, setRole] = useState('patient');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
@@ -50,16 +50,31 @@ const Login = () => {
         .single();
 
       const actualRole = profile?.role || 'patient';
-
-      // Enforce: a patient account cannot log in through the clinic-staff tab and vice-versa.
       const isStaff = ['super_admin', 'clinic_admin', 'employee', 'doctor'].includes(actualRole);
-      if (role === 'clinic' && !isStaff) {
+
+      if (profile?.status === 'suspended') {
         setError(t('email') === 'البريد الإلكتروني'
-          ? 'هذا الحساب ليس لديه صلاحية موظف عيادة'
-          : 'This account does not have clinic staff access');
+          ? 'تم تعليق هذا الحساب. يرجى التواصل مع الإدارة.'
+          : 'This account is suspended. Please contact administration.');
         await supabase.auth.signOut();
         setLoading(false);
         return;
+      }
+
+      if (isStaff && actualRole !== 'super_admin' && profile?.clinic_id) {
+        const { data: clinic } = await supabase
+          .from('clinics')
+          .select('is_active')
+          .eq('id', profile.clinic_id)
+          .single();
+        if (clinic?.is_active === false) {
+          setError(t('email') === 'البريد الإلكتروني'
+            ? 'تم تعليق العيادة المرتبطة بهذا الحساب.'
+            : 'The clinic linked to this account is suspended.');
+          await supabase.auth.signOut();
+          setLoading(false);
+          return;
+        }
       }
 
       const userData = {
@@ -69,10 +84,12 @@ const Login = () => {
         phone: profile?.phone_number || '',
         role: actualRole,
         clinic_id: profile?.clinic_id || null,
+        status: profile?.status || 'active',
+        must_change_password: Boolean(profile?.must_change_password),
       };
 
       login(userData);
-      navigate(isStaff ? '/dashboard' : '/');
+      navigate(userData.must_change_password ? '/change-password' : routeForRole(actualRole), { replace: true });
     } catch (err) {
       setError(err.message || 'Login failed');
     } finally {
@@ -103,19 +120,13 @@ const Login = () => {
         <div className="auth-card">
           <div className="auth-card-header">
             <div className="auth-logo-mark"><Activity size={24} /></div>
-            <h2>{t('welcome_back')}</h2>
+            <h2>{t('email') === 'البريد الإلكتروني' ? 'تسجيل الدخول إلى UrClinic' : 'Sign in to UrClinic'}</h2>
             <p>{t('login_subtitle')}</p>
           </div>
 
-          <div className="role-select" role="group" aria-label="Account type">
-            <button type="button" className={`role-btn ${role === 'patient' ? 'active' : ''}`} onClick={() => setRole('patient')}>
-              <User size={20} />
-              <span>{t('as_patient')}</span>
-            </button>
-            <button type="button" className={`role-btn ${role === 'clinic' ? 'active' : ''}`} onClick={() => setRole('clinic')}>
-              <Stethoscope size={20} />
-              <span>{t('as_clinic')}</span>
-            </button>
+          <div className="auth-unified-note">
+            <User size={18} />
+            <span>{t('email') === 'البريد الإلكتروني' ? 'استخدم نفس صفحة الدخول لكل الأدوار.' : 'Use one sign-in for patients, staff, doctors, clinic admins, and Super Admins.'}</span>
           </div>
 
           {error && (

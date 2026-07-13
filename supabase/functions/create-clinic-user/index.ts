@@ -1,14 +1,12 @@
 // =====================================================================
 // Edge Function: create-clinic-user
 // =====================================================================
-// WHY: a clinic_admin must be able to create doctor / employee accounts.
+// WHY: only a super_admin may create doctor / employee accounts.
 // Creating an Auth user for someone else requires the SERVICE ROLE key,
 // which MUST NEVER live in the React frontend. So it runs here, server-side.
 //
 // SECURITY:
-//   * Verifies the CALLER's JWT and that their role is clinic_admin/super_admin.
-//   * Forces the new user's clinic_id to the caller's own clinic
-//     (a clinic_admin can never create a user in another clinic).
+//   * Verifies the CALLER's JWT and that their role is super_admin.
 //   * Only creates roles: 'doctor' or 'employee'.
 //   * Compensating cleanup: if profile/doctor creation fails AFTER the auth
 //     user was created, the auth user (and any partial rows) are deleted, so
@@ -61,13 +59,13 @@ Deno.serve(async (req) => {
     const { data: { user: caller } } = await callerClient.auth.getUser();
     if (!caller) return json({ error: 'Unauthorized' }, 401, cors);
 
-    // 2) Authorize: caller must be clinic_admin (or super_admin). Done BEFORE
+    // 2) Authorize: caller must be super_admin. Done BEFORE
     //    any service-role write, so the privileged path is never reached
     //    without a verified, authorized caller.
     const { data: callerProfile } = await admin
       .from('profiles').select('role, clinic_id').eq('id', caller.id).single();
-    if (!callerProfile || !['clinic_admin', 'super_admin'].includes(callerProfile.role)) {
-      return json({ error: 'Forbidden: clinic_admin only' }, 403, cors);
+    if (!callerProfile || callerProfile.role !== 'super_admin') {
+      return json({ error: 'Forbidden: super_admin only' }, 403, cors);
     }
 
     // 3) Validate payload.
@@ -77,10 +75,8 @@ Deno.serve(async (req) => {
       return json({ error: 'Invalid payload' }, 400, cors);
     }
 
-    // 4) clinic_id is ALWAYS the caller's clinic (super_admin may target one).
-    const clinicId = callerProfile.role === 'super_admin'
-      ? (body.clinic_id ?? callerProfile.clinic_id)
-      : callerProfile.clinic_id;
+    // 4) super_admin must target a clinic explicitly.
+    const clinicId = body.clinic_id ?? callerProfile.clinic_id;
     if (!clinicId) return json({ error: 'No clinic_id for caller' }, 400, cors);
 
     // 5) Create the auth user.
