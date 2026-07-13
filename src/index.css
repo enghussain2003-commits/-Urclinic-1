@@ -7596,3 +7596,857 @@ tbody tr:last-child td { border-bottom: none; }
     width: 100%;
   }
 }
+
+/* ========== PREMIUM DOCTOR MANAGEMENT ========== */
+.doctor-management-page {
+  display: flex;
+  flex-direction: column;
+  gap: 1.25rem;
+  padding: clamp(1rem, 2vw, 1.75rem);
+  background:
+    radial-gradient(circle at 18% 0%, rgba(14, 165, 233, 0.08), transparent 28%),
+    linear-gradient(180deg, #f8fafc 0%, #ffffff 42%, #f8fafc 100%);
+  min-height: 100%;
+}
+
+.doctor-management-hero,
+.doctor-management-toolbar,
+.doctor-management-panel,
+.doctor-management-stat,
+.doctor-management-modal {
+  border: 1px solid rgba(226, 232, 240, 0.92);
+  background: rgba(255, 255, 255, 0.94);
+  box-shadow: 0 22px 60px rgba(15, 23, 42, 0.07);
+}
+
+.doctor-management-hero {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1.5rem;
+  border-radius: 24px;
+  padding: clamp(1.15rem, 2.4vw, 2rem);
+  overflow: hidden;
+  position: relative;
+}
+
+.doctor-management-hero::after {
+  content: "";
+  position: absolute;
+  inset-inline-end: -5rem;
+  top: -5rem;
+  width: 15rem;
+  height: 15rem;
+  border-radius: 999px;
+  background: rgba(37, 99, 235, 0.08);
+  pointer-events: none;
+}
+
+.doctor-management-kicker {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+  color: #0369a1;
+  background: #e0f2fe;
+  border: 1px solid #bae6fd;
+  border-radius: 999px;
+  padding: 0.42rem 0.72rem;
+  font-size: 0.78rem;
+  font-weight: 800;
+  margin-bottom: 0.9rem;
+}
+
+.doctor-management-hero h1 {
+  margin: 0;
+  color: #0f172a;
+  font-size: clamp(1.85rem, 4vw, 3.15rem);
+  line-height: 1.12;
+  letter-spacing: 0;
+}
+
+.doctor-management-hero p {
+  margin: 0.75rem 0 0;
+  color: #64748b;
+  max-width: 48rem;
+  font-size: clamp(0.98rem, 1.4vw, 1.08rem);
+  line-height: 1.8;
+}
+
+.doctor-management-add {
+  min-height: 3rem;
+  padding-inline: 1.2rem;
+  box-shadow: 0 16px 34px rgba(37, 99, 235, 0.25);
+  position: relative;
+  z-index: 1;
+}
+
+.doctor-management-add:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 20px 42px rgba(37, 99, 235, 0.32);
+}
+
+.doctor-management-stats {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 1rem;
+}
+
+.doctor-management-stat {
+  border-radius: 20px;
+  padding: 1rem;
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 0.25rem 0.8rem;
+  align-items: center;
+  transition: transform var(--transition), box-shadow var(--transition), border-color var(--transition);
+}
+
+.doctor-management-stat:hover {
+  transform: translateY(-2px);
+  border-color: #bfdbfe;
+  box-shadow: 0 24px 58px rgba(15, 23, 42, 0.1);
+}
+
+.doctor-management-stat > span {
+  width: 2.35rem;
+  height: 2.35rem;
+  border-radius: 14px;
+  display: grid;
+  place-items: center;
+  color: #0369a1;
+  background: linear-gradient(135deg, #e0f2fe, #eff6ff);
+  grid-row: span 2;
+}
+
+.doctor-management-stat p {
+  margin: 0;
+  color: #64748b;
+  font-size: 0.82rem;
+  font-weight: 700;
+}
+
+.doctor-management-stat strong {
+  color: #0f172a;
+  font-size: 1.45rem;
+  line-height: 1;
+}
+
+.doctor-management-toolbar {
+  border-radius: 20px;
+  padding: 0.85rem;
+  display: grid;
+  grid-template-columns: minmax(16rem, 1fr) auto;
+  gap: 0.85rem;
+  align-items: center;
+}
+
+.doctor-management-search {
+  display: flex;
+  align-items: center;
+  gap: 0.65rem;
+  min-height: 3rem;
+  border: 1px solid #e2e8f0;
+  border-radius: 16px;
+  padding: 0 0.9rem;
+  background: #f8fafc;
+  color: #64748b;
+}
+
+.doctor-management-search:focus-within {
+  border-color: #93c5fd;
+  background: #fff;
+  box-shadow: 0 0 0 4px rgba(59, 130, 246, 0.1);
+}
+
+.doctor-management-search input {
+  width: 100%;
+  border: 0;
+  background: transparent;
+  outline: 0;
+  color: #0f172a;
+  font: inherit;
+}
+
+.doctor-management-search input::placeholder {
+  color: #94a3b8;
+}
+
+.doctor-management-filters {
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+  flex-wrap: wrap;
+}
+
+.doctor-management-filters > span {
+  width: 2.15rem;
+  height: 2.15rem;
+  border-radius: 12px;
+  display: grid;
+  place-items: center;
+  color: #0369a1;
+  background: #eff6ff;
+}
+
+.doctor-management-filters button {
+  border: 1px solid #e2e8f0;
+  background: #fff;
+  color: #475569;
+  min-height: 2.4rem;
+  border-radius: 999px;
+  padding: 0 0.82rem;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+  font-weight: 800;
+  cursor: pointer;
+  transition: transform var(--transition-fast), border-color var(--transition-fast), background var(--transition-fast), color var(--transition-fast);
+}
+
+.doctor-management-filters button:hover,
+.doctor-management-filters button.active {
+  transform: translateY(-1px);
+  border-color: #93c5fd;
+  background: #eff6ff;
+  color: #075985;
+}
+
+.doctor-management-filters em {
+  min-width: 1.35rem;
+  min-height: 1.35rem;
+  border-radius: 999px;
+  display: inline-grid;
+  place-items: center;
+  background: #e2e8f0;
+  color: #334155;
+  font-style: normal;
+  font-size: 0.72rem;
+}
+
+.doctor-management-filters button.active em {
+  background: #2563eb;
+  color: #fff;
+}
+
+.doctor-management-panel {
+  border-radius: 24px;
+  overflow: hidden;
+}
+
+.doctor-management-panel-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 1.15rem 1.25rem;
+  border-bottom: 1px solid #e2e8f0;
+  background: linear-gradient(180deg, #ffffff, #f8fafc);
+}
+
+.doctor-management-panel-head h2 {
+  margin: 0;
+  color: #0f172a;
+  font-size: 1.08rem;
+}
+
+.doctor-management-panel-head p {
+  margin: 0.2rem 0 0;
+  color: #64748b;
+  font-size: 0.86rem;
+}
+
+.doctor-management-live {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  color: #047857;
+  background: #ecfdf5;
+  border: 1px solid #bbf7d0;
+  border-radius: 999px;
+  padding: 0.4rem 0.65rem;
+  font-size: 0.76rem;
+  font-weight: 800;
+  white-space: nowrap;
+}
+
+.doctor-management-table-wrap {
+  overflow-x: auto;
+}
+
+.doctor-management-table {
+  width: 100%;
+  min-width: 980px;
+  border-collapse: separate;
+  border-spacing: 0;
+}
+
+.doctor-management-table th {
+  text-align: start;
+  color: #64748b;
+  font-size: 0.76rem;
+  font-weight: 900;
+  padding: 0.9rem 1rem;
+  background: #f8fafc;
+  border-bottom: 1px solid #e2e8f0;
+}
+
+.doctor-management-table td {
+  padding: 1rem;
+  border-bottom: 1px solid #eef2f7;
+  color: #334155;
+  vertical-align: middle;
+}
+
+.doctor-management-table tbody tr {
+  transition: background var(--transition-fast);
+}
+
+.doctor-management-table tbody tr:hover {
+  background: #f8fbff;
+}
+
+.doctor-management-identity {
+  display: flex;
+  align-items: center;
+  gap: 0.8rem;
+  min-width: 0;
+}
+
+.doctor-management-identity strong,
+.doctor-management-card h3 {
+  display: block;
+  color: #0f172a;
+  font-weight: 900;
+  line-height: 1.35;
+}
+
+.doctor-management-identity span {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  color: #64748b;
+  font-size: 0.82rem;
+  margin-top: 0.18rem;
+  max-width: 18rem;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.doctor-management-avatar {
+  width: 2.85rem;
+  height: 2.85rem;
+  border-radius: 16px;
+  display: grid;
+  place-items: center;
+  flex: 0 0 auto;
+  color: #fff;
+  font-weight: 900;
+  background:
+    linear-gradient(135deg, rgba(255, 255, 255, 0.22), transparent),
+    linear-gradient(135deg, #0284c7, #2563eb);
+  box-shadow: 0 14px 26px rgba(37, 99, 235, 0.22);
+}
+
+.doctor-management-specialty,
+.doctor-management-meta,
+.doctor-management-today {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+}
+
+.doctor-management-specialty {
+  color: #075985;
+  background: #eff6ff;
+  border: 1px solid #bfdbfe;
+  border-radius: 999px;
+  padding: 0.38rem 0.6rem;
+  font-size: 0.8rem;
+  font-weight: 850;
+}
+
+.doctor-management-meta {
+  max-width: 16rem;
+  color: #475569;
+}
+
+.doctor-management-meta span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.doctor-management-hours strong,
+.doctor-management-hours span {
+  display: block;
+}
+
+.doctor-management-hours strong {
+  color: #0f172a;
+  font-weight: 850;
+}
+
+.doctor-management-hours span {
+  color: #64748b;
+  font-size: 0.78rem;
+  max-width: 14rem;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.doctor-management-status {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.42rem;
+  border-radius: 999px;
+  padding: 0.38rem 0.62rem;
+  font-size: 0.78rem;
+  font-weight: 900;
+  white-space: nowrap;
+}
+
+.doctor-management-status span {
+  width: 0.5rem;
+  height: 0.5rem;
+  border-radius: 999px;
+}
+
+.doctor-management-status.active {
+  color: #047857;
+  background: #ecfdf5;
+  border: 1px solid #bbf7d0;
+}
+
+.doctor-management-status.active span {
+  background: #10b981;
+}
+
+.doctor-management-status.inactive {
+  color: #b45309;
+  background: #fffbeb;
+  border: 1px solid #fde68a;
+}
+
+.doctor-management-status.inactive span {
+  background: #f59e0b;
+}
+
+.doctor-management-today {
+  color: #0f172a;
+  font-weight: 850;
+}
+
+.doctor-management-icon-action {
+  width: 2.25rem;
+  height: 2.25rem;
+  border-radius: 12px;
+  border: 1px solid #e2e8f0;
+  background: #fff;
+  display: inline-grid;
+  place-items: center;
+  cursor: pointer;
+  transition: transform var(--transition-fast), border-color var(--transition-fast), background var(--transition-fast);
+}
+
+.doctor-management-icon-action:hover {
+  transform: translateY(-1px);
+}
+
+.doctor-management-icon-action.danger {
+  color: #dc2626;
+}
+
+.doctor-management-icon-action.danger:hover {
+  border-color: #fecaca;
+  background: #fef2f2;
+}
+
+.doctor-management-cards {
+  display: none;
+  padding: 1rem;
+  gap: 1rem;
+}
+
+.doctor-management-card {
+  border: 1px solid #e2e8f0;
+  background: #fff;
+  border-radius: 20px;
+  padding: 1rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.9rem;
+  box-shadow: 0 16px 40px rgba(15, 23, 42, 0.06);
+}
+
+.doctor-management-card-head {
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  align-items: start;
+  gap: 0.75rem;
+}
+
+.doctor-management-card h3 {
+  margin: 0 0 0.38rem;
+  font-size: 1rem;
+}
+
+.doctor-management-card-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.6rem;
+}
+
+.doctor-management-card-grid span,
+.doctor-management-card-foot span {
+  display: flex;
+  align-items: center;
+  gap: 0.42rem;
+  color: #475569;
+  font-size: 0.84rem;
+  min-width: 0;
+}
+
+.doctor-management-card-grid span {
+  border: 1px solid #eef2f7;
+  background: #f8fafc;
+  border-radius: 14px;
+  padding: 0.62rem;
+}
+
+.doctor-management-card-grid em {
+  font-style: normal;
+}
+
+.doctor-management-card-foot {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  padding-top: 0.75rem;
+  border-top: 1px solid #eef2f7;
+}
+
+.doctor-management-delete {
+  justify-content: center;
+  color: #dc2626;
+  border-color: #fecaca;
+  background: #fff;
+}
+
+.doctor-management-delete:hover {
+  background: #fef2f2;
+}
+
+.doctor-management-empty {
+  min-height: 22rem;
+  display: grid;
+  place-items: center;
+  align-content: center;
+  gap: 0.65rem;
+  padding: 2rem;
+  text-align: center;
+  color: #64748b;
+}
+
+.doctor-management-empty svg {
+  color: #93c5fd;
+}
+
+.doctor-management-empty h3 {
+  color: #0f172a;
+  margin: 0;
+}
+
+.doctor-management-empty p {
+  margin: 0;
+  max-width: 28rem;
+  line-height: 1.7;
+}
+
+.doctor-management-skeleton {
+  padding: 1rem;
+  display: grid;
+  gap: 0.75rem;
+}
+
+.doctor-management-skeleton span {
+  height: 5.6rem;
+  border-radius: 18px;
+  background: linear-gradient(90deg, #f1f5f9, #ffffff, #f1f5f9);
+  background-size: 220% 100%;
+  animation: doctor-management-shimmer 1.4s ease-in-out infinite;
+}
+
+.doctor-management-modal-overlay {
+  padding: 1rem;
+}
+
+.doctor-management-modal {
+  width: min(52rem, 100%);
+  max-height: min(90vh, 58rem);
+  overflow: auto;
+  border-radius: 24px;
+}
+
+.doctor-management-modal-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 1.25rem 1.35rem;
+  border-bottom: 1px solid #e2e8f0;
+  background: linear-gradient(180deg, #ffffff, #f8fafc);
+}
+
+.doctor-management-modal-head > div {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 0.2rem 0.65rem;
+  align-items: center;
+}
+
+.doctor-management-modal-head span {
+  width: 2.25rem;
+  height: 2.25rem;
+  border-radius: 14px;
+  display: grid;
+  place-items: center;
+  color: #0369a1;
+  background: #e0f2fe;
+  grid-row: span 2;
+}
+
+.doctor-management-modal-head h3,
+.doctor-management-form-section-head h4 {
+  margin: 0;
+  color: #0f172a;
+}
+
+.doctor-management-modal-head p,
+.doctor-management-form-section-head p {
+  margin: 0.2rem 0 0;
+  color: #64748b;
+  font-size: 0.86rem;
+  line-height: 1.6;
+}
+
+.doctor-management-form {
+  padding: 1.25rem;
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.doctor-management-form-error {
+  margin: 1rem 1.25rem 0;
+  color: #b91c1c;
+  background: #fef2f2;
+  border: 1px solid #fecaca;
+  padding: 0.78rem 0.9rem;
+  border-radius: 14px;
+  font-size: 0.9rem;
+}
+
+.doctor-management-form-section {
+  border: 1px solid #e2e8f0;
+  border-radius: 20px;
+  padding: 1rem;
+  background: #fff;
+}
+
+.doctor-management-form-section-head {
+  display: flex;
+  gap: 0.7rem;
+  align-items: flex-start;
+  margin-bottom: 1rem;
+}
+
+.doctor-management-form-section-head > svg {
+  color: #0369a1;
+  margin-top: 0.2rem;
+}
+
+.doctor-management-form-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.85rem;
+}
+
+.doctor-management-form .form-group {
+  margin-bottom: 0;
+}
+
+.doctor-management-form-wide {
+  grid-column: 1 / -1;
+}
+
+.doctor-management-day-grid {
+  display: grid;
+  grid-template-columns: repeat(7, minmax(0, 1fr));
+  gap: 0.45rem;
+  margin-top: 0.45rem;
+}
+
+.doctor-management-day-grid button {
+  min-height: 2.35rem;
+  border-radius: 999px;
+  border: 1px solid #e2e8f0;
+  background: #f8fafc;
+  color: #475569;
+  font-weight: 850;
+  cursor: pointer;
+  transition: transform var(--transition-fast), background var(--transition-fast), border-color var(--transition-fast), color var(--transition-fast);
+}
+
+.doctor-management-day-grid button:hover,
+.doctor-management-day-grid button.active {
+  transform: translateY(-1px);
+  border-color: #93c5fd;
+  background: #eff6ff;
+  color: #075985;
+}
+
+.doctor-management-day-grid button.active {
+  background: #2563eb;
+  color: #fff;
+  border-color: #2563eb;
+}
+
+.doctor-management-modal-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 0.75rem;
+  padding-top: 0.25rem;
+}
+
+@keyframes doctor-management-shimmer {
+  0% { background-position: 120% 0; }
+  100% { background-position: -120% 0; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .doctor-management-stat,
+  .doctor-management-add,
+  .doctor-management-filters button,
+  .doctor-management-icon-action,
+  .doctor-management-day-grid button {
+    transition: none;
+  }
+
+  .doctor-management-skeleton span {
+    animation: none;
+  }
+}
+
+@media (max-width: 1023px) {
+  .doctor-management-stats {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .doctor-management-toolbar {
+    grid-template-columns: 1fr;
+  }
+
+  .doctor-management-table-wrap {
+    display: none;
+  }
+
+  .doctor-management-cards {
+    display: grid;
+  }
+}
+
+@media (max-width: 768px) {
+  .doctor-management-page {
+    padding: 0.9rem;
+  }
+
+  .doctor-management-hero {
+    flex-direction: column;
+    align-items: stretch;
+    border-radius: 20px;
+  }
+
+  .doctor-management-add {
+    width: 100%;
+    justify-content: center;
+  }
+
+  .doctor-management-panel-head,
+  .doctor-management-card-head,
+  .doctor-management-card-foot {
+    align-items: flex-start;
+    flex-wrap: wrap;
+  }
+
+  .doctor-management-card-head {
+    grid-template-columns: auto minmax(0, 1fr);
+  }
+
+  .doctor-management-card-head .doctor-management-status {
+    grid-column: 1 / -1;
+  }
+
+  .doctor-management-card-grid,
+  .doctor-management-form-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .doctor-management-form-wide {
+    grid-column: auto;
+  }
+
+  .doctor-management-day-grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 520px) {
+  .doctor-management-stats {
+    grid-template-columns: 1fr;
+  }
+
+  .doctor-management-toolbar,
+  .doctor-management-panel-head,
+  .doctor-management-form,
+  .doctor-management-modal-head {
+    padding: 0.9rem;
+  }
+
+  .doctor-management-filters {
+    overflow-x: auto;
+    flex-wrap: nowrap;
+    padding-bottom: 0.1rem;
+  }
+
+  .doctor-management-filters::-webkit-scrollbar {
+    display: none;
+  }
+
+  .doctor-management-filters button {
+    flex: 0 0 auto;
+  }
+
+  .doctor-management-cards {
+    padding: 0.75rem;
+  }
+
+  .doctor-management-card {
+    border-radius: 18px;
+  }
+
+  .doctor-management-modal {
+    max-height: 92vh;
+    border-radius: 20px;
+  }
+
+  .doctor-management-modal-actions {
+    flex-direction: column-reverse;
+  }
+
+  .doctor-management-modal-actions .btn {
+    width: 100%;
+  }
+}
