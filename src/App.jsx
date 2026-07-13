@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate, useLocation } from 'react-router-dom';
 import { AppProvider, useApp } from './context/AppContext';
+import { ToastProvider } from './components/ToastProvider';
 import Navbar from './components/Navbar';
 import Sidebar from './components/Sidebar';
 import NotificationBell from './components/NotificationBell';
@@ -85,9 +86,10 @@ const ProtectedRoute = ({ children, requiredRole }) => {
 function App() {
   return (
     <AppProvider>
-      <Router>
-        <Layout>
-          <Routes>
+      <ToastProvider>
+        <Router>
+          <Layout>
+            <Routes>
             <Route path="/" element={<Home />} />
             <Route path="/login" element={<Login />} />
             <Route path="/signup" element={<SignUp />} />
@@ -146,9 +148,10 @@ function App() {
               </ProtectedRoute>
             } />
             <Route path="*" element={<Navigate to="/" replace />} />
-          </Routes>
-        </Layout>
-      </Router>
+            </Routes>
+          </Layout>
+        </Router>
+      </ToastProvider>
     </AppProvider>
   );
 }

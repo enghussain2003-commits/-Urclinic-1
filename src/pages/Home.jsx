@@ -1,12 +1,12 @@
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
-import { Calendar, Shield, Search, ArrowRight } from 'lucide-react';
+import { ArrowRight, Calendar, CheckCircle2, Clock3, Shield, Sparkles, Stethoscope, Users } from 'lucide-react';
 import { useApp } from '../context/AppContext';
 import DoctorCard from '../components/DoctorCard';
 
 const Home = () => {
   const { t } = useTranslation();
-    const { doctors, loading } = useApp();
+  const { doctors, loading } = useApp();
 
   const stats = [
     { value: "15,200", label: t('patients_served') },
@@ -16,79 +16,133 @@ const Home = () => {
   ];
 
   const steps = [
-    { icon: <Search size={28} />, title: t('step1_title'), desc: t('step1_desc') },
-    { icon: <Calendar size={28} />, title: t('step2_title'), desc: t('step2_desc') },
-    { icon: <Shield size={28} />, title: t('step3_title'), desc: t('step3_desc') },
+    { icon: <Stethoscope size={22} />, title: t('step1_title'), desc: t('step1_desc') },
+    { icon: <Calendar size={22} />, title: t('step2_title'), desc: t('step2_desc') },
+    { icon: <Shield size={22} />, title: t('step3_title'), desc: t('step3_desc') },
+  ];
+
+  const platformHighlights = [
+    { icon: <Clock3 size={18} />, label: t('available_slots') },
+    { icon: <Shield size={18} />, label: t('checkout') },
+    { icon: <Users size={18} />, label: t('patients') },
   ];
 
   return (
-    <div className="animate-in">
-      {/* Hero */}
-      <section className="hero" style={{ marginTop: '1rem' }}>
-        <div className="hero-bg"></div>
-        <div className="blob blob-1"></div>
-        <div className="blob blob-2"></div>
-        <h1 style={{ position: 'relative', zIndex: 1 }}>{t('hero_title')}</h1>
-        <p style={{ position: 'relative', zIndex: 1, fontSize: '1.125rem', maxWidth: '600px', margin: '1rem auto 2.5rem' }}>
-          {t('hero_subtitle')}
-        </p>
-        <div className="hero-actions">
-          <Link to="/booking" className="btn btn-primary btn-lg">
-            <Calendar size={20} />
-            {t('get_started')}
-          </Link>
-          <a href="#doctors" className="btn btn-outline btn-lg">
-            {t('explore_doctors')}
-            <ArrowRight size={18} />
-          </a>
+    <div className="home-page animate-in">
+      <section className="hero hero-premium">
+        <div className="hero-copy">
+          <div className="eyebrow">
+            <Sparkles size={16} />
+            <span>{t('clinic_panel')}</span>
+          </div>
+          <h1>{t('hero_title')}</h1>
+          <p>{t('hero_subtitle')}</p>
+          <div className="hero-actions">
+            <Link to="/booking" className="btn btn-primary btn-lg">
+              <Calendar size={19} />
+              {t('get_started')}
+            </Link>
+            <a href="#doctors" className="btn btn-outline btn-lg">
+              {t('explore_doctors')}
+              <ArrowRight size={18} />
+            </a>
+          </div>
+          <div className="hero-trust-row">
+            {platformHighlights.map(item => (
+              <span key={item.label}>
+                {item.icon}
+                {item.label}
+              </span>
+            ))}
+          </div>
+        </div>
+
+        <div className="hero-product-preview" aria-hidden="true">
+          <div className="preview-topbar">
+            <span></span><span></span><span></span>
+          </div>
+          <div className="preview-header">
+            <div>
+              <small>{t('today_appointments')}</small>
+              <strong>12</strong>
+            </div>
+            <div>
+              <small>{t('pending_appointments')}</small>
+              <strong>04</strong>
+            </div>
+          </div>
+          <div className="preview-schedule">
+            <div className="preview-row active">
+              <span>09:00</span>
+              <strong>{t('confirmed')}</strong>
+              <em>{t('doctor')}</em>
+            </div>
+            <div className="preview-row">
+              <span>10:30</span>
+              <strong>{t('pending')}</strong>
+              <em>{t('patient')}</em>
+            </div>
+            <div className="preview-row soft">
+              <span>12:00</span>
+              <strong>{t('break_time')}</strong>
+              <em>{t('schedule')}</em>
+            </div>
+          </div>
+          <div className="preview-footer">
+            <CheckCircle2 size={17} />
+            <span>{t('appointment_time_reached')}</span>
+          </div>
         </div>
       </section>
 
-      {/* Stats */}
-      <section className="stats-row">
+      <section className="stats-row premium-stats">
         {stats.map((s, i) => (
-          <div key={i} className="stat-card animate-in" style={{ animationDelay: `${i * 0.1}s` }}>
+          <div key={s.label} className="stat-card animate-in" style={{ animationDelay: `${i * 0.08}s` }}>
             <div className="stat-number">{s.value}</div>
             <div className="stat-label">{s.label}</div>
           </div>
         ))}
       </section>
 
-      {/* How it works */}
-      <section style={{ margin: '4rem 0' }}>
-        <h2 style={{ textAlign: 'center', marginBottom: '0.5rem' }}>{t('how_it_works')}</h2>
-        <p style={{ textAlign: 'center', marginBottom: '3rem' }}>{t('hero_subtitle')}</p>
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '2rem' }}>
+      <section className="section-block">
+        <div className="section-heading">
+          <span>{t('how_it_works')}</span>
+          <h2>{t('how_it_works')}</h2>
+          <p>{t('hero_subtitle')}</p>
+        </div>
+        <div className="process-grid">
           {steps.map((step, i) => (
-            <div key={i} className="card animate-in" style={{ textAlign: 'center', padding: '2.5rem 2rem', animationDelay: `${i * 0.15}s` }}>
-              <div style={{
-                width: 64, height: 64, borderRadius: '50%',
-                background: 'var(--primary-100)', color: 'var(--primary)',
-                display: 'flex', alignItems: 'center', justifyContent: 'center',
-                margin: '0 auto 1.25rem',
-              }}>
+            <article key={step.title} className="process-card animate-in" style={{ animationDelay: `${i * 0.1}s` }}>
+              <div className="process-icon">
                 {step.icon}
               </div>
-              <h3 style={{ marginBottom: '0.5rem' }}>{step.title}</h3>
+              <span>{String(i + 1).padStart(2, '0')}</span>
+              <h3>{step.title}</h3>
               <p>{step.desc}</p>
-            </div>
+            </article>
           ))}
         </div>
       </section>
 
-      {/* Featured Doctors */}
-      <section id="doctors" style={{ margin: '4rem 0', paddingBottom: '4rem' }}>
-        <h2 style={{ textAlign: 'center', marginBottom: '0.5rem' }}>{t('our_doctors')}</h2>
-        <p style={{ textAlign: 'center', marginBottom: '2.5rem' }}>{t('our_doctors_subtitle')}</p>
+      <section id="doctors" className="section-block section-block--doctors">
+        <div className="section-heading">
+          <span>{t('our_doctors')}</span>
+          <h2>{t('our_doctors')}</h2>
+          <p>{t('our_doctors_subtitle')}</p>
+        </div>
         <div className="doctors-grid">
-          {loading ? <p>{t('loading')}...</p> : doctors.slice(0, 4).map((doc, i) => (
-            <div key={doc.id} className="animate-in" style={{ animationDelay: `${i * 0.1}s` }}>
+          {loading ? (
+            <div className="premium-empty-state">{t('loading')}...</div>
+          ) : doctors.length === 0 ? (
+            <div className="premium-empty-state">{t('no_data_available')}</div>
+          ) : doctors.slice(0, 4).map((doc, i) => (
+            <div key={doc.id} className="animate-in" style={{ animationDelay: `${i * 0.08}s` }}>
               <DoctorCard doctor={doc} />
             </div>
           ))}
         </div>
-        <div style={{ textAlign: 'center', marginTop: '2rem' }}>
-          <Link to="/booking" className="btn btn-outline">
+        <div className="section-action">
+          <Link to="/booking" className="btn btn-outline btn-lg">
             {t('book_appointment')}
             <ArrowRight size={16} />
           </Link>

@@ -1,6 +1,18 @@
 import i18n from 'i18next';
 import { initReactI18next } from 'react-i18next';
 
+export const LANGUAGE_PREFERENCE_KEY = 'urclinic_language_preference';
+
+const getInitialLanguage = () => {
+  if (typeof window === 'undefined') return 'ar';
+  try {
+    const stored = window.localStorage.getItem(LANGUAGE_PREFERENCE_KEY);
+    return stored === 'en' || stored === 'ar' ? stored : 'ar';
+  } catch {
+    return 'ar';
+  }
+};
+
 const resources = {
   en: {
     translation: {
@@ -594,7 +606,7 @@ const resources = {
 
 i18n.use(initReactI18next).init({
   resources,
-  lng: "ar",
+  lng: getInitialLanguage(),
   fallbackLng: "en",
   interpolation: { escapeValue: false }
 });

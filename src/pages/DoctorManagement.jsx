@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback } from 'react';
 import ReactDOM from 'react-dom';
 import { useTranslation } from 'react-i18next';
 import { useApp } from '../context/AppContext';
+import { useToast } from '../hooks/useToast';
 import { supabase } from '../supabaseClient';
 import { Plus, Trash2, X, Stethoscope, MapPin, Clock, Mail } from 'lucide-react';
 
@@ -19,6 +20,7 @@ const DoctorManagement = () => {
   const { t, i18n } = useTranslation();
   const isAr = i18n.language === 'ar';
   const { specialties, addDoctor, deleteDoctor, user } = useApp();
+  const toast = useToast();
 
   const [showModal, setShowModal] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -139,7 +141,13 @@ const DoctorManagement = () => {
       await deleteDoctor(id);
       await loadClinicDoctors();
     } catch (err) {
-      alert(err.message);
+      console.error('Doctor delete failed:', {
+        message: err?.message,
+        code: err?.code,
+        doctorId: id,
+        role: user?.role,
+      });
+      toast.error(isAr ? 'تعذر حذف الطبيب.' : 'Could not delete doctor.');
     }
   };
 

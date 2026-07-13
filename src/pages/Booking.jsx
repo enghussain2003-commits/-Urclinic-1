@@ -2,7 +2,7 @@ import { useState, useEffect, Fragment } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
 import { CheckCircle, CreditCard, User, Stethoscope, Calendar as CalendarIcon, Clock, ChevronRight, Banknote, Smartphone, Building2 } from 'lucide-react';
-import { specialties } from '../data/mockData';
+import { specialties } from '../data/specialties';
 import { useApp } from '../context/AppContext';
 import { supabase } from '../supabaseClient';
 import DoctorCard from '../components/DoctorCard';

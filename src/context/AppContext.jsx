@@ -2,29 +2,22 @@
 import { createContext, useContext, useState, useEffect, useRef, useCallback } from 'react';
 import { supabase } from '../supabaseClient';
 import i18n from '../i18n';
-import { getUser, logoutUser, specialties, doctors as mockDoctors, mockPatients } from '../data/mockData';
+import { specialties } from '../data/specialties';
+import {
+  addDemoAppointment,
+  getDemoAppointments,
+  getDemoDoctors,
+  getDemoNotifications,
+  getDemoPatients,
+  updateDemoAppointmentStatus,
+} from '../demo/demoData';
+import { isDemoModeEnabled } from '../demo/demoMode';
+import { clearStoredUser, getStoredUser, setStoredUser } from '../services/sessionService';
 
 const AppContext = createContext();
 
 export const useApp = () => useContext(AppContext);
 
-// ---- localStorage fallback for bookings (keeps bookings working even if Supabase insert fails) ----
-const LS_BOOKINGS = 'cc_bookings';
-const readLocalBookings = () => {
-  try { return JSON.parse(localStorage.getItem(LS_BOOKINGS) || '[]'); } catch { return []; }
-};
-const writeLocalBookings = (list) => {
-  try { localStorage.setItem(LS_BOOKINGS, JSON.stringify(list)); } catch { /* ignore */ }
-};
-
-// ---- localStorage fallback for clinic-added doctors ----
-const LS_DOCTORS = 'cc_doctors';
-const readLocalDoctors = () => {
-  try { return JSON.parse(localStorage.getItem(LS_DOCTORS) || '[]'); } catch { return []; }
-};
-const writeLocalDoctors = (list) => {
-  try { localStorage.setItem(LS_DOCTORS, JSON.stringify(list)); } catch { /* ignore */ }
-};
 const mergeById = (a = [], b = []) => {
   const map = new Map();
   [...a, ...b].forEach(item => { if (item && item.id != null) map.set(String(item.id), item); });
@@ -71,7 +64,7 @@ const formatSupabaseError = (error) => {
 };
 
 export const AppProvider = ({ children }) => {
-  const [user, setUser] = useState(getUser());
+  const [user, setUser] = useState(getStoredUser());
   const [doctors, setDoctors] = useState([]);
   const [appointments, setAppointments] = useState([]);
   const [patients, setPatients] = useState([]);
@@ -93,7 +86,19 @@ export const AppProvider = ({ children }) => {
       // Clear the previous user's appointments immediately so a clinic switch never shows
       // stale cross-clinic rows while the new scoped fetch is in flight.
       setAppointments([]);
-      const currentUser = getUser();
+      const currentUser = getStoredUser();
+
+      if (isDemoModeEnabled(currentUser)) {
+        const demoDoctors = getDemoDoctors();
+        setDoctors(demoDoctors);
+        setPatients(getDemoPatients());
+        setAppointments(getDemoAppointments().map(fromDbAppt));
+        setMyPatientIds([]);
+        clinicDoctorIdsRef.current = null;
+        setLoading(false);
+        return;
+      }
+
       const isSuperAdmin = currentUser?.role === 'super_admin';
       const isStaff = currentUser?.role &&
         ['super_admin', 'clinic_admin', 'employee', 'doctor'].includes(currentUser.role);
@@ -118,30 +123,24 @@ export const AppProvider = ({ children }) => {
 
       try {
         // Fetch Doctors — staff (non-super_admin) see only their clinic's doctors.
-        const localDocs = readLocalDoctors();
         let docQuery = supabase.from('doctors').select('*');
         if (staffClinicId) {
           docQuery = docQuery.eq('clinic_id', staffClinicId);
         }
         const { data: docs, error: docError } = await docQuery;
-        let baseDocs;
         if (docError) {
-          console.warn("doctors table error, using mock data:", docError.message);
-          baseDocs = mockDoctors;
-        } else if (docs && docs.length > 0) {
-          // Normalize Supabase doctor fields to match DoctorCard expectations
-          baseDocs = docs.map(d => ({
+          console.warn("doctors table error:", docError.message);
+          setDoctors([]);
+        } else {
+          setDoctors((docs || []).map(d => ({
             ...d,
             name: d.full_name || d.name,
             nameAr: d.full_name || d.nameAr,
             avatar: (d.full_name || '?').charAt(0).toUpperCase(),
             available: true,
             nextSlot: 'Available',
-          }));
-        } else {
-          baseDocs = mockDoctors;
+          })));
         }
-        setDoctors(mergeById(baseDocs, localDocs));
 
         // Build the set of doctor IDs that belong to this clinic.
         // appointments has no clinic_id column — isolation goes via doctor_id → doctors.clinic_id.
@@ -152,16 +151,6 @@ export const AppProvider = ({ children }) => {
 
         // Persist in ref so the Realtime callback uses the same filter.
         clinicDoctorIdsRef.current = clinicDoctorIds;
-
-        // Fetch Appointments — filter by clinic's doctor IDs when scoped to a clinic.
-        const allLocal = readLocalBookings();
-        // Filter local bookings exactly like Supabase rows: by doctor_id → doctors.clinic_id
-        // membership only. The booking's own clinic_id is intentionally ignored — many old
-        // local records have only doctor_id (e.g. BK-9165, BK-2508, BK-3957), and a stored
-        // clinic_id can be stale/cross-clinic. null clinicDoctorIds = no restriction.
-        const local = clinicDoctorIds
-          ? allLocal.filter(b => clinicDoctorIds.includes(String(b.doctor_id)))
-          : allLocal;
 
         let apts, aptError;
         if (clinicDoctorIds && clinicDoctorIds.length === 0) {
@@ -178,11 +167,11 @@ export const AppProvider = ({ children }) => {
         }
 
         if (aptError) {
-          console.warn("appointments fetch error, using local only:", aptError.message);
-          setAppointments(scopeToClinic(local, clinicDoctorIds));
+          console.warn("appointments fetch error:", aptError.message);
+          setAppointments([]);
         } else {
           // Map DB columns → UI shape (appointment_date → date, appointment_time → time).
-          setAppointments(scopeToClinic(mergeById((apts || []).map(fromDbAppt), local), clinicDoctorIds));
+          setAppointments(scopeToClinic((apts || []).map(fromDbAppt), clinicDoctorIds));
         }
 
         // Fetch Patients — staff (non-super_admin) see only their clinic's patient records.
@@ -193,12 +182,10 @@ export const AppProvider = ({ children }) => {
         }
         const { data: pats, error: patError } = await patQuery;
         if (patError) {
-          console.warn("patients fetch error, using mock:", patError.message);
-          setPatients(mockPatients);
-        } else if (pats && pats.length > 0) {
-          setPatients(pats);
+          console.warn("patients fetch error:", patError.message);
+          setPatients([]);
         } else {
-          setPatients(mockPatients);
+          setPatients(pats || []);
         }
 
         // For the patient role, collect every patients-table row they own across all
@@ -241,13 +228,8 @@ export const AppProvider = ({ children }) => {
           q = q.in('doctor_id', ids);
         }
 
-        const allLocal = readLocalBookings();
-        const local = ids !== null
-          ? allLocal.filter(b => ids.includes(String(b.doctor_id)))
-          : allLocal;
-
         q.then(({ data }) => {
-          setAppointments(scopeToClinic(mergeById((data || []).map(fromDbAppt), local), ids));
+          setAppointments(scopeToClinic((data || []).map(fromDbAppt), ids));
         });
       })
       .subscribe();
@@ -262,6 +244,12 @@ export const AppProvider = ({ children }) => {
 
   const refreshNotifications = useCallback(async () => {
     try {
+      if (isDemoModeEnabled(user)) {
+        const demoNotifications = getDemoNotifications();
+        setNotifications(demoNotifications);
+        return demoNotifications;
+      }
+
       const { data: { user: authUser } } = await supabase.auth.getUser();
       if (!authUser) {
         setNotifications([]);
@@ -283,14 +271,16 @@ export const AppProvider = ({ children }) => {
       setNotifications([]);
       return [];
     }
-  }, []);
+  }, [user]);
 
   // Sync with Supabase auth session: if the stored user has no active session, sign them out.
   useEffect(() => {
+    if (isDemoModeEnabled(user)) return;
+
     supabase.auth.getSession().then(({ data: { session } }) => {
       if (!session) {
         // No valid session → clear any leftover/stale stored user.
-        logoutUser();
+        clearStoredUser();
         setUser(null);
         setNotifications([]);
       }
@@ -298,7 +288,7 @@ export const AppProvider = ({ children }) => {
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event) => {
       if (event === 'SIGNED_OUT') {
-        logoutUser();
+        clearStoredUser();
         setUser(null);
         setNotifications([]);
       }
@@ -308,7 +298,7 @@ export const AppProvider = ({ children }) => {
     });
 
     return () => subscription?.unsubscribe();
-  }, [refreshNotifications]);
+  }, [refreshNotifications, user]);
 
   // ---- Notifications: real DB-driven, scoped per user (RLS returns only user_id = auth.uid) ----
   // Replaces the old mock notifications. Each user — patient, doctor, admin — only ever
@@ -319,6 +309,11 @@ export const AppProvider = ({ children }) => {
 
     const load = async () => {
       try {
+        if (isDemoModeEnabled(user)) {
+          if (active) setNotifications(getDemoNotifications());
+          return;
+        }
+
         const { data: { user: authUser } } = await supabase.auth.getUser();
         if (!authUser) { if (active) setNotifications([]); return; }
 
@@ -356,15 +351,17 @@ export const AppProvider = ({ children }) => {
 
     load();
     return () => { active = false; if (channel) supabase.removeChannel(channel); };
-  }, [user?.id]);
+  }, [user]);
 
   const login = (userData) => {
     setUser(userData);
-    localStorage.setItem('user', JSON.stringify(userData));
+    setStoredUser(userData);
   };
   const logout = async () => {
-    try { await supabase.auth.signOut(); } catch { /* ignore */ }
-    logoutUser();
+    if (!isDemoModeEnabled(user)) {
+      try { await supabase.auth.signOut(); } catch { /* ignore */ }
+    }
+    clearStoredUser();
     setUser(null);
   };
 
@@ -379,6 +376,21 @@ export const AppProvider = ({ children }) => {
   ];
 
   const addDoctor = async (doctorData) => {
+    if (isDemoModeEnabled(user)) {
+      const ui = {
+        id: `demo-doctor-${Date.now()}`,
+        clinic_id: 'demo-clinic',
+        ...doctorData,
+        name: doctorData.full_name,
+        nameAr: doctorData.full_name,
+        avatar: (doctorData.full_name || '?').charAt(0).toUpperCase(),
+        available: true,
+        nextSlot: 'Available',
+      };
+      setDoctors(prev => [ui, ...prev]);
+      return ui;
+    }
+
     // Authorization is enforced in three layers: this guard, the doctors_insert
     // RLS in 0002, and the trash-icon UI gate. Each one catches a different bypass.
     if (user?.role !== 'super_admin') {
@@ -407,12 +419,15 @@ export const AppProvider = ({ children }) => {
       nextSlot: 'Available',
     };
     setDoctors(prev => [ui, ...prev]);
-    // Best-effort local mirror; not required for correctness.
-    try { writeLocalDoctors([ui, ...readLocalDoctors()]); } catch { /* ignore */ }
     return ui;
   };
 
   const deleteDoctor = async (id) => {
+    if (isDemoModeEnabled(user)) {
+      setDoctors(prev => prev.filter(d => String(d.id) !== String(id)));
+      return;
+    }
+
     // Only super_admin may delete doctors. This is enforced again at the DB by the
     // `doctors_delete` RLS policy — the guard here just fails fast with a clear error
     // instead of silently issuing a delete the database will reject.
@@ -422,7 +437,6 @@ export const AppProvider = ({ children }) => {
         : 'Not authorized: only super admin can delete doctors');
     }
     setDoctors(prev => prev.filter(d => String(d.id) !== String(id)));
-    writeLocalDoctors(readLocalDoctors().filter(d => String(d.id) !== String(id)));
     try { await supabase.from('doctors').delete().eq('id', id); } catch { /* ignore */ }
   };
 
@@ -465,6 +479,33 @@ export const AppProvider = ({ children }) => {
 
     if (!clinic_id || !doctor_id || !date || !time) {
       throw new Error('Missing required booking fields (clinic, doctor, date, time)');
+    }
+
+    if (isDemoModeEnabled(user)) {
+      // eslint-disable-next-line react-hooks/purity
+      const demoStamp = Date.now();
+      const demoRow = {
+        id: `DEMO-${demoStamp}`,
+        clinic_id: clinic_id || 'demo-clinic',
+        patient_name,
+        patient_phone,
+        patient_email,
+        patient: patient_name,
+        doctor_id,
+        doctorId: doctor_id,
+        date,
+        time,
+        appointment_date: date,
+        appointment_time: time,
+        status: status || 'pending',
+        paid: !!paid,
+        payment_method: payment_method || null,
+        fee: Number(fee) || 0,
+        booking_code: `DEMO-${String(demoStamp).slice(-6)}`,
+      };
+      addDemoAppointment(demoRow);
+      setAppointments(prev => [demoRow, ...prev]);
+      return demoRow;
     }
 
     const patientId = await ensurePatientForClinic({
@@ -582,9 +623,13 @@ export const AppProvider = ({ children }) => {
   const changeStatus = async (id, status) => {
     const apt = appointments.find(a => a.id === id);
     const completedAt = status === 'completed' ? new Date().toISOString() : null;
-    // Update in-memory + local storage immediately (re-scope as a safety net).
+    // Update in-memory immediately (re-scope as a safety net).
     setAppointments(prev => scopeToClinic(prev.map(a => a.id === id ? { ...a, status, completed_at: completedAt } : a), clinicDoctorIdsRef.current));
-    writeLocalBookings(readLocalBookings().map(a => a.id === id ? { ...a, status, completed_at: completedAt } : a));
+
+    if (isDemoModeEnabled(user)) {
+      updateDemoAppointmentStatus(id, status);
+      return;
+    }
 
     // Best-effort persist to Supabase.
     try {
@@ -668,6 +713,18 @@ export const AppProvider = ({ children }) => {
   // 0005 RLS policy). Falls back to user.clinic_id (staff/doctor flows).
   const sendNotification = async (userId, title, message, type = 'info', opts = {}) => {
     if (!userId) return false;
+    if (isDemoModeEnabled(user)) {
+      setNotifications(prev => sortNotifications([{
+        id: `demo-notification-${Date.now()}`,
+        user_id: userId,
+        title,
+        message,
+        type,
+        is_read: false,
+        created_at: new Date().toISOString(),
+      }, ...prev]));
+      return true;
+    }
     try {
       const row = { user_id: userId, title, message, type, is_read: false };
       const cid = opts.clinic_id ?? user?.clinic_id;

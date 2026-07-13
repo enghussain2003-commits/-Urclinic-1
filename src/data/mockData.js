@@ -1,3 +1,6 @@
+import { readDemoJson, removeDemoItem, writeDemoJson } from '../demo/demoStorage';
+export { specialties } from './specialties';
+
 // ========== MOCK PATIENTS ==========
 export const mockPatients = [
   { id: 'p-001', full_name: 'أحمد محمد العلي', email: 'ahmed@example.com', phone: '+964 771 234 5678', gender: 'male', date_of_birth: '1990-05-15', role: 'patient', created_at: '2026-01-10T08:00:00Z' },
@@ -16,21 +19,11 @@ export const doctors = [
   { id: 6, name: "Dr. Lina Nasser", nameAr: "د. لينا ناصر", specialty: "dentistry", rating: 4.8, reviews: 245, duration: 20, fee: 45, avatar: "L", available: true, nextSlot: "Today, 11:00 AM" },
 ];
 
-// Icons are rendered via <SpecialtyIcon> (lucide), so no emoji here.
-export const specialties = [
-  { id: "cardiology" },
-  { id: "pediatrics" },
-  { id: "dermatology" },
-  { id: "orthopedics" },
-  { id: "general" },
-  { id: "dentistry" },
-];
-
 // ========== TIME SLOTS ==========
 export const generateTimeSlots = (doctorId, dateStr) => {
   const allSlots = ["09:00","09:30","10:00","10:30","11:00","11:30","13:00","13:30","14:00","14:30","15:00","15:30","16:00","16:30"];
   const bookedKey = `booked_${doctorId}_${dateStr}`;
-  const booked = JSON.parse(localStorage.getItem(bookedKey) || "[]");
+  const booked = readDemoJson(bookedKey, []);
   return allSlots.map(time => ({
     time,
     booked: booked.includes(time)
@@ -39,10 +32,10 @@ export const generateTimeSlots = (doctorId, dateStr) => {
 
 export const bookSlot = (doctorId, dateStr, time) => {
   const bookedKey = `booked_${doctorId}_${dateStr}`;
-  const booked = JSON.parse(localStorage.getItem(bookedKey) || "[]");
+  const booked = readDemoJson(bookedKey, []);
   if (!booked.includes(time)) {
     booked.push(time);
-    localStorage.setItem(bookedKey, JSON.stringify(booked));
+    writeDemoJson(bookedKey, booked);
   }
 };
 
@@ -58,16 +51,16 @@ const defaultAppointments = [
 ];
 
 export const getAppointments = () => {
-  const stored = localStorage.getItem("appointments");
-  if (stored) return JSON.parse(stored);
-  localStorage.setItem("appointments", JSON.stringify(defaultAppointments));
+  const stored = readDemoJson("appointments", null);
+  if (stored) return stored;
+  writeDemoJson("appointments", defaultAppointments);
   return defaultAppointments;
 };
 
 export const addAppointment = (apt) => {
   const list = getAppointments();
   list.push(apt);
-  localStorage.setItem("appointments", JSON.stringify(list));
+  writeDemoJson("appointments", list);
   return list;
 };
 
@@ -76,7 +69,7 @@ export const updateAppointmentStatus = (id, status) => {
   const idx = list.findIndex(a => a.id === id);
   if (idx !== -1) {
     list[idx].status = status;
-    localStorage.setItem("appointments", JSON.stringify(list));
+    writeDemoJson("appointments", list);
   }
   return list;
 };
@@ -89,15 +82,15 @@ const defaultNotifications = [
 ];
 
 export const getNotifications = () => {
-  const stored = localStorage.getItem("notifications");
-  if (stored) return JSON.parse(stored);
-  localStorage.setItem("notifications", JSON.stringify(defaultNotifications));
+  const stored = readDemoJson("notifications", null);
+  if (stored) return stored;
+  writeDemoJson("notifications", defaultNotifications);
   return defaultNotifications;
 };
 
 export const markAllRead = () => {
   const list = getNotifications().map(n => ({ ...n, read: true }));
-  localStorage.setItem("notifications", JSON.stringify(list));
+  writeDemoJson("notifications", list);
   return list;
 };
 
@@ -108,9 +101,9 @@ const defaultWaitlist = [
 ];
 
 export const getWaitlist = () => {
-  const stored = localStorage.getItem("waitlist");
-  if (stored) return JSON.parse(stored);
-  localStorage.setItem("waitlist", JSON.stringify(defaultWaitlist));
+  const stored = readDemoJson("waitlist", null);
+  if (stored) return stored;
+  writeDemoJson("waitlist", defaultWaitlist);
   return defaultWaitlist;
 };
 
@@ -152,15 +145,14 @@ export const peakHours = [
 // ========== AUTH (Mock) ==========
 export const mockLogin = (email, password, role) => {
   const user = { email, role, name: role === 'patient' ? 'John Doe' : 'Admin' };
-  localStorage.setItem("user", JSON.stringify(user));
+  writeDemoJson("user", user);
   return user;
 };
 
 export const getUser = () => {
-  const stored = localStorage.getItem("user");
-  return stored ? JSON.parse(stored) : null;
+  return readDemoJson("user", null);
 };
 
 export const logoutUser = () => {
-  localStorage.removeItem("user");
+  removeDemoItem("user");
 };

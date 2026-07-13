@@ -75,8 +75,12 @@ export function downloadPrescriptionPdf(rx, { isAr = false, doctorName = '', pat
 </html>`;
 
   const w = window.open('', '_blank', 'width=820,height=900');
-  if (!w) { alert(isAr ? 'يرجى السماح بالنوافذ المنبثقة لتنزيل الوصفة' : 'Please allow pop-ups to download the prescription'); return; }
+  if (!w) {
+    console.warn('Prescription PDF window was blocked by the browser pop-up policy.');
+    return false;
+  }
   w.document.open();
   w.document.write(html);
   w.document.close();
+  return true;
 }

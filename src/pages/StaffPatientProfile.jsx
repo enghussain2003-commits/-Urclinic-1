@@ -6,14 +6,17 @@ import {
   Stethoscope, ArrowLeft, Bell, Activity, Image, File, ChevronDown, ChevronUp, Pill, Trash2
 } from 'lucide-react';
 import { useApp } from '../context/AppContext';
+import { useToast } from '../hooks/useToast';
 import { supabase } from '../supabaseClient';
 import PrescriptionViewer from '../components/PrescriptionViewer';
 
 const StaffPatientProfile = () => {
   const { id } = useParams();
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
+  const isAr = i18n.language === 'ar';
   const navigate = useNavigate();
   const { doctors, sendNotification, user, addMedicalHistory, addMedicalFile, createPrescription } = useApp();
+  const toast = useToast();
 
   const [patient, setPatient] = useState(null);
   const [medicalHistory, setMedicalHistory] = useState([]);
@@ -149,7 +152,7 @@ const StaffPatientProfile = () => {
     if (!patient.auth_user_id) {
       const message = 'Cannot deliver prescription: this patient record is not linked to a login account / لا يمكن إرسال الوصفة لأن ملف المريض غير مرتبط بحساب دخول';
       setRxError(message);
-      alert(message);
+      toast.warning(isAr ? 'لا يمكن إرسال الوصفة لأن ملف المريض غير مرتبط بحساب دخول.' : 'Cannot deliver prescription because this patient is not linked to a login account.');
       return;
     }
     setSavingRx(true);
@@ -170,7 +173,14 @@ const StaffPatientProfile = () => {
     } catch (err) {
       const message = err?.message || 'Failed to save prescription / تعذّر حفظ الوصفة';
       setRxError(message);
-      alert(message);
+      console.error('Prescription save failed:', {
+        message: err?.message,
+        code: err?.code,
+        patientId: id,
+        patientAuthUserId: patient?.auth_user_id,
+        clinicId: patient?.clinic_id,
+      });
+      toast.error(isAr ? 'تعذّر حفظ الوصفة.' : 'Failed to save prescription.');
     } finally {
       setSavingRx(false);
     }
@@ -186,7 +196,9 @@ const StaffPatientProfile = () => {
       { clinic_id: patient.clinic_id, called_by: user?.id, called_by_name: user?.name || user?.full_name }
     );
     if (success) {
-      alert('تم استدعاء المريض بنجاح');
+      toast.success(isAr ? 'تم استدعاء المريض بنجاح.' : 'Patient was called successfully.');
+    } else {
+      toast.error(isAr ? 'تعذر إرسال استدعاء المريض.' : 'Could not send the patient call notification.');
     }
   };
 

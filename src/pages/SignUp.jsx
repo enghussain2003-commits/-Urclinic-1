@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate, Link } from 'react-router-dom';
-import { Activity } from 'lucide-react';
+import { Activity, AlertCircle, Eye, EyeOff, LockKeyhole, Mail, Phone, ShieldCheck, UserRound } from 'lucide-react';
 import { supabase } from '../supabaseClient';
 import { useApp } from '../context/AppContext';
 
@@ -13,6 +13,7 @@ const SignUp = () => {
   const [fullName, setFullName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
   const [phone, setPhone] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
@@ -63,43 +64,92 @@ const SignUp = () => {
   };
 
   return (
-    <div className="login-container bg-gradient">
-      <div className="login-card animate-in">
-        <div className="login-logo">
-          <Activity size={36} color="var(--primary)" />
-          <h2 style={{ marginBottom: '0.25rem' }}>{t('sign_up')}</h2>
-          <p>{t('create_new_account') || 'Create a new account'}</p>
+    <div className="auth-page bg-gradient">
+      <section className="auth-shell animate-in">
+        <aside className="auth-brand-panel">
+          <Link to="/" className="auth-brand">
+            <Activity size={26} />
+            <span>UrClinic</span>
+          </Link>
+          <div className="auth-brand-copy">
+            <span className="eyebrow"><ShieldCheck size={15} /> {t('book_now')}</span>
+            <h1>{t('create_new_account')}</h1>
+            <p>{t('hero_subtitle')}</p>
+          </div>
+          <div className="auth-preview-card" aria-hidden="true">
+            <div><span>{t('patients_served')}</span><strong>15k+</strong></div>
+            <div><span>{t('specialists')}</span><strong>24</strong></div>
+            <div className="auth-preview-line"><span>{t('checkout')}</span><strong>{t('available')}</strong></div>
+          </div>
+        </aside>
+
+        <div className="auth-card">
+          <div className="auth-card-header">
+            <div className="auth-logo-mark"><Activity size={24} /></div>
+            <h2>{t('sign_up')}</h2>
+            <p>{t('create_new_account') || 'Create a new account'}</p>
+          </div>
+
+          {error && (
+            <div className="auth-alert auth-alert--error" role="alert">
+              <AlertCircle size={17} />
+              <span>{error}</span>
+            </div>
+          )}
+
+          <form onSubmit={handleSubmit} className="auth-form">
+            <div className="form-group">
+              <label className="form-label" htmlFor="signup-name">{t('full_name') || 'Full Name'}</label>
+              <div className="auth-input-wrap">
+                <UserRound size={18} />
+                <input id="signup-name" type="text" required className="input auth-input" placeholder="John Doe" value={fullName} onChange={e => setFullName(e.target.value)} autoComplete="name" />
+              </div>
+            </div>
+            <div className="form-group">
+              <label className="form-label" htmlFor="signup-email">{t('email')}</label>
+              <div className="auth-input-wrap">
+                <Mail size={18} />
+                <input id="signup-email" type="email" required className="input auth-input" placeholder="john@example.com" value={email} onChange={e => setEmail(e.target.value)} autoComplete="email" />
+              </div>
+            </div>
+            <div className="form-group">
+              <label className="form-label" htmlFor="signup-phone">{t('phone') || 'Phone Number'}</label>
+              <div className="auth-input-wrap">
+                <Phone size={18} />
+                <input id="signup-phone" type="tel" required className="input auth-input" placeholder="+964..." value={phone} onChange={e => setPhone(e.target.value)} autoComplete="tel" />
+              </div>
+            </div>
+            <div className="form-group">
+              <label className="form-label" htmlFor="signup-password">{t('password')}</label>
+              <div className="auth-input-wrap">
+                <LockKeyhole size={18} />
+                <input
+                  id="signup-password"
+                  type={showPassword ? 'text' : 'password'}
+                  required
+                  className="input auth-input"
+                  placeholder="••••••••"
+                  value={password}
+                  onChange={e => setPassword(e.target.value)}
+                  autoComplete="new-password"
+                />
+                <button type="button" className="auth-input-action" onClick={() => setShowPassword(prev => !prev)} aria-label={showPassword ? 'Hide password' : 'Show password'}>
+                  {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+                </button>
+              </div>
+            </div>
+            
+            <button type="submit" disabled={loading} className="btn btn-primary w-full auth-submit">
+              {loading ? t('loading') || 'Loading...' : t('sign_up')}
+            </button>
+          </form>
+
+          <div className="auth-footer-link">
+            <span>{t('already_have_account') || 'Already have an account?'}</span>
+            <Link to="/login">{t('sign_in')}</Link>
+          </div>
         </div>
-
-        {error && <div className="alert alert-danger" style={{ marginBottom: '1rem', color: 'red' }}>{error}</div>}
-
-        <form onSubmit={handleSubmit}>
-          <div className="form-group">
-            <label className="form-label">{t('full_name') || 'Full Name'}</label>
-            <input type="text" required className="input" placeholder="John Doe" value={fullName} onChange={e => setFullName(e.target.value)} />
-          </div>
-          <div className="form-group">
-            <label className="form-label">{t('email')}</label>
-            <input type="email" required className="input" placeholder="john@example.com" value={email} onChange={e => setEmail(e.target.value)} />
-          </div>
-          <div className="form-group">
-            <label className="form-label">{t('phone') || 'Phone Number'}</label>
-            <input type="tel" required className="input" placeholder="+964..." value={phone} onChange={e => setPhone(e.target.value)} />
-          </div>
-          <div className="form-group">
-            <label className="form-label">{t('password')}</label>
-            <input type="password" required className="input" placeholder="••••••••" value={password} onChange={e => setPassword(e.target.value)} />
-          </div>
-          
-          <button type="submit" disabled={loading} className="btn btn-primary w-full" style={{ marginTop: '1rem' }}>
-            {loading ? t('loading') || 'Loading...' : t('sign_up')}
-          </button>
-        </form>
-
-        <p style={{ textAlign: 'center', marginTop: '1.5rem', fontSize: '0.875rem' }}>
-          {t('already_have_account') || 'Already have an account?'} <Link to="/login" style={{ color: 'var(--primary)', fontWeight: 600 }}>{t('sign_in')}</Link>
-        </p>
-      </div>
+      </section>
     </div>
   );
 };

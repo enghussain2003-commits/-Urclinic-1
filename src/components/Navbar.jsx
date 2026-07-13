@@ -1,16 +1,16 @@
 import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
-import { Activity, Globe, Bell, User, LogOut, Settings, X, Menu } from 'lucide-react';
+import { Activity, Globe, User, LogOut, Settings, X, Menu } from 'lucide-react';
 import { useApp } from '../context/AppContext';
-import NotificationCenter from './NotificationCenter';
+import NotificationBell from './NotificationBell';
+import { LANGUAGE_PREFERENCE_KEY } from '../i18n';
 
 const Navbar = () => {
   const { t, i18n } = useTranslation();
   const location = useLocation();
   const navigate = useNavigate();
-  const { user, unreadCount, logout } = useApp();
-  const [showNotif, setShowNotif] = useState(false);
+  const { user, logout } = useApp();
   const [mobileOpen, setMobileOpen] = useState(false);
   const isStaff = user && ['super_admin', 'clinic_admin', 'employee', 'doctor'].includes(user.role);
 
@@ -21,7 +21,13 @@ const Navbar = () => {
   };
 
   const toggleLang = () => {
-    i18n.changeLanguage(i18n.language === 'en' ? 'ar' : 'en');
+    const nextLanguage = i18n.language === 'en' ? 'ar' : 'en';
+    try {
+      window.localStorage.setItem(LANGUAGE_PREFERENCE_KEY, nextLanguage);
+    } catch {
+      // Language preference is local-only and best-effort.
+    }
+    i18n.changeLanguage(nextLanguage);
   };
 
   useEffect(() => {
@@ -61,14 +67,7 @@ const Navbar = () => {
           <Link to="/dashboard" className={`navbar-link ${isActive('/dashboard') ? 'active' : ''}`}>{t('dashboard')}</Link>
         )}
 
-        {/* Notification Bell */}
-        <div style={{ position: 'relative' }}>
-          <button className="notif-btn" onClick={() => setShowNotif(!showNotif)} aria-label="Notifications">
-            <Bell size={20} />
-            {unreadCount > 0 && <span className="notif-badge" />}
-          </button>
-          {showNotif && <NotificationCenter onClose={() => setShowNotif(false)} />}
-        </div>
+        <NotificationBell />
 
         {user ? (
           <>
@@ -95,13 +94,7 @@ const Navbar = () => {
 
       {/* Mobile right controls */}
       <div className="navbar-mobile-controls">
-        <div style={{ position: 'relative' }}>
-          <button className="notif-btn" onClick={() => setShowNotif(!showNotif)} aria-label="Notifications">
-            <Bell size={20} />
-            {unreadCount > 0 && <span className="notif-badge" />}
-          </button>
-          {showNotif && <NotificationCenter onClose={() => setShowNotif(false)} />}
-        </div>
+        <NotificationBell />
         <button
           className="btn btn-ghost btn-icon"
           onClick={() => setMobileOpen(!mobileOpen)}

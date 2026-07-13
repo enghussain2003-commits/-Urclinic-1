@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { useTranslation } from 'react-i18next';
 import { FileText, Calendar, Clock, User, Phone, Mail, CheckCircle, XCircle, Hourglass, Download, Eye, Printer, Stethoscope, Pill } from 'lucide-react';
 import { useApp } from '../context/AppContext';
+import { useToast } from '../hooks/useToast';
 import { supabase } from '../supabaseClient';
 import Countdown from '../components/Countdown';
 import { to12Hour } from '../components/TimeSlotGrid';
@@ -11,6 +12,7 @@ const PatientProfile = () => {
   const { t, i18n } = useTranslation();
   const isAr = i18n.language === 'ar';
   const { user, appointments, doctors, myPatientIds } = useApp();
+  const toast = useToast();
   const [prescriptions, setPrescriptions] = useState([]);
   const [prescriptionsLoading, setPrescriptionsLoading] = useState(false);
   const [prescriptionsError, setPrescriptionsError] = useState('');
@@ -107,6 +109,13 @@ const PatientProfile = () => {
   const previewText = (text, fallback = '-') => {
     if (!text) return fallback;
     return text.length > 90 ? `${text.slice(0, 90)}...` : text;
+  };
+
+  const handleDownloadPrescription = (rx, doctorName) => {
+    const opened = downloadPrescriptionPdf(rx, { isAr, doctorName, patientName: user?.name || '' });
+    if (!opened) {
+      toast.warning(isAr ? 'يرجى السماح بالنوافذ المنبثقة لتنزيل الوصفة.' : 'Please allow pop-ups to download the prescription.');
+    }
   };
 
   const visiblePrescriptions = prescriptions.slice(0, visibleRxCount);
@@ -260,7 +269,7 @@ const PatientProfile = () => {
                         </button>
                         <button
                           className="btn btn-sm btn-outline"
-                          onClick={() => downloadPrescriptionPdf(rx, { isAr, doctorName, patientName: user?.name || '' })}
+                          onClick={() => handleDownloadPrescription(rx, doctorName)}
                         >
                           <Download size={15} /> {t('download_pdf')}
                         </button>
@@ -361,7 +370,7 @@ const PatientProfile = () => {
                   <footer className="rx-detail-footer">
                     <button
                       className="btn btn-primary"
-                      onClick={() => downloadPrescriptionPdf(selectedRx, { isAr, doctorName, patientName: user?.name || '' })}
+                      onClick={() => handleDownloadPrescription(selectedRx, doctorName)}
                     >
                       <Download size={16} /> {t('download_pdf')}
                     </button>

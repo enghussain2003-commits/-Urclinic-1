@@ -1,7 +1,7 @@
 import { useState, useRef } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
-import { Activity, Mail } from 'lucide-react';
+import { Activity, AlertCircle, ArrowLeft, CheckCircle2, Mail, ShieldCheck } from 'lucide-react';
 import { supabase } from '../supabaseClient';
 
 const ForgotPassword = () => {
@@ -50,62 +50,68 @@ const ForgotPassword = () => {
   };
 
   return (
-    <div className="login-container bg-gradient">
-      <div className="login-card animate-in">
-        <div className="login-logo">
-          <Activity size={36} color="var(--primary)" />
-          <h2 style={{ marginBottom: '0.25rem' }}>{t('forgot_password_title')}</h2>
-          <p>{t('forgot_password_subtitle')}</p>
-        </div>
-
-        {error && (
-          <div style={{
-            background: 'rgba(239,68,68,0.08)', border: '1px solid var(--danger)',
-            color: 'var(--danger)', padding: '0.75rem 1rem', borderRadius: 'var(--radius-md)',
-            marginBottom: '1rem', fontSize: '0.875rem', textAlign: 'center'
-          }}>
-            {error}
+    <div className="auth-page bg-gradient">
+      <section className="auth-shell auth-shell--compact animate-in">
+        <aside className="auth-brand-panel">
+          <Link to="/" className="auth-brand">
+            <Activity size={26} />
+            <span>UrClinic</span>
+          </Link>
+          <div className="auth-brand-copy">
+            <span className="eyebrow"><ShieldCheck size={15} /> {t('user_settings')}</span>
+            <h1>{t('forgot_password_title')}</h1>
+            <p>{t('forgot_password_subtitle')}</p>
           </div>
-        )}
+        </aside>
 
-        {message && (
-          <div style={{
-            background: 'rgba(16,185,129,0.08)', border: '1px solid var(--success)',
-            color: 'var(--success)', padding: '0.75rem 1rem', borderRadius: 'var(--radius-md)',
-            marginBottom: '1rem', fontSize: '0.875rem', textAlign: 'center'
-          }}>
-            {message}
+        <div className="auth-card">
+          <div className="auth-card-header">
+            <div className="auth-logo-mark"><Mail size={24} /></div>
+            <h2>{t('forgot_password_title')}</h2>
+            <p>{t('forgot_password_subtitle')}</p>
           </div>
-        )}
 
-        <form onSubmit={handleSubmit}>
-          <div className="form-group">
-            <label className="form-label">{t('email')}</label>
-            <div style={{ position: 'relative' }}>
-              {/* Fix Mail icon styling for RTL support */}
-              <div style={{ position: 'absolute', top: '50%', transform: 'translateY(-50%)', [document.documentElement.dir === 'rtl' ? 'right' : 'left']: '1rem', color: 'var(--text-muted)' }}>
-                <Mail size={18} />
-              </div>
-              <input 
-                type="email" 
-                className="input" 
-                style={{ paddingInlineStart: '2.5rem' }}
-                placeholder="example@email.com" 
-                value={email} 
-                onChange={e => setEmail(e.target.value)} 
-              />
+          {error && (
+            <div className="auth-alert auth-alert--error" role="alert">
+              <AlertCircle size={17} />
+              <span>{error}</span>
             </div>
-          </div>
-          
-          <button type="submit" className="btn btn-primary w-full" style={{ marginTop: '0.5rem' }} disabled={loading}>
-            {loading ? (t('loading') || '...') : t('send_reset_link')}
-          </button>
-        </form>
+          )}
 
-        <p style={{ textAlign: 'center', marginTop: '1.5rem', fontSize: '0.875rem' }}>
-           <Link to="/login" style={{ color: 'var(--primary)', fontWeight: 600 }}>{t('previous')} - {t('login')}</Link>
-        </p>
-      </div>
+          {message && (
+            <div className="auth-alert auth-alert--success" role="status">
+              <CheckCircle2 size={17} />
+              <span>{message}</span>
+            </div>
+          )}
+
+          <form onSubmit={handleSubmit} className="auth-form">
+            <div className="form-group">
+              <label className="form-label" htmlFor="forgot-email">{t('email')}</label>
+              <div className="auth-input-wrap">
+                <Mail size={18} />
+                <input 
+                  id="forgot-email"
+                  type="email" 
+                  className="input auth-input" 
+                  placeholder="example@email.com" 
+                  value={email} 
+                  onChange={e => setEmail(e.target.value)}
+                  autoComplete="email"
+                />
+              </div>
+            </div>
+            
+            <button type="submit" className="btn btn-primary w-full auth-submit" disabled={loading}>
+              {loading ? (t('loading') || '...') : t('send_reset_link')}
+            </button>
+          </form>
+
+          <div className="auth-footer-link">
+            <Link to="/login"><ArrowLeft size={16} /> {t('previous')} - {t('login')}</Link>
+          </div>
+        </div>
+      </section>
     </div>
   );
 };

@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useNavigate } from 'react-router-dom';
-import { Activity, Lock } from 'lucide-react';
+import { Link, useNavigate } from 'react-router-dom';
+import { Activity, AlertCircle, CheckCircle2, Eye, EyeOff, LockKeyhole, ShieldCheck } from 'lucide-react';
 import { supabase } from '../supabaseClient';
 
 const ResetPassword = () => {
@@ -9,6 +9,8 @@ const ResetPassword = () => {
   const navigate = useNavigate();
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState('');
   const [error, setError] = useState('');
@@ -75,76 +77,88 @@ const ResetPassword = () => {
   };
 
   return (
-    <div className="login-container bg-gradient">
-      <div className="login-card animate-in">
-        <div className="login-logo">
-          <Activity size={36} color="var(--primary)" />
-          <h2 style={{ marginBottom: '0.25rem' }}>{t('reset_password')}</h2>
-          <p>{t('new_password')}</p>
+    <div className="auth-page bg-gradient">
+      <section className="auth-shell auth-shell--compact animate-in">
+        <aside className="auth-brand-panel">
+          <Link to="/" className="auth-brand">
+            <Activity size={26} />
+            <span>UrClinic</span>
+          </Link>
+          <div className="auth-brand-copy">
+            <span className="eyebrow"><ShieldCheck size={15} /> {t('user_settings')}</span>
+            <h1>{t('reset_password')}</h1>
+            <p>{t('new_password')}</p>
+          </div>
+        </aside>
+
+        <div className="auth-card">
+          <div className="auth-card-header">
+            <div className="auth-logo-mark"><LockKeyhole size={24} /></div>
+            <h2>{t('reset_password')}</h2>
+            <p>{t('new_password')}</p>
+          </div>
+
+          {error && (
+            <div className="auth-alert auth-alert--error" role="alert">
+              <AlertCircle size={17} />
+              <span>{error}</span>
+            </div>
+          )}
+
+          {message && (
+            <div className="auth-alert auth-alert--success" role="status">
+              <CheckCircle2 size={17} />
+              <span>{message}</span>
+            </div>
+          )}
+
+          <form onSubmit={handleSubmit} className="auth-form">
+            <div className="form-group">
+              <label className="form-label" htmlFor="reset-password">{t('new_password')}</label>
+              <div className="auth-input-wrap">
+                <LockKeyhole size={18} />
+                <input 
+                  id="reset-password"
+                  type={showPassword ? 'text' : 'password'}
+                  className="input auth-input" 
+                  placeholder="••••••••" 
+                  value={password} 
+                  onChange={e => setPassword(e.target.value)} 
+                  required
+                  autoComplete="new-password"
+                />
+                <button type="button" className="auth-input-action" onClick={() => setShowPassword(prev => !prev)} aria-label={showPassword ? 'Hide password' : 'Show password'}>
+                  {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+                </button>
+              </div>
+            </div>
+            
+            <div className="form-group">
+              <label className="form-label" htmlFor="reset-confirm-password">{t('confirm_password')}</label>
+              <div className="auth-input-wrap">
+                <LockKeyhole size={18} />
+                <input 
+                  id="reset-confirm-password"
+                  type={showConfirmPassword ? 'text' : 'password'}
+                  className="input auth-input" 
+                  placeholder="••••••••" 
+                  value={confirmPassword} 
+                  onChange={e => setConfirmPassword(e.target.value)} 
+                  required
+                  autoComplete="new-password"
+                />
+                <button type="button" className="auth-input-action" onClick={() => setShowConfirmPassword(prev => !prev)} aria-label={showConfirmPassword ? 'Hide password' : 'Show password'}>
+                  {showConfirmPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+                </button>
+              </div>
+            </div>
+            
+            <button type="submit" className="btn btn-primary w-full auth-submit" disabled={loading}>
+              {loading ? (t('loading') || '...') : t('update_password')}
+            </button>
+          </form>
         </div>
-
-        {error && (
-          <div style={{
-            background: 'rgba(239,68,68,0.08)', border: '1px solid var(--danger)',
-            color: 'var(--danger)', padding: '0.75rem 1rem', borderRadius: 'var(--radius-md)',
-            marginBottom: '1rem', fontSize: '0.875rem', textAlign: 'center'
-          }}>
-            {error}
-          </div>
-        )}
-
-        {message && (
-          <div style={{
-            background: 'rgba(16,185,129,0.08)', border: '1px solid var(--success)',
-            color: 'var(--success)', padding: '0.75rem 1rem', borderRadius: 'var(--radius-md)',
-            marginBottom: '1rem', fontSize: '0.875rem', textAlign: 'center'
-          }}>
-            {message}
-          </div>
-        )}
-
-        <form onSubmit={handleSubmit}>
-          <div className="form-group">
-            <label className="form-label">{t('new_password')}</label>
-            <div style={{ position: 'relative' }}>
-              <div style={{ position: 'absolute', top: '50%', transform: 'translateY(-50%)', [document.documentElement.dir === 'rtl' ? 'right' : 'left']: '1rem', color: 'var(--text-muted)' }}>
-                <Lock size={18} />
-              </div>
-              <input 
-                type="password" 
-                className="input" 
-                style={{ paddingInlineStart: '2.5rem' }}
-                placeholder="••••••••" 
-                value={password} 
-                onChange={e => setPassword(e.target.value)} 
-                required
-              />
-            </div>
-          </div>
-          
-          <div className="form-group">
-            <label className="form-label">{t('confirm_password')}</label>
-            <div style={{ position: 'relative' }}>
-              <div style={{ position: 'absolute', top: '50%', transform: 'translateY(-50%)', [document.documentElement.dir === 'rtl' ? 'right' : 'left']: '1rem', color: 'var(--text-muted)' }}>
-                <Lock size={18} />
-              </div>
-              <input 
-                type="password" 
-                className="input" 
-                style={{ paddingInlineStart: '2.5rem' }}
-                placeholder="••••••••" 
-                value={confirmPassword} 
-                onChange={e => setConfirmPassword(e.target.value)} 
-                required
-              />
-            </div>
-          </div>
-          
-          <button type="submit" className="btn btn-primary w-full" style={{ marginTop: '0.5rem' }} disabled={loading}>
-            {loading ? (t('loading') || '...') : t('update_password')}
-          </button>
-        </form>
-      </div>
+      </section>
     </div>
   );
 };

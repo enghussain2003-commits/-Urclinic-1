@@ -1,11 +1,13 @@
 import { useTranslation } from 'react-i18next';
 import { Download } from 'lucide-react';
 import { downloadPrescriptionPdf } from '../utils/prescriptionPdf';
+import { useToast } from '../hooks/useToast';
 
 // Renders one prescription record (from the DB) and downloads it as a PDF.
 // rx: { diagnosis, medicines:[{name,dosage,instructions}], instructions, prescribed_date }
 const PrescriptionViewer = ({ rx, doctorName = '', patientName = '' }) => {
   const { t, i18n } = useTranslation();
+  const toast = useToast();
   const isAr = i18n.language === 'ar';
   if (!rx) return null;
 
@@ -59,7 +61,12 @@ const PrescriptionViewer = ({ rx, doctorName = '', patientName = '' }) => {
       <button
         className="btn btn-outline"
         style={{ marginTop: '1.25rem', width: '100%' }}
-        onClick={() => downloadPrescriptionPdf(rx, { isAr, doctorName, patientName })}
+        onClick={() => {
+          const opened = downloadPrescriptionPdf(rx, { isAr, doctorName, patientName });
+          if (!opened) {
+            toast.warning(isAr ? 'يرجى السماح بالنوافذ المنبثقة لتنزيل الوصفة.' : 'Please allow pop-ups to download the prescription.');
+          }
+        }}
       >
         <Download size={16} /> {t('download_pdf')}
       </button>

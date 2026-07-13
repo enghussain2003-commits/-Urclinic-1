@@ -1,11 +1,14 @@
 import { useState, useRef, useEffect } from 'react';
 import { Bell, CheckCheck, Volume2, CalendarPlus, RefreshCw, XCircle } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
 import { useApp } from '../context/AppContext';
 
 const NotificationBell = () => {
+  const { t, i18n } = useTranslation();
   const { notifications, unreadCount, refreshNotifications, markNotificationRead, markAllNotificationsRead } = useApp();
   const [isOpen, setIsOpen] = useState(false);
   const dropdownRef = useRef(null);
+  const isAr = i18n.language === 'ar';
 
   // Close dropdown when clicking outside
   useEffect(() => {
@@ -32,11 +35,11 @@ const NotificationBell = () => {
     // eslint-disable-next-line react-hooks/purity
     const diff = Date.now() - new Date(dateStr).getTime();
     const mins = Math.floor(diff / 60000);
-    if (mins < 1) return 'Just now';
-    if (mins < 60) return `${mins}m ago`;
+    if (mins < 1) return isAr ? 'الآن' : 'Just now';
+    if (mins < 60) return isAr ? `قبل ${mins} د` : `${mins}m ago`;
     const hours = Math.floor(mins / 60);
-    if (hours < 24) return `${hours}h ago`;
-    return `${Math.floor(hours / 24)}d ago`;
+    if (hours < 24) return isAr ? `قبل ${hours} س` : `${hours}h ago`;
+    return isAr ? `قبل ${Math.floor(hours / 24)} يوم` : `${Math.floor(hours / 24)}d ago`;
   };
 
   const toggleOpen = () => {
@@ -48,58 +51,31 @@ const NotificationBell = () => {
   return (
     <div style={{ position: 'relative' }} ref={dropdownRef}>
       <button
-        className="btn btn-ghost btn-icon"
+        className="notif-btn"
         onClick={toggleOpen}
-        style={{ position: 'relative' }}
+        aria-label={t('notifications')}
+        aria-expanded={isOpen}
       >
         <Bell size={20} />
         {unreadCount > 0 && (
-          <span style={{
-            position: 'absolute', top: 2, right: 2,
-            width: 18, height: 18, borderRadius: '50%',
-            background: '#ef4444', color: '#fff',
-            fontSize: '0.7rem', fontWeight: 800,
-            display: 'flex', alignItems: 'center', justifyContent: 'center',
-            border: '2px solid var(--bg-primary)',
-            animation: 'pulse 2s infinite'
-          }}>
+          <span className="notif-count-badge">
             {unreadCount > 9 ? '9+' : unreadCount}
           </span>
         )}
       </button>
 
       {isOpen && (
-        <div className="animate-in" style={{
-          position: 'absolute',
-          top: '100%',
-          // Use the logical "end" edge so the dropdown anchors correctly in BOTH
-          // directions: right edge in LTR, left edge in RTL. Previously hard-coded
-          // `right: 0` made the dropdown overflow off-screen in Arabic mode.
-          insetInlineEnd: 0,
-          width: 360,
-          maxHeight: 420,
-          overflowY: 'auto',
-          background: 'var(--bg-primary)',
-          border: '1px solid var(--border)',
-          borderRadius: 'var(--radius-lg)',
-          boxShadow: '0 20px 60px rgba(0,0,0,0.15)',
-          zIndex: 9999,
-          marginTop: 8
-        }}>
+        <div className="notif-dropdown animate-in">
           {/* Header */}
-          <div style={{
-            padding: '1rem 1.25rem',
-            borderBottom: '1px solid var(--border)',
-            display: 'flex', justifyContent: 'space-between', alignItems: 'center'
-          }}>
-            <h4 style={{ margin: 0, fontSize: '1rem' }}>Notifications</h4>
+          <div className="notif-header">
+            <h4 style={{ margin: 0, fontSize: '1rem' }}>{t('notifications')}</h4>
             {unreadCount > 0 && (
               <button
                 className="btn btn-ghost btn-sm"
                 onClick={() => markAllNotificationsRead()}
                 style={{ fontSize: '0.75rem', padding: '0.25rem 0.5rem' }}
               >
-                <CheckCheck size={14} /> Mark all read
+                <CheckCheck size={14} /> {t('mark_read')}
               </button>
             )}
           </div>
@@ -108,23 +84,14 @@ const NotificationBell = () => {
           {notifications.length === 0 ? (
             <div style={{ padding: '2rem', textAlign: 'center', color: 'var(--text-secondary)' }}>
               <Bell size={32} style={{ opacity: 0.2, margin: '0 auto 0.5rem' }} />
-              <p style={{ margin: 0, fontSize: '0.875rem' }}>No notifications yet</p>
+              <p style={{ margin: 0, fontSize: '0.875rem' }}>{t('no_notifications')}</p>
             </div>
           ) : (
             notifications.slice(0, 20).map(notif => (
               <div
                 key={notif.id}
                 onClick={() => { if (!notif.is_read) markNotificationRead(notif.id); }}
-                style={{
-                  padding: '0.875rem 1.25rem',
-                  borderBottom: '1px solid var(--border)',
-                  cursor: 'pointer',
-                  background: notif.is_read ? 'transparent' : 'rgba(var(--primary-rgb, 45,139,127), 0.04)',
-                  transition: 'background 0.2s',
-                  display: 'flex', gap: '0.75rem', alignItems: 'flex-start'
-                }}
-                onMouseOver={e => e.currentTarget.style.background = 'var(--bg-secondary)'}
-                onMouseOut={e => e.currentTarget.style.background = notif.is_read ? 'transparent' : 'rgba(var(--primary-rgb, 45,139,127), 0.04)'}
+                className={`notif-item ${notif.is_read ? '' : 'unread'}`}
               >
                 <span style={{ fontSize: '1.25rem', flexShrink: 0, marginTop: 2 }}>
                   {getNotifIcon(notif.type)}
@@ -150,12 +117,7 @@ const NotificationBell = () => {
                     {getTimeAgo(notif.created_at)}
                   </span>
                 </div>
-                {!notif.is_read && (
-                  <div style={{
-                    width: 8, height: 8, borderRadius: '50%',
-                    background: 'var(--primary)', flexShrink: 0, marginTop: 8
-                  }} />
-                )}
+                {!notif.is_read && <div className="notif-dot" />}
               </div>
             ))
           )}
