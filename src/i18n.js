@@ -30,6 +30,15 @@ const resources = {
       hero_subtitle: "Book appointments with top specialists in seconds. Secure payments, instant confirmations, and smart reminders — all in one place.",
       get_started: "Get Started",
       explore_doctors: "Explore Doctors",
+      landing_trust_label: "Product trust points",
+      trust_specialties: "Multiple specialties",
+      trust_specialties_desc: "Organize doctors, clinics, and booking flows across medical specialties.",
+      trust_devices: "Desktop, tablet, and mobile",
+      trust_devices_desc: "Responsive workflows for clinic teams and patients on common devices.",
+      trust_roles: "Role-based access",
+      trust_roles_desc: "Separate views and permissions for clinic staff, doctors, and patients.",
+      trust_records: "Appointments and records",
+      trust_records_desc: "Keep appointments, patient profiles, prescriptions, and notifications organized.",
 
       // How it works
       how_it_works: "How It Works",
@@ -324,6 +333,15 @@ const resources = {
       hero_subtitle: "احجز مواعيدك مع أفضل المتخصصين في ثوانٍ. دفع آمن، تأكيد فوري، وتذكيرات ذكية — كل شيء في مكان واحد.",
       get_started: "ابدأ الآن",
       explore_doctors: "تصفح الأطباء",
+      landing_trust_label: "نقاط الثقة في المنتج",
+      trust_specialties: "يدعم عدة تخصصات",
+      trust_specialties_desc: "تنظيم الأطباء والعيادات وتدفقات الحجز عبر التخصصات الطبية.",
+      trust_devices: "يعمل على الحاسوب والتابلت والجوال",
+      trust_devices_desc: "واجهات متجاوبة لفِرق العيادات والمرضى على الأجهزة الشائعة.",
+      trust_roles: "صلاحيات حسب الدور",
+      trust_roles_desc: "واجهات وصلاحيات منفصلة لموظفي العيادة والأطباء والمرضى.",
+      trust_records: "مواعيد وسجلات منظمة",
+      trust_records_desc: "تنظيم المواعيد وملفات المرضى والوصفات الطبية والإشعارات.",
 
       // How it works
       how_it_works: "كيف يعمل النظام",
