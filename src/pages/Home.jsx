@@ -1,22 +1,270 @@
+import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
 import {
+  Activity,
   ArrowRight,
+  BarChart3,
+  Bell,
   Calendar,
   CheckCircle2,
   Clock3,
+  Cloud,
+  Database,
+  FileText,
   HeartPulse,
-  Laptop,
+  KeyRound,
   LockKeyhole,
+  NotebookPen,
   Shield,
   Sparkles,
   Stethoscope,
   TabletSmartphone,
+  Timer,
   UserRoundCheck,
   Users,
 } from 'lucide-react';
 import { useApp } from '../context/AppContext';
 import DoctorCard from '../components/DoctorCard';
+
+const ShowcaseScreen = ({ type, t }) => {
+  if (type === 'patient') {
+    return (
+      <div className="showcase-ui showcase-ui--patient">
+        <div className="showcase-phone">
+          <div className="showcase-phone-top">
+            <span>UrClinic</span>
+            <Bell size={14} />
+          </div>
+          <div className="booking-card">
+            <small>{t('showcase_patient_booking')}</small>
+            <strong>Dr. Sara Ali</strong>
+            <div className="booking-slots">
+              <span>09:00</span><span className="active">10:30</span><span>12:00</span>
+            </div>
+          </div>
+          <div className="mini-prescription">
+            <FileText size={15} />
+            <div>
+              <strong>{t('prescription')}</strong>
+              <small>2 {t('medicines')}</small>
+            </div>
+          </div>
+          <div className="reminder-pill">
+            <Timer size={14} />
+            <span>{t('reminder_msg')}</span>
+          </div>
+        </div>
+        <div className="showcase-side-panel">
+          <div className="panel-title-row">
+            <HeartPulse size={16} />
+            <strong>{t('my_appointments')}</strong>
+          </div>
+          <div className="history-line complete"><span></span>{t('past_visits')}</div>
+          <div className="history-line active"><span></span>{t('medical_history')}</div>
+          <div className="history-line"><span></span>{t('download_invoice')}</div>
+        </div>
+      </div>
+    );
+  }
+
+  if (type === 'clinic') {
+    return (
+      <div className="showcase-ui showcase-ui--clinic">
+        <div className="clinic-board">
+          <div className="board-header">
+            <strong>{t('clinic_admin_panel')}</strong>
+            <span>{t('today')}</span>
+          </div>
+          <div className="clinic-kpis">
+            <div><small>{t('today_appointments')}</small><strong>18</strong></div>
+            <div><small>{t('patients_menu')}</small><strong>126</strong></div>
+            <div><small>{t('revenue')}</small><strong>$4.8k</strong></div>
+          </div>
+          <div className="workflow-list">
+            <div><span className="dot approved"></span><strong>09:30</strong><em>{t('approved')}</em></div>
+            <div><span className="dot pending"></span><strong>10:15</strong><em>{t('pending')}</em></div>
+            <div><span className="dot neutral"></span><strong>11:00</strong><em>{t('send_reminder')}</em></div>
+          </div>
+        </div>
+        <div className="staff-card">
+          <Users size={17} />
+          <strong>{t('total_employees')}</strong>
+          <div><span></span><span></span><span></span></div>
+        </div>
+      </div>
+    );
+  }
+
+  if (type === 'doctor') {
+    return (
+      <div className="showcase-ui showcase-ui--doctor">
+        <div className="doctor-workspace">
+          <div className="patient-strip">
+            <span className="avatar">م</span>
+            <div>
+              <strong>Maryam Ali</strong>
+              <small>{t('dermatology')} · {t('last_visit')}</small>
+            </div>
+          </div>
+          <div className="clinical-grid">
+            <div className="timeline-card">
+              <small>{t('patient_timeline')}</small>
+              <span></span><span></span><span></span>
+            </div>
+            <div className="diagnosis-card">
+              <small>{t('diagnosis')}</small>
+              <strong>{t('clinical_notes')}</strong>
+              <p>{t('showcase_doctor_note')}</p>
+            </div>
+          </div>
+          <div className="prescription-row">
+            <NotebookPen size={16} />
+            <span>{t('new_prescription')}</span>
+            <strong>{t('save')}</strong>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  if (type === 'analytics') {
+    return (
+      <div className="showcase-ui showcase-ui--analytics">
+        <div className="analytics-hero-card">
+          <small>{t('monthly_revenue')}</small>
+          <strong>$28,420</strong>
+          <span>{t('from_paid_appointments')}</span>
+        </div>
+        <div className="analytics-bars">
+          {[42, 68, 55, 82, 62, 76, 58].map(height => <span key={height} style={{ height: `${height}%` }}></span>)}
+        </div>
+        <div className="activity-overview">
+          <div><Activity size={14} /><span>{t('recent_activity')}</span></div>
+          <div><BarChart3 size={14} /><span>{t('performance_charts')}</span></div>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="showcase-ui showcase-ui--platform">
+      <div className="platform-cloud">
+        <Cloud size={26} />
+        <strong>{t('cloud_sync')}</strong>
+      </div>
+      <div className="security-grid">
+        <div><KeyRound size={16} /><span>{t('role_permissions')}</span></div>
+        <div><Database size={16} /><span>{t('secure_backups')}</span></div>
+        <div><TabletSmartphone size={16} /><span>{t('multi_device_support')}</span></div>
+        <div><Activity size={16} /><span>{t('fast_performance')}</span></div>
+      </div>
+      <div className="sync-line"><span></span></div>
+    </div>
+  );
+};
+
+const ProductShowcase = ({ t }) => {
+  const scenes = [
+    {
+      id: 'patient',
+      icon: <UserRoundCheck size={16} />,
+      title: t('showcase_patient_title'),
+      eyebrow: t('showcase_patient_eyebrow'),
+      features: [t('showcase_patient_booking'), t('prescription'), t('reminder'), t('medical_history')],
+    },
+    {
+      id: 'clinic',
+      icon: <Users size={16} />,
+      title: t('showcase_clinic_title'),
+      eyebrow: t('showcase_clinic_eyebrow'),
+      features: [t('reception_workflow'), t('patients_management'), t('staff_management'), t('financial_reports')],
+    },
+    {
+      id: 'doctor',
+      icon: <Stethoscope size={16} />,
+      title: t('showcase_doctor_title'),
+      eyebrow: t('showcase_doctor_eyebrow'),
+      features: [t('patient_timeline'), t('medical_records'), t('diagnosis'), t('clinical_notes')],
+    },
+    {
+      id: 'analytics',
+      icon: <BarChart3 size={16} />,
+      title: t('showcase_analytics_title'),
+      eyebrow: t('showcase_analytics_eyebrow'),
+      features: [t('revenue'), t('appointments_per_week'), t('performance_charts'), t('activity_overview')],
+    },
+    {
+      id: 'platform',
+      icon: <Shield size={16} />,
+      title: t('showcase_platform_title'),
+      eyebrow: t('showcase_platform_eyebrow'),
+      features: [t('cloud_sync'), t('role_permissions'), t('secure_backups'), t('multi_device_support')],
+    },
+  ];
+  const [active, setActive] = useState(0);
+  const [paused, setPaused] = useState(false);
+
+  useEffect(() => {
+    const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    if (paused || reduceMotion) return undefined;
+    const timer = window.setInterval(() => {
+      setActive(index => (index + 1) % scenes.length);
+    }, 4500);
+    return () => window.clearInterval(timer);
+  }, [paused, scenes.length]);
+
+  const scene = scenes[active];
+
+  return (
+    <div
+      className="product-showcase"
+      onMouseEnter={() => setPaused(true)}
+      onMouseLeave={() => setPaused(false)}
+      onFocus={() => setPaused(true)}
+      onBlur={() => setPaused(false)}
+    >
+      <div className="showcase-shell" key={scene.id}>
+        <div className="showcase-chrome">
+          <div className="preview-window-controls">
+            <span></span><span></span><span></span>
+          </div>
+          <div className="preview-brand">
+            <HeartPulse size={15} />
+            <strong>UrClinic</strong>
+          </div>
+          <span className="showcase-live">{t('live_product')}</span>
+        </div>
+        <div className="showcase-content">
+          <div className="showcase-copy">
+            <span className="showcase-eyebrow">{scene.icon}{scene.eyebrow}</span>
+            <h2>{scene.title}</h2>
+            <div className="showcase-feature-list">
+              {scene.features.map(feature => (
+                <span key={feature}><CheckCircle2 size={14} />{feature}</span>
+              ))}
+            </div>
+          </div>
+          <ShowcaseScreen type={scene.id} t={t} />
+        </div>
+      </div>
+      <div className="showcase-controls" aria-label={t('showcase_navigation')}>
+        {scenes.map((item, index) => (
+          <button
+            key={item.id}
+            type="button"
+            className={index === active ? 'active' : ''}
+            onClick={() => setActive(index)}
+            aria-label={item.title}
+            aria-pressed={index === active}
+          >
+            <span></span>
+          </button>
+        ))}
+      </div>
+    </div>
+  );
+};
 
 const Home = () => {
   const { t } = useTranslation();
@@ -71,81 +319,7 @@ const Home = () => {
           </div>
         </div>
 
-        <div className="hero-product-preview" aria-hidden="true">
-          <div className="preview-topbar">
-            <div className="preview-window-controls">
-              <span></span><span></span><span></span>
-            </div>
-            <div className="preview-brand">
-              <HeartPulse size={15} />
-              <strong>UrClinic</strong>
-            </div>
-            <div className="preview-user">
-              <span>DR</span>
-            </div>
-          </div>
-          <div className="preview-header">
-            <div className="preview-stat preview-stat--primary">
-              <span className="preview-stat-icon"><Calendar size={17} /></span>
-              <small>{t('today_appointments')}</small>
-              <strong>12</strong>
-              <em>+3 {t('this_week')}</em>
-            </div>
-            <div className="preview-stat">
-              <span className="preview-stat-icon"><UserRoundCheck size={17} /></span>
-              <small>{t('pending_appointments')}</small>
-              <strong>04</strong>
-              <em>{t('pending_approval')}</em>
-            </div>
-          </div>
-          <div className="preview-chart-card">
-            <div>
-              <small>{t('appointments_per_week')}</small>
-              <strong>{t('weekly_view')}</strong>
-            </div>
-            <div className="preview-bars" role="presentation">
-              <span style={{ height: '42%' }}></span>
-              <span style={{ height: '68%' }}></span>
-              <span style={{ height: '54%' }}></span>
-              <span style={{ height: '82%' }}></span>
-              <span style={{ height: '64%' }}></span>
-              <span style={{ height: '74%' }}></span>
-            </div>
-          </div>
-          <div className="preview-schedule">
-            <div className="preview-row active">
-              <span className="preview-time">09:00</span>
-              <span className="preview-avatar">س</span>
-              <div className="preview-person">
-                <strong>{t('cardiology')}</strong>
-                <em>{t('doctor')} سامر الهاشمي</em>
-              </div>
-              <span className="preview-status preview-status--approved">{t('confirmed')}</span>
-            </div>
-            <div className="preview-row">
-              <span className="preview-time">10:30</span>
-              <span className="preview-avatar preview-avatar--patient">م</span>
-              <div className="preview-person">
-                <strong>{t('dermatology')}</strong>
-                <em>{t('patient')} مريم علي</em>
-              </div>
-              <span className="preview-status preview-status--pending">{t('pending')}</span>
-            </div>
-            <div className="preview-row soft">
-              <span className="preview-time">12:00</span>
-              <span className="preview-avatar preview-avatar--soft"><Laptop size={15} /></span>
-              <div className="preview-person">
-                <strong>{t('telehealth')}</strong>
-                <em>{t('schedule')} - {t('break_time')}</em>
-              </div>
-              <span className="preview-status preview-status--neutral">{t('available_slot')}</span>
-            </div>
-          </div>
-          <div className="preview-footer">
-            <CheckCircle2 size={17} />
-            <span>{t('appointment_time_reached')}</span>
-          </div>
-        </div>
+        <ProductShowcase t={t} />
       </section>
 
       <section className="landing-trust-section" aria-label={t('landing_trust_label')}>
