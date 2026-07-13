@@ -5134,6 +5134,692 @@ tbody tr:last-child td { border-bottom: none; }
 [dir="rtl"] .timeline-item { padding-left: 0; padding-right: 2.5rem; margin-left: 0; margin-right: 0.75rem; }
 [dir="rtl"] .timeline-item .timeline-dot { left: auto; right: -0.5rem; }
 
+/* ========== PREMIUM OPERATIONAL SCHEDULE + APPOINTMENTS ========== */
+.operational-page {
+  min-height: 100vh;
+  background: linear-gradient(180deg, #ffffff 0%, #f7f9fc 42%, #eef5fb 100%);
+}
+
+.operational-hero,
+.operational-panel,
+.operational-stat-card,
+.operational-appointment-card,
+.operational-detail-panel {
+  background: rgba(255,255,255,0.94);
+  border: 1px solid rgba(221,229,239,0.92);
+  box-shadow: 0 20px 50px -36px rgba(15,23,42,0.5);
+}
+
+.operational-hero {
+  display: flex;
+  align-items: stretch;
+  justify-content: space-between;
+  gap: 1rem;
+  margin-bottom: 1rem;
+  padding: 1.3rem;
+  border-radius: var(--radius-lg);
+}
+
+.operational-kicker {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  color: var(--primary);
+  font-size: 0.76rem;
+  font-weight: 800;
+}
+
+.operational-hero h1 {
+  margin: 0.3rem 0 0;
+  font-size: clamp(1.75rem, 3vw, 2.45rem);
+}
+
+.operational-hero p {
+  margin: 0.35rem 0 0;
+  color: var(--text-secondary);
+}
+
+.operational-search {
+  align-self: center;
+  width: min(360px, 36vw);
+  display: flex;
+  align-items: center;
+  gap: 0.55rem;
+  min-height: 50px;
+  padding: 0 0.9rem;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  background: #fff;
+}
+
+.operational-search input {
+  width: 100%;
+  min-width: 0;
+  border: 0;
+  outline: 0;
+  color: var(--text);
+  background: transparent;
+  font: inherit;
+}
+
+.operational-stats {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 0.8rem;
+  margin-bottom: 1rem;
+}
+
+.operational-stat-card {
+  min-height: 108px;
+  display: grid;
+  align-content: center;
+  gap: 0.3rem;
+  padding: 1rem;
+  text-align: start;
+  border-radius: var(--radius-md);
+  border-top: 3px solid var(--primary);
+  transition: transform var(--transition), box-shadow var(--transition), border-color var(--transition);
+}
+
+.operational-stat-card:hover,
+.operational-stat-card.active {
+  transform: translateY(-1px);
+  box-shadow: 0 22px 42px -34px rgba(15,23,42,0.55);
+  border-color: var(--primary);
+}
+
+.operational-stat-card strong {
+  color: var(--text);
+  font-size: 1.75rem;
+  line-height: 1;
+}
+
+.operational-stat-card span {
+  color: var(--text-muted);
+  font-size: 0.78rem;
+  font-weight: 800;
+}
+
+.operational-stat-card--warning { border-top-color: var(--warning); }
+.operational-stat-card--info { border-top-color: var(--info); }
+.operational-stat-card--success { border-top-color: var(--success); }
+
+.operational-filter-row {
+  display: flex;
+  gap: 0.55rem;
+  margin-bottom: 1rem;
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+
+.operational-filter-row::-webkit-scrollbar { display: none; }
+
+.operational-filter-row button {
+  flex: 0 0 auto;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+  min-height: 42px;
+  padding: 0.55rem 0.8rem;
+  color: var(--text-secondary);
+  font-weight: 800;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  background: #fff;
+}
+
+.operational-filter-row button.active {
+  color: #fff;
+  border-color: var(--primary);
+  background: var(--primary);
+}
+
+.operational-filter-row span {
+  display: inline-grid;
+  place-items: center;
+  min-width: 24px;
+  height: 24px;
+  color: inherit;
+  border-radius: 999px;
+  background: rgba(255,255,255,0.18);
+}
+
+.operational-filter-row button:not(.active) span {
+  color: var(--primary);
+  background: var(--primary-50);
+}
+
+.operational-panel {
+  padding: 1.1rem;
+  border-radius: var(--radius-lg);
+}
+
+.operational-panel-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 1rem;
+  margin-bottom: 1rem;
+}
+
+.operational-panel-head span {
+  display: block;
+  color: var(--primary);
+  font-size: 0.76rem;
+  font-weight: 800;
+}
+
+.operational-panel-head h2 {
+  margin: 0.18rem 0 0;
+  font-size: 1.22rem;
+}
+
+.operational-panel-head em {
+  display: inline-grid;
+  place-items: center;
+  min-width: 34px;
+  height: 34px;
+  padding: 0 0.7rem;
+  color: var(--primary);
+  font-size: 0.82rem;
+  font-style: normal;
+  font-weight: 800;
+  border-radius: 999px;
+  background: var(--primary-50);
+}
+
+.operational-table-wrap {
+  overflow-x: auto;
+}
+
+.operational-table {
+  min-width: 980px;
+  border-collapse: separate;
+  border-spacing: 0 0.55rem;
+}
+
+.operational-table th {
+  color: var(--text-muted);
+  font-size: 0.75rem;
+  font-weight: 800;
+  border: 0;
+  background: transparent;
+}
+
+.operational-table td {
+  padding: 0.85rem;
+  border-top: 1px solid var(--border-light);
+  border-bottom: 1px solid var(--border-light);
+  background: #fff;
+}
+
+.operational-table td:first-child {
+  border-inline-start: 1px solid var(--border-light);
+  border-radius: var(--radius-md) 0 0 var(--radius-md);
+}
+
+.operational-table td:last-child {
+  border-inline-end: 1px solid var(--border-light);
+  border-radius: 0 var(--radius-md) var(--radius-md) 0;
+}
+
+[dir="rtl"] .operational-table td:first-child {
+  border-radius: 0 var(--radius-md) var(--radius-md) 0;
+}
+
+[dir="rtl"] .operational-table td:last-child {
+  border-radius: var(--radius-md) 0 0 var(--radius-md);
+}
+
+.operational-patient-cell {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.6rem;
+  color: var(--text);
+  border: 0;
+  background: transparent;
+  text-align: start;
+}
+
+.operational-patient-cell span,
+.operational-card-patient > span {
+  display: inline-grid;
+  place-items: center;
+  width: 38px;
+  height: 38px;
+  flex: 0 0 38px;
+  color: #fff;
+  font-weight: 800;
+  border-radius: 0.85rem;
+  background: linear-gradient(135deg, var(--primary), var(--accent));
+}
+
+.operational-code {
+  color: var(--primary);
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  font-weight: 800;
+}
+
+.operational-date-cell {
+  display: grid;
+  gap: 0.18rem;
+}
+
+.operational-date-cell span {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  color: var(--text-muted);
+  font-size: 0.78rem;
+}
+
+.operational-row-actions,
+.operational-action-row {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 0.45rem;
+}
+
+.operational-danger-btn {
+  border-color: rgba(239,68,68,0.38);
+  color: var(--danger);
+}
+
+.operational-complete-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+}
+
+.operational-mobile-list {
+  display: none;
+}
+
+.operational-appointment-card {
+  display: grid;
+  gap: 0.85rem;
+  padding: 1rem;
+  border-radius: var(--radius-lg);
+}
+
+.operational-appointment-card header,
+.operational-appointment-card footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+}
+
+.operational-card-patient {
+  display: flex;
+  align-items: center;
+  gap: 0.65rem;
+  min-width: 0;
+}
+
+.operational-card-patient strong {
+  display: block;
+}
+
+.operational-card-patient em {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  color: var(--text-muted);
+  font-size: 0.78rem;
+  font-style: normal;
+}
+
+.operational-card-grid,
+.operational-detail-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.6rem;
+}
+
+.operational-card-grid div,
+.operational-detail-grid div {
+  min-width: 0;
+  padding: 0.75rem;
+  border: 1px solid var(--border-light);
+  border-radius: var(--radius-md);
+  background: linear-gradient(180deg, #fff, #f8fbff);
+}
+
+.operational-card-grid span,
+.operational-detail-grid span {
+  display: block;
+  color: var(--text-muted);
+  font-size: 0.72rem;
+  font-weight: 800;
+}
+
+.operational-card-grid strong,
+.operational-detail-grid strong {
+  display: block;
+  margin-top: 0.15rem;
+  color: var(--text);
+  font-size: 0.88rem;
+  overflow-wrap: anywhere;
+}
+
+.operational-detail-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 2000;
+  display: flex;
+  justify-content: flex-end;
+  background: rgba(15,23,42,0.34);
+  backdrop-filter: blur(6px);
+}
+
+[dir="rtl"] .operational-detail-backdrop {
+  justify-content: flex-start;
+}
+
+.operational-detail-panel {
+  position: relative;
+  width: min(460px, 100%);
+  height: 100%;
+  padding: 1.25rem;
+  overflow-y: auto;
+  border-radius: 0;
+  animation: operationalSlideIn 260ms ease both;
+}
+
+.operational-detail-close {
+  position: absolute;
+  top: 0.9rem;
+  inset-inline-end: 0.9rem;
+}
+
+.operational-detail-panel h2 {
+  margin: 0.6rem 0 0.5rem;
+}
+
+.operational-detail-grid {
+  grid-template-columns: 1fr;
+  margin-top: 1rem;
+}
+
+.operational-detail-actions {
+  display: grid;
+  gap: 0.65rem;
+  margin-top: 1rem;
+}
+
+.operational-loading {
+  display: grid;
+  gap: 0.65rem;
+  padding: 1.5rem;
+}
+
+.operational-loading span {
+  display: block;
+  height: 18px;
+  border-radius: 999px;
+  background: linear-gradient(90deg, #eef2f7 0%, #f8fafc 48%, #eef2f7 100%);
+  background-size: 220% 100%;
+  animation: bookingShimmer 1.25s linear infinite;
+}
+
+.operational-loading span:nth-child(2) { width: 76%; }
+.operational-loading span:nth-child(3) { width: 54%; }
+
+.operational-empty {
+  display: grid;
+  place-items: center;
+  min-height: 150px;
+  padding: 1.25rem;
+  color: var(--text-muted);
+  text-align: center;
+  border: 1px dashed rgba(148,163,184,0.42);
+  border-radius: var(--radius-md);
+  background: rgba(248,250,252,0.72);
+}
+
+.schedule-hero .badge {
+  margin-top: 0.6rem;
+}
+
+.schedule-toolbar {
+  align-self: center;
+  display: flex;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+}
+
+.schedule-controls {
+  display: grid;
+  grid-template-columns: minmax(240px, 0.45fr) minmax(260px, 1fr);
+  gap: 1rem;
+  align-items: end;
+  margin-bottom: 1rem;
+}
+
+.schedule-doctor-summary {
+  display: grid;
+  gap: 0.2rem;
+  padding: 0.85rem 1rem;
+  border: 1px solid var(--border-light);
+  border-radius: var(--radius-md);
+  background: linear-gradient(180deg, #fff, #f8fbff);
+}
+
+.schedule-doctor-summary span,
+.schedule-doctor-summary em {
+  color: var(--text-muted);
+  font-size: 0.78rem;
+  font-style: normal;
+  font-weight: 700;
+}
+
+.schedule-doctor-summary strong {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+}
+
+.schedule-board {
+  overflow: hidden;
+}
+
+.schedule-scroll {
+  overflow-x: auto;
+  padding-bottom: 0.5rem;
+}
+
+.schedule-grid-premium {
+  min-width: 920px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  background: #fff;
+  overflow: hidden;
+}
+
+.schedule-grid-premium .schedule-header {
+  position: sticky;
+  top: 0;
+  z-index: 2;
+  display: grid;
+  gap: 0.1rem;
+  min-height: 64px;
+  align-content: center;
+  padding: 0.7rem;
+  color: var(--text);
+  border-bottom: 1px solid var(--border);
+  background: #f8fbff;
+  text-align: center;
+}
+
+.schedule-grid-premium .schedule-header span {
+  color: var(--text-muted);
+  font-size: 0.76rem;
+}
+
+.schedule-grid-premium .schedule-header.is-today {
+  color: var(--primary);
+  background: var(--primary-50);
+}
+
+.schedule-grid-premium .schedule-header--time {
+  color: var(--text-muted);
+  font-weight: 800;
+}
+
+.schedule-grid-premium .schedule-time {
+  position: sticky;
+  inset-inline-start: 0;
+  z-index: 1;
+  display: grid;
+  place-items: center;
+  min-height: 70px;
+  padding: 0.5rem;
+  color: var(--text-secondary);
+  border-inline-end: 1px solid var(--border-light);
+  border-bottom: 1px solid var(--border-light);
+  background: #fff;
+  font-size: 0.82rem;
+  font-weight: 800;
+}
+
+.schedule-grid-premium .schedule-time.is-current-hour {
+  color: var(--primary);
+  background: var(--primary-50);
+}
+
+.schedule-grid-premium .schedule-cell {
+  min-height: 70px;
+  padding: 0.4rem;
+  border-bottom: 1px solid var(--border-light);
+  border-inline-end: 1px solid var(--border-light);
+}
+
+.schedule-grid-premium .schedule-slot {
+  min-height: 54px;
+  display: grid;
+  align-content: center;
+  gap: 0.1rem;
+  padding: 0.55rem;
+  border-radius: var(--radius-md);
+  color: var(--text-secondary);
+  font-size: 0.78rem;
+  font-weight: 800;
+  text-align: center;
+}
+
+.schedule-grid-premium .schedule-slot small {
+  color: currentColor;
+  opacity: 0.72;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+}
+
+.schedule-grid-premium .schedule-slot.available {
+  color: #047857;
+  background: rgba(16,185,129,0.08);
+}
+
+.schedule-grid-premium .schedule-slot.booked {
+  color: #1d4ed8;
+  background: rgba(37,99,235,0.11);
+  box-shadow: inset 0 0 0 1px rgba(37,99,235,0.16);
+}
+
+.schedule-grid-premium .schedule-slot.break {
+  color: #b45309;
+  background: rgba(245,158,11,0.1);
+}
+
+.schedule-grid-premium .schedule-slot.past {
+  color: var(--text-muted);
+  background: var(--bg-alt);
+}
+
+@keyframes operationalSlideIn {
+  from { opacity: 0; transform: translateX(16px); }
+  to { opacity: 1; transform: translateX(0); }
+}
+
+@media (max-width: 1023px) {
+  .operational-hero,
+  .schedule-controls {
+    grid-template-columns: 1fr;
+  }
+
+  .operational-hero {
+    display: grid;
+  }
+
+  .operational-search {
+    width: 100%;
+  }
+
+  .operational-stats {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 768px) {
+  .operational-page {
+    padding: 1rem;
+  }
+
+  .operational-table-wrap {
+    display: none;
+  }
+
+  .operational-mobile-list {
+    display: grid;
+    gap: 0.85rem;
+  }
+
+  .operational-stats {
+    grid-template-columns: 1fr 1fr;
+  }
+
+  .schedule-toolbar {
+    justify-content: stretch;
+  }
+
+  .schedule-toolbar .btn {
+    flex: 1;
+  }
+}
+
+@media (max-width: 520px) {
+  .operational-page {
+    padding: 0.75rem;
+  }
+
+  .operational-hero,
+  .operational-panel,
+  .operational-appointment-card {
+    padding: 1rem;
+  }
+
+  .operational-stats {
+    grid-template-columns: 1fr;
+  }
+
+  .operational-appointment-card header,
+  .operational-appointment-card footer,
+  .operational-action-row,
+  .operational-row-actions {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .operational-card-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .operational-detail-panel {
+    width: 100%;
+  }
+}
+
 /* ========== PREMIUM BOOKING WORKFLOW ========== */
 .booking-page {
   min-height: 100vh;
