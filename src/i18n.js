@@ -67,6 +67,12 @@ const resources = {
       secure_backups: "Secure backups",
       multi_device_support: "Multi-device support",
       fast_performance: "Fast performance",
+      quick_actions: "Quick Actions",
+      clinic_operations: "Clinic Operations",
+      calendar_summary: "Calendar Summary",
+      notifications_preview: "Notifications Preview",
+      doctor_overview: "Doctor Overview",
+      staff_overview: "Staff Overview",
 
       // How it works
       how_it_works: "How It Works",
@@ -398,6 +404,12 @@ const resources = {
       secure_backups: "نسخ احتياطي آمن",
       multi_device_support: "دعم عدة أجهزة",
       fast_performance: "أداء سريع",
+      quick_actions: "إجراءات سريعة",
+      clinic_operations: "عمليات العيادة",
+      calendar_summary: "ملخص التقويم",
+      notifications_preview: "معاينة الإشعارات",
+      doctor_overview: "نظرة على الأطباء",
+      staff_overview: "نظرة على الموظفين",
 
       // How it works
       how_it_works: "كيف يعمل النظام",
