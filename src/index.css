@@ -5133,3 +5133,792 @@ tbody tr:last-child td { border-bottom: none; }
 [dir="rtl"] .sidebar-item { text-align: right; }
 [dir="rtl"] .timeline-item { padding-left: 0; padding-right: 2.5rem; margin-left: 0; margin-right: 0.75rem; }
 [dir="rtl"] .timeline-item .timeline-dot { left: auto; right: -0.5rem; }
+
+/* ========== PREMIUM PATIENT EMR PROFILE ========== */
+.patient-emr-page {
+  min-height: 100vh;
+  background:
+    linear-gradient(180deg, rgba(255,255,255,0.96) 0%, rgba(247,249,252,0.98) 42%, rgba(241,246,251,0.96) 100%);
+}
+
+.patient-emr-page--portal {
+  max-width: 1320px;
+  margin: 0 auto;
+}
+
+.patient-emr-back {
+  margin-bottom: 1rem;
+}
+
+.patient-emr-hero,
+.patient-emr-stats,
+.patient-emr-grid,
+.patient-emr-tabs,
+.patient-emr-panel {
+  animation: patientEmrFadeUp 480ms ease both;
+}
+
+.patient-emr-hero {
+  display: flex;
+  align-items: stretch;
+  justify-content: space-between;
+  gap: 1rem;
+  margin-bottom: 1rem;
+}
+
+.patient-emr-identity,
+.patient-emr-hero-card,
+.patient-emr-hero-actions,
+.patient-emr-stat,
+.patient-emr-panel {
+  background: rgba(255,255,255,0.92);
+  border: 1px solid rgba(221,229,239,0.92);
+  box-shadow: 0 18px 46px -34px rgba(15,23,42,0.48);
+}
+
+.patient-emr-identity {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  padding: 1.25rem;
+  border-radius: var(--radius-lg);
+}
+
+.patient-emr-avatar {
+  width: 72px;
+  height: 72px;
+  flex: 0 0 72px;
+  display: grid;
+  place-items: center;
+  border-radius: 1rem;
+  color: #fff;
+  font-size: 1.7rem;
+  font-weight: 800;
+  background:
+    radial-gradient(circle at 30% 20%, rgba(255,255,255,0.28), transparent 34%),
+    linear-gradient(135deg, #2563eb 0%, #0891b2 100%);
+  box-shadow: 0 18px 34px -24px rgba(37,99,235,0.72);
+}
+
+.patient-emr-kicker {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  color: var(--primary);
+  font-size: 0.76rem;
+  font-weight: 800;
+}
+
+.patient-emr-identity h1 {
+  margin: 0.25rem 0 0;
+  font-size: clamp(1.65rem, 2.6vw, 2.35rem);
+  line-height: 1.18;
+}
+
+.patient-emr-meta {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 0.55rem 1rem;
+  margin-top: 0.45rem;
+  color: var(--text-secondary);
+  font-size: 0.88rem;
+}
+
+.patient-emr-meta span {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  min-width: 0;
+}
+
+.patient-emr-hero-card {
+  width: min(280px, 32vw);
+  min-height: 130px;
+  display: grid;
+  align-content: center;
+  gap: 0.2rem;
+  padding: 1.15rem;
+  border-radius: var(--radius-lg);
+  background:
+    linear-gradient(145deg, rgba(239,246,255,0.96), rgba(255,255,255,0.95));
+}
+
+.patient-emr-hero-card span,
+.patient-emr-hero-card em {
+  color: var(--text-muted);
+  font-size: 0.78rem;
+  font-style: normal;
+  font-weight: 700;
+}
+
+.patient-emr-hero-card strong {
+  color: var(--primary);
+  font-size: 2rem;
+  line-height: 1.1;
+}
+
+.patient-emr-hero-actions {
+  width: min(300px, 32vw);
+  display: grid;
+  align-content: center;
+  gap: 0.65rem;
+  padding: 1rem;
+  border-radius: var(--radius-lg);
+}
+
+.patient-emr-hero-actions .btn {
+  width: 100%;
+}
+
+.patient-emr-stats {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 0.85rem;
+  margin-bottom: 1rem;
+}
+
+.patient-emr-stat {
+  min-height: 108px;
+  display: grid;
+  grid-template-columns: auto 1fr;
+  align-items: center;
+  gap: 0.2rem 0.75rem;
+  padding: 1rem;
+  border-radius: var(--radius-md);
+  border-top: 3px solid var(--primary);
+}
+
+.patient-emr-stat svg {
+  grid-row: span 2;
+  width: 40px;
+  height: 40px;
+  padding: 0.62rem;
+  color: var(--primary);
+  border-radius: 0.85rem;
+  background: var(--primary-50);
+}
+
+.patient-emr-stat strong {
+  color: var(--text);
+  font-size: 1.45rem;
+  line-height: 1.1;
+}
+
+.patient-emr-stat span {
+  color: var(--text-muted);
+  font-size: 0.78rem;
+  font-weight: 700;
+}
+
+.patient-emr-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(300px, 0.36fr);
+  gap: 1rem;
+  align-items: start;
+}
+
+.patient-emr-main,
+.patient-emr-side {
+  display: grid;
+  gap: 1rem;
+  min-width: 0;
+}
+
+.patient-emr-panel {
+  padding: 1.1rem;
+  border-radius: var(--radius-lg);
+}
+
+.patient-emr-panel:hover {
+  box-shadow: 0 22px 52px -34px rgba(15,23,42,0.55);
+}
+
+.patient-emr-panel-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 1rem;
+  margin-bottom: 1rem;
+}
+
+.patient-emr-panel-head > svg {
+  flex: 0 0 auto;
+  color: var(--primary);
+}
+
+.patient-emr-panel-head span {
+  display: block;
+  color: var(--primary);
+  font-size: 0.76rem;
+  font-weight: 800;
+}
+
+.patient-emr-panel-head h2 {
+  margin: 0.18rem 0 0;
+  font-size: 1.12rem;
+  line-height: 1.35;
+}
+
+.patient-emr-appointment-focus,
+.patient-emr-clinical-summary,
+.patient-emr-summary-list,
+.patient-emr-payment {
+  display: grid;
+  gap: 0.75rem;
+}
+
+.patient-emr-appointment-focus {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  align-items: center;
+}
+
+.patient-emr-appointment-focus > div,
+.patient-emr-clinical-summary > div,
+.patient-emr-summary-list > div,
+.patient-emr-payment > div {
+  min-width: 0;
+  padding: 0.9rem;
+  border: 1px solid var(--border-light);
+  border-radius: var(--radius-md);
+  background: linear-gradient(180deg, #fff, #f8fbff);
+}
+
+.patient-emr-appointment-focus span,
+.patient-emr-clinical-summary span,
+.patient-emr-summary-list span,
+.patient-emr-payment span {
+  display: block;
+  color: var(--text-muted);
+  font-size: 0.75rem;
+  font-weight: 700;
+}
+
+.patient-emr-appointment-focus strong,
+.patient-emr-clinical-summary strong,
+.patient-emr-summary-list strong,
+.patient-emr-payment strong {
+  display: block;
+  margin-top: 0.22rem;
+  color: var(--text);
+  font-size: 0.95rem;
+  overflow-wrap: anywhere;
+}
+
+.patient-emr-countdown {
+  margin-top: 0.9rem;
+  padding-top: 0.9rem;
+  border-top: 1px solid var(--border-light);
+}
+
+.patient-emr-countdown > span {
+  display: block;
+  color: var(--text-muted);
+  font-size: 0.78rem;
+  font-weight: 700;
+  margin-bottom: 0.45rem;
+}
+
+.patient-emr-empty {
+  display: grid;
+  place-items: center;
+  gap: 0.45rem;
+  min-height: 150px;
+  padding: 1.25rem;
+  color: var(--text-muted);
+  text-align: center;
+  border: 1px dashed rgba(148,163,184,0.45);
+  border-radius: var(--radius-md);
+  background: rgba(248,250,252,0.74);
+}
+
+.patient-emr-empty svg {
+  color: var(--primary-light);
+  opacity: 0.48;
+}
+
+.patient-emr-empty h3,
+.patient-emr-empty p {
+  margin: 0;
+}
+
+.patient-emr-empty--compact {
+  min-height: 112px;
+}
+
+.patient-emr-empty--danger {
+  border-color: rgba(239,68,68,0.26);
+  color: var(--danger);
+  background: rgba(239,68,68,0.05);
+}
+
+.patient-emr-timeline {
+  display: grid;
+  gap: 0.72rem;
+}
+
+.patient-emr-timeline-row {
+  position: relative;
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  gap: 0.75rem;
+  align-items: center;
+  padding: 0.85rem;
+  border: 1px solid var(--border-light);
+  border-radius: var(--radius-md);
+  background: #fff;
+  transition: transform var(--transition), box-shadow var(--transition), border-color var(--transition);
+}
+
+.patient-emr-timeline-row:hover {
+  transform: translateY(-1px);
+  border-color: rgba(37,99,235,0.26);
+  box-shadow: 0 14px 32px -28px rgba(15,23,42,0.5);
+}
+
+.patient-emr-timeline-row strong {
+  display: block;
+  color: var(--text);
+  font-size: 0.95rem;
+}
+
+.patient-emr-timeline-row p {
+  margin: 0.1rem 0 0;
+  color: var(--text-secondary);
+  font-size: 0.82rem;
+}
+
+.patient-emr-timeline-row em {
+  color: var(--primary);
+  font-size: 0.72rem;
+  font-style: normal;
+  font-weight: 800;
+}
+
+.patient-emr-timeline-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 999px;
+  background: var(--primary);
+  box-shadow: 0 0 0 5px var(--primary-50);
+}
+
+.patient-emr-timeline-row--visit {
+  grid-template-columns: auto minmax(0, 1fr);
+  align-items: start;
+}
+
+.patient-emr-timeline-row--visit > button {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  width: 100%;
+  padding: 0;
+  color: inherit;
+  background: transparent;
+  border: 0;
+  text-align: start;
+}
+
+.patient-emr-visit-detail {
+  grid-column: 2 / -1;
+  display: grid;
+  gap: 0.65rem;
+  padding-top: 0.8rem;
+  border-top: 1px solid var(--border-light);
+}
+
+.patient-emr-visit-detail div {
+  padding: 0.75rem;
+  border-radius: var(--radius-md);
+  background: var(--bg);
+}
+
+.patient-emr-visit-detail span {
+  color: var(--primary);
+  font-size: 0.75rem;
+  font-weight: 800;
+}
+
+.patient-emr-visit-detail p {
+  margin: 0.16rem 0 0;
+  color: var(--text);
+  font-size: 0.9rem;
+}
+
+.patient-emr-tabs {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 0.65rem;
+  padding: 0.45rem;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  background: rgba(255,255,255,0.68);
+}
+
+.patient-emr-tabs button {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.45rem;
+  min-height: 48px;
+  padding: 0.65rem 0.8rem;
+  color: var(--text-secondary);
+  font-weight: 800;
+  border: 1px solid transparent;
+  border-radius: var(--radius-md);
+  background: transparent;
+  transition: all var(--transition);
+}
+
+.patient-emr-tabs button.active,
+.patient-emr-tabs button:hover {
+  color: var(--primary);
+  background: #fff;
+  border-color: var(--border-light);
+  box-shadow: var(--shadow-sm);
+}
+
+.patient-emr-tabs em {
+  display: inline-grid;
+  place-items: center;
+  min-width: 24px;
+  height: 24px;
+  color: var(--primary);
+  font-size: 0.74rem;
+  font-style: normal;
+  border-radius: 999px;
+  background: var(--primary-50);
+}
+
+.patient-emr-rx-grid,
+.patient-emr-file-grid,
+.patient-emr-prescription-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+  gap: 0.9rem;
+}
+
+.patient-emr-rx-card,
+.patient-emr-file-card,
+.patient-emr-form-card,
+.patient-emr-note-card {
+  padding: 1rem;
+  border: 1px solid var(--border-light);
+  border-radius: var(--radius-md);
+  background: #fff;
+}
+
+.patient-emr-rx-card.is-latest {
+  border-color: rgba(37,99,235,0.32);
+  box-shadow: 0 18px 36px -30px rgba(37,99,235,0.75);
+}
+
+.patient-emr-rx-top,
+.patient-emr-rx-actions {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.65rem;
+}
+
+.patient-emr-rx-card h3,
+.patient-emr-file-card h3,
+.patient-emr-form-card h3 {
+  margin: 0.65rem 0 0.3rem;
+  font-size: 1rem;
+}
+
+.patient-emr-rx-card p,
+.patient-emr-rx-card > span,
+.patient-emr-file-card p,
+.patient-emr-file-card em,
+.patient-emr-note-card p {
+  color: var(--text-secondary);
+  font-size: 0.82rem;
+}
+
+.patient-emr-rx-card p {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  margin: 0;
+}
+
+.patient-emr-rx-med {
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+  margin: 0.75rem 0;
+  padding: 0.7rem;
+  color: var(--primary-dark);
+  font-size: 0.86rem;
+  font-weight: 800;
+  border-radius: var(--radius-md);
+  background: var(--primary-50);
+}
+
+.patient-emr-rx-actions {
+  justify-content: flex-start;
+  flex-wrap: wrap;
+  margin-top: 0.9rem;
+}
+
+.patient-emr-form-card {
+  margin-bottom: 1rem;
+  border-inline-start: 4px solid var(--primary);
+}
+
+.patient-emr-form-card--file { border-inline-start-color: #3b82f6; }
+.patient-emr-form-card--rx { border-inline-start-color: #10b981; }
+
+.patient-emr-med-row {
+  display: grid;
+  grid-template-columns: minmax(180px, 1.35fr) minmax(130px, 0.75fr) minmax(180px, 1.35fr) auto;
+  gap: 0.65rem;
+  margin-bottom: 0.75rem;
+  padding: 0.75rem;
+  border: 1px solid var(--border-light);
+  border-radius: var(--radius-md);
+  background: var(--bg);
+}
+
+.patient-emr-alert {
+  margin-bottom: 1rem;
+  padding: 0.8rem 1rem;
+  color: var(--danger);
+  font-size: 0.86rem;
+  white-space: pre-wrap;
+  border: 1px solid rgba(239,68,68,0.28);
+  border-radius: var(--radius-md);
+  background: rgba(239,68,68,0.06);
+}
+
+.patient-emr-file-card {
+  border-top: 3px solid #64748b;
+}
+
+.patient-emr-file-card[data-type="x-ray"] { border-top-color: #8b5cf6; }
+.patient-emr-file-card[data-type="lab"] { border-top-color: #3b82f6; }
+.patient-emr-file-card[data-type="prescription"] { border-top-color: #10b981; }
+.patient-emr-file-card[data-type="report"] { border-top-color: #f59e0b; }
+
+.patient-emr-file-card > div {
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+  color: var(--primary);
+  font-size: 0.78rem;
+  font-weight: 800;
+}
+
+.patient-emr-file-card em {
+  display: block;
+  margin-top: 0.75rem;
+  font-style: normal;
+}
+
+.patient-emr-action-list {
+  display: grid;
+  gap: 0.55rem;
+}
+
+.patient-emr-action-list button {
+  display: flex;
+  align-items: center;
+  gap: 0.65rem;
+  width: 100%;
+  min-height: 48px;
+  padding: 0.72rem 0.8rem;
+  color: var(--text);
+  font-weight: 800;
+  text-align: start;
+  border: 1px solid var(--border-light);
+  border-radius: var(--radius-md);
+  background: #fff;
+  transition: all var(--transition);
+}
+
+.patient-emr-action-list button:hover {
+  color: var(--primary);
+  border-color: rgba(37,99,235,0.28);
+  background: var(--primary-50);
+  transform: translateY(-1px);
+}
+
+.patient-emr-note-card strong {
+  display: block;
+  color: var(--text);
+  font-size: 0.95rem;
+}
+
+.patient-emr-note-card p {
+  margin: 0.35rem 0 0;
+}
+
+.patient-emr-loading {
+  display: grid;
+  gap: 0.6rem;
+}
+
+.patient-emr-loading span {
+  display: block;
+  height: 18px;
+  border-radius: 999px;
+  background: linear-gradient(90deg, #eef2f7 0%, #f8fafc 48%, #eef2f7 100%);
+  background-size: 220% 100%;
+  animation: patientEmrShimmer 1.25s linear infinite;
+}
+
+.patient-emr-loading span:nth-child(2) { width: 78%; }
+.patient-emr-loading span:nth-child(3) { width: 58%; }
+.patient-emr-loading--page {
+  max-width: 680px;
+  margin: 4rem auto 1rem;
+}
+
+@keyframes patientEmrFadeUp {
+  from { opacity: 0; transform: translateY(12px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes patientEmrShimmer {
+  from { background-position: 220% 0; }
+  to { background-position: -220% 0; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .patient-emr-hero,
+  .patient-emr-stats,
+  .patient-emr-grid,
+  .patient-emr-tabs,
+  .patient-emr-panel,
+  .patient-emr-loading span {
+    animation: none;
+  }
+
+  .patient-emr-panel,
+  .patient-emr-timeline-row,
+  .patient-emr-action-list button {
+    transition: none;
+  }
+}
+
+@media (max-width: 1023px) {
+  .patient-emr-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .patient-emr-hero {
+    flex-direction: column;
+  }
+
+  .patient-emr-hero-card,
+  .patient-emr-hero-actions {
+    width: 100%;
+  }
+}
+
+@media (max-width: 768px) {
+  .patient-emr-page {
+    padding: 1rem;
+  }
+
+  .patient-emr-stats {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .patient-emr-appointment-focus,
+  .patient-emr-clinical-summary {
+    grid-template-columns: 1fr;
+  }
+
+  .patient-emr-tabs {
+    display: flex;
+    overflow-x: auto;
+    scrollbar-width: none;
+  }
+
+  .patient-emr-tabs::-webkit-scrollbar {
+    display: none;
+  }
+
+  .patient-emr-tabs button {
+    flex: 0 0 auto;
+  }
+
+  .patient-emr-med-row {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 520px) {
+  .patient-emr-page {
+    padding: 0.75rem;
+  }
+
+  .patient-emr-identity {
+    align-items: flex-start;
+    padding: 1rem;
+  }
+
+  .patient-emr-avatar {
+    width: 56px;
+    height: 56px;
+    flex-basis: 56px;
+    border-radius: 0.9rem;
+    font-size: 1.25rem;
+  }
+
+  .patient-emr-meta {
+    gap: 0.35rem;
+  }
+
+  .patient-emr-meta span {
+    width: 100%;
+  }
+
+  .patient-emr-stats {
+    grid-template-columns: 1fr;
+  }
+
+  .patient-emr-stat {
+    min-height: 92px;
+  }
+
+  .patient-emr-panel {
+    padding: 0.95rem;
+  }
+
+  .patient-emr-panel-head {
+    align-items: flex-start;
+    flex-wrap: wrap;
+  }
+
+  .patient-emr-panel-head .btn {
+    width: 100%;
+  }
+
+  .patient-emr-timeline-row {
+    grid-template-columns: auto minmax(0, 1fr);
+  }
+
+  .patient-emr-timeline-row > .badge,
+  .patient-emr-timeline-row > em {
+    grid-column: 2 / -1;
+    justify-self: start;
+  }
+
+  .patient-emr-rx-grid,
+  .patient-emr-file-grid,
+  .patient-emr-prescription-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .patient-emr-rx-actions .btn {
+    width: 100%;
+  }
+}

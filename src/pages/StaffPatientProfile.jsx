@@ -2,8 +2,27 @@ import { useState, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useParams, useNavigate } from 'react-router-dom';
 import {
-  User, Phone, Calendar, Clock, FileText, Upload, Plus, X,
-  Stethoscope, ArrowLeft, Bell, Activity, Image, File, ChevronDown, ChevronUp, Pill, Trash2
+  Activity,
+  ArrowLeft,
+  Bell,
+  Calendar,
+  ChevronDown,
+  ChevronUp,
+  Clock,
+  CreditCard,
+  File,
+  FileText,
+  FolderOpen,
+  HeartPulse,
+  Image,
+  Pill,
+  Plus,
+  ShieldCheck,
+  Stethoscope,
+  Trash2,
+  Upload,
+  User,
+  X,
 } from 'lucide-react';
 import { useApp } from '../context/AppContext';
 import { useToast } from '../hooks/useToast';
@@ -44,6 +63,11 @@ const StaffPatientProfile = () => {
   const [fileForm, setFileForm] = useState({
     file_name: '', file_type: 'lab', description: '', file_url: ''
   });
+
+  useEffect(() => {
+    document.documentElement.dir = isAr ? 'rtl' : 'ltr';
+    document.documentElement.lang = i18n.language;
+  }, [i18n.language, isAr]);
 
   useEffect(() => {
     const fetchPatientData = async () => {
@@ -218,371 +242,452 @@ const StaffPatientProfile = () => {
     'other': 'Other / أخرى'
   };
 
-  if (loading) return <div className="page-padding text-center"><p>Loading patient profile...</p></div>;
-  if (!patient) return <div className="page-padding text-center"><h3>Patient not found</h3></div>;
+  const label = {
+    back: isAr ? 'العودة للمرضى' : 'Back to patients',
+    workspace: isAr ? 'ملف طبي إلكتروني' : 'Electronic medical record',
+    summary: isAr ? 'ملخص طبي' : 'Medical summary',
+    quickActions: isAr ? 'إجراءات سريعة' : 'Quick actions',
+    timeline: isAr ? 'الخط الزمني' : 'Visit timeline',
+    files: isAr ? 'الملفات الطبية' : 'Medical files',
+    prescriptions: isAr ? 'الوصفات الطبية' : 'Prescriptions',
+    notes: isAr ? 'الملاحظات' : 'Notes',
+    allergies: isAr ? 'الحساسية' : 'Allergies',
+    chronic: isAr ? 'الأمراض المزمنة' : 'Chronic diseases',
+    vitals: isAr ? 'المؤشرات الحيوية' : 'Vitals',
+    payments: isAr ? 'ملخص الدفع' : 'Payment summary',
+    attachments: isAr ? 'المرفقات' : 'Attachments',
+    none: isAr ? 'لا توجد بيانات مسجلة بعد.' : 'No records yet.',
+    loading: isAr ? 'جار تحميل ملف المريض...' : 'Loading patient profile...',
+    notFound: isAr ? 'لم يتم العثور على المريض' : 'Patient not found',
+  };
+
+  if (loading) {
+    return (
+      <div className="page-padding patient-emr-page">
+        <div className="patient-emr-loading patient-emr-loading--page"><span></span><span></span><span></span></div>
+        <p className="text-center text-muted">{label.loading}</p>
+      </div>
+    );
+  }
+
+  if (!patient) {
+    return (
+      <div className="page-padding patient-emr-page">
+        <div className="patient-emr-empty">
+          <User size={32} />
+          <h3>{label.notFound}</h3>
+        </div>
+      </div>
+    );
+  }
 
   const firstVisit = medicalHistory.length > 0 ? medicalHistory[medicalHistory.length - 1]?.visit_date : patient.created_at;
+  const latestVisit = medicalHistory[0] || null;
+  const age = calculateAge(patient.date_of_birth);
+  const profileDate = patient.created_at ? new Date(patient.created_at).toLocaleDateString(isAr ? 'ar-IQ' : 'en-GB') : '-';
+
+  const tabs = [
+    { id: 'timeline', icon: <Clock size={16} />, label: label.timeline, count: medicalHistory.length },
+    { id: 'files', icon: <FolderOpen size={16} />, label: label.files, count: medicalFiles.length },
+    { id: 'prescriptions', icon: <Pill size={16} />, label: label.prescriptions, count: prescriptions.length },
+  ];
 
   return (
-    <div className="page-padding animate-in">
-      {/* Header */}
-      <button className="btn btn-ghost mb-md" onClick={() => navigate('/dashboard/patients')} style={{ marginBottom: '1rem' }}>
-        <ArrowLeft size={18} /> Back to Patients
+    <div className="page-padding patient-emr-page patient-emr-page--staff animate-in">
+      <button className="btn btn-ghost patient-emr-back" onClick={() => navigate('/dashboard/patients')}>
+        <ArrowLeft size={18} /> {label.back}
       </button>
 
-      <div className="glass p-6 mb-xl">
-        <div className="flex justify-between items-start flex-wrap gap-md">
-          <div className="flex items-center gap-lg">
-            <div style={{
-              width: 72, height: 72, borderRadius: '50%', 
-              background: 'linear-gradient(135deg, var(--primary) 0%, var(--primary-dark) 100%)',
-              display: 'flex', alignItems: 'center', justifyContent: 'center',
-              color: '#fff', fontSize: '1.75rem', fontWeight: 800
-            }}>
-              {patient.full_name?.charAt(0)?.toUpperCase() || 'P'}
+      <section className="patient-emr-hero">
+        <div className="patient-emr-identity">
+          <div className="patient-emr-avatar">{patient.full_name?.charAt(0)?.toUpperCase() || 'P'}</div>
+          <div>
+            <span className="patient-emr-kicker"><ShieldCheck size={15} /> {label.workspace}</span>
+            <h1>{patient.full_name}</h1>
+            <div className="patient-emr-meta">
+              <span><User size={14} /> {patient.gender || '-'} · {isAr ? 'العمر' : 'Age'}: {age}</span>
+              <span><Calendar size={14} /> {isAr ? 'مسجل' : 'Registered'}: {profileDate}</span>
+              <span dir="ltr">{patient.phone || '-'}</span>
             </div>
-            <div>
-              <h2 style={{ margin: 0 }}>{patient.full_name}</h2>
-              <div className="flex gap-lg mt-sm flex-wrap text-muted">
-                <span className="flex items-center gap-sm"><Phone size={14} /> {patient.phone || '-'}</span>
-                <span className="flex items-center gap-sm"><User size={14} /> {patient.gender || '-'} • Age: {calculateAge(patient.date_of_birth)}</span>
-                <span className="flex items-center gap-sm"><Calendar size={14} /> Registered: {new Date(patient.created_at).toLocaleDateString()}</span>
+          </div>
+        </div>
+        <div className="patient-emr-hero-actions">
+          <button className="btn btn-primary" onClick={handleCallPatient}>
+            <Bell size={18} /> {isAr ? 'استدعاء المريض' : 'Call patient'}
+          </button>
+          <button className="btn btn-outline" onClick={() => { setActiveTab('prescriptions'); setShowAddRx(true); }}>
+            <Pill size={18} /> {t('new_prescription')}
+          </button>
+        </div>
+      </section>
+
+      <section className="patient-emr-stats">
+        <div className="patient-emr-stat">
+          <Stethoscope size={18} />
+          <strong>{medicalHistory.length}</strong>
+          <span>{isAr ? 'زيارات' : 'Visits'}</span>
+        </div>
+        <div className="patient-emr-stat">
+          <FolderOpen size={18} />
+          <strong>{medicalFiles.length}</strong>
+          <span>{label.files}</span>
+        </div>
+        <div className="patient-emr-stat">
+          <Pill size={18} />
+          <strong>{prescriptions.length}</strong>
+          <span>{label.prescriptions}</span>
+        </div>
+        <div className="patient-emr-stat">
+          <Calendar size={18} />
+          <strong>{firstVisit ? new Date(firstVisit).toLocaleDateString(isAr ? 'ar-IQ' : 'en-GB') : '-'}</strong>
+          <span>{isAr ? 'أول زيارة' : 'First visit'}</span>
+        </div>
+      </section>
+
+      <section className="patient-emr-grid">
+        <main className="patient-emr-main">
+          <div className="patient-emr-panel">
+            <div className="patient-emr-panel-head">
+              <div>
+                <span>{label.summary}</span>
+                <h2>{latestVisit?.diagnosis || (isAr ? 'لا يوجد تشخيص حديث' : 'No recent diagnosis')}</h2>
+              </div>
+              <HeartPulse size={19} />
+            </div>
+            <div className="patient-emr-clinical-summary">
+              <div>
+                <span>{label.allergies}</span>
+                <strong>{patient.allergies || (isAr ? 'لا توجد حساسية مسجلة' : 'No allergies recorded')}</strong>
+              </div>
+              <div>
+                <span>{label.chronic}</span>
+                <strong>{patient.chronic_diseases || patient.chronic_conditions || (isAr ? 'لا توجد أمراض مزمنة مسجلة' : 'No chronic diseases recorded')}</strong>
+              </div>
+              <div>
+                <span>{label.vitals}</span>
+                <strong>{patient.blood_type || patient.blood_pressure || (isAr ? 'تُحدّث أثناء الزيارة' : 'Updated during visit')}</strong>
+              </div>
+              <div>
+                <span>{label.payments}</span>
+                <strong>{isAr ? 'مرتبط بالحجوزات' : 'Linked to bookings'}</strong>
               </div>
             </div>
           </div>
-          <div className="flex gap-sm">
-            <button className="btn btn-primary" onClick={handleCallPatient}>
-              <Bell size={18} /> Call Patient / استدعاء
-            </button>
-          </div>
-        </div>
 
-        {/* Quick Stats */}
-        <div className="flex gap-lg mt-lg flex-wrap">
-          <div className="card-flat bg-alt text-center" style={{ flex: 1, minWidth: 120 }}>
-            <div style={{ fontSize: '1.5rem', fontWeight: 800, color: 'var(--primary)' }}>{medicalHistory.length}</div>
-            <div className="text-sm text-muted">Total Visits</div>
-          </div>
-          <div className="card-flat bg-alt text-center" style={{ flex: 1, minWidth: 120 }}>
-            <div style={{ fontSize: '1.5rem', fontWeight: 800, color: '#3b82f6' }}>{medicalFiles.length}</div>
-            <div className="text-sm text-muted">Medical Files</div>
-          </div>
-          <div className="card-flat bg-alt text-center" style={{ flex: 1, minWidth: 120 }}>
-            <div style={{ fontSize: '1.5rem', fontWeight: 800, color: '#10b981' }}>
-              {firstVisit ? new Date(firstVisit).toLocaleDateString() : '-'}
-            </div>
-            <div className="text-sm text-muted">First Visit</div>
-          </div>
-        </div>
-      </div>
-
-      {/* Tabs — scrollable on mobile */}
-      <div className="flex gap-sm mb-xl tabs-row" style={{ overflowX: 'auto', paddingBottom: 4 }}>
-        <button className={`btn ${activeTab === 'timeline' ? 'btn-primary' : 'btn-outline'}`} onClick={() => setActiveTab('timeline')} style={{ flexShrink: 0 }}>
-          <Clock size={16} /> Visit Timeline
-        </button>
-        <button className={`btn ${activeTab === 'files' ? 'btn-primary' : 'btn-outline'}`} onClick={() => setActiveTab('files')} style={{ flexShrink: 0 }}>
-          <FileText size={16} /> Medical Files ({medicalFiles.length})
-        </button>
-        <button className={`btn ${activeTab === 'prescriptions' ? 'btn-primary' : 'btn-outline'}`} onClick={() => setActiveTab('prescriptions')} style={{ flexShrink: 0 }}>
-          <Pill size={16} /> {t('prescriptions')} ({prescriptions.length})
-        </button>
-      </div>
-
-      {/* Visit Timeline Tab */}
-      {activeTab === 'timeline' && (
-        <div className="animate-in">
-          <div className="flex justify-between items-center mb-md">
-            <h3 style={{ margin: 0 }}>Visit Timeline / سجل الزيارات</h3>
-            <button className="btn btn-primary" onClick={() => setShowAddVisit(!showAddVisit)}>
-              {showAddVisit ? <><X size={16} /> Cancel</> : <><Plus size={16} /> Add Visit</>}
-            </button>
+          <div className="patient-emr-tabs">
+            {tabs.map(tab => (
+              <button key={tab.id} className={activeTab === tab.id ? 'active' : ''} onClick={() => setActiveTab(tab.id)}>
+                {tab.icon}
+                <span>{tab.label}</span>
+                <em>{tab.count}</em>
+              </button>
+            ))}
           </div>
 
-          {/* Add Visit Form */}
-          {showAddVisit && (
-            <div className="glass p-6 mb-xl animate-in" style={{ borderLeft: '4px solid var(--primary)' }}>
-              <h4 className="mb-md">New Visit Record</h4>
-              <form onSubmit={handleAddVisit}>
-                <div className="form-group">
-                  <label className="form-label">Diagnosis / التشخيص *</label>
-                  <textarea className="input" rows={2} required value={visitForm.diagnosis}
-                    onChange={e => setVisitForm({...visitForm, diagnosis: e.target.value})} />
+          {activeTab === 'timeline' && (
+            <div className="patient-emr-panel animate-in">
+              <div className="patient-emr-panel-head">
+                <div>
+                  <span>{label.timeline}</span>
+                  <h2>{isAr ? 'سجل الزيارات والملاحظات' : 'Visits and clinical notes'}</h2>
                 </div>
-                <div className="form-group">
-                  <label className="form-label">Treatment / العلاج *</label>
-                  <textarea className="input" rows={2} required value={visitForm.treatment}
-                    onChange={e => setVisitForm({...visitForm, treatment: e.target.value})} />
-                </div>
-                <div className="form-group">
-                  <label className="form-label">Doctor Notes / ملاحظات</label>
-                  <textarea className="input" rows={2} value={visitForm.notes}
-                    onChange={e => setVisitForm({...visitForm, notes: e.target.value})} />
-                </div>
-                <div className="form-group">
-                  <label className="form-label">Next Review Date / موعد المراجعة</label>
-                  <input className="input" type="date" value={visitForm.next_review_date}
-                    onChange={e => setVisitForm({...visitForm, next_review_date: e.target.value})} />
-                </div>
-                <button type="submit" className="btn btn-primary w-full">Save Visit Record</button>
-              </form>
-            </div>
-          )}
-
-          {/* Timeline */}
-          <div className="visit-timeline">
-            {medicalHistory.length === 0 ? (
-              <div className="card-flat bg-alt text-center py-xl text-muted">
-                <Stethoscope size={48} style={{ opacity: 0.2, margin: '0 auto 1rem' }} />
-                <p>No visit records yet. Add the first visit!</p>
-              </div>
-            ) : (
-              medicalHistory.map((visit, idx) => (
-                <div key={visit.id} className="timeline-item" style={{
-                  position: 'relative',
-                  paddingInlineStart: '2.5rem',
-                  paddingBottom: '1.5rem',
-                  borderInlineStart: idx < medicalHistory.length - 1 ? '2px solid var(--primary-200)' : '2px solid transparent',
-                  marginInlineStart: '0.75rem'
-                }}>
-                  {/* Timeline dot */}
-                  <div style={{
-                    position: 'absolute',
-                    insetInlineStart: '-0.5rem',
-                    top: '0.25rem',
-                    width: '1rem', height: '1rem', borderRadius: '50%',
-                    background: idx === 0 ? 'var(--primary)' : 'var(--primary-200)',
-                    border: '3px solid var(--bg)'
-                  }} />
-                  
-                  <div className="glass p-4" style={{ cursor: 'pointer' }}
-                    onClick={() => setExpandedVisit(expandedVisit === visit.id ? null : visit.id)}>
-                    <div className="flex justify-between items-center">
-                      <div>
-                        <div className="flex items-center gap-sm mb-xs">
-                          <Calendar size={14} className="text-muted" />
-                          <strong>{new Date(visit.visit_date).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' })}</strong>
-                          <span className="text-sm text-muted">{new Date(visit.visit_date).toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' })}</span>
-                        </div>
-                        <div className="text-sm text-muted">
-                          <Stethoscope size={12} style={{ display: 'inline', marginInlineEnd: 4 }} />
-                          Dr. {getDocName(visit.doctor_id)}
-                        </div>
-                      </div>
-                      {expandedVisit === visit.id ? <ChevronUp size={18} /> : <ChevronDown size={18} />}
-                    </div>
-
-                    {/* Collapsed preview */}
-                    {expandedVisit !== visit.id && (
-                      <p className="text-sm mt-sm" style={{ color: 'var(--text-secondary)', lineHeight: 1.4 }}>
-                        <strong>Dx:</strong> {visit.diagnosis?.substring(0, 80)}{visit.diagnosis?.length > 80 ? '...' : ''}
-                      </p>
-                    )}
-
-                    {/* Expanded details */}
-                    {expandedVisit === visit.id && (
-                      <div className="mt-md animate-in" style={{ borderTop: '1px solid var(--border)', paddingTop: '1rem' }}>
-                        <div className="mb-sm"><strong>Diagnosis / التشخيص:</strong><br/>{visit.diagnosis || '-'}</div>
-                        <div className="mb-sm"><strong>Treatment / العلاج:</strong><br/>{visit.treatment || '-'}</div>
-                        {visit.notes && <div className="mb-sm"><strong>Notes / ملاحظات:</strong><br/>{visit.notes}</div>}
-                        {visit.next_review_date && (
-                          <div className="badge badge-warning mt-sm">
-                            Next Review: {new Date(visit.next_review_date).toLocaleDateString()}
-                          </div>
-                        )}
-                      </div>
-                    )}
-                  </div>
-                </div>
-              ))
-            )}
-          </div>
-        </div>
-      )}
-
-      {/* Medical Files Tab */}
-      {activeTab === 'files' && (
-        <div className="animate-in">
-          <div className="flex justify-between items-center mb-md">
-            <h3 style={{ margin: 0 }}>Medical Files / الملفات الطبية</h3>
-            <button className="btn btn-primary" onClick={() => setShowAddFile(!showAddFile)}>
-              {showAddFile ? <><X size={16} /> Cancel</> : <><Upload size={16} /> Upload File</>}
-            </button>
-          </div>
-
-          {/* Add File Form */}
-          {showAddFile && (
-            <div className="glass p-6 mb-xl animate-in" style={{ borderLeft: '4px solid #3b82f6' }}>
-              <h4 className="mb-md">Upload Medical File</h4>
-              <form onSubmit={handleAddFile}>
-                <div className="form-group">
-                  <label className="form-label">File Name / اسم الملف *</label>
-                  <input className="input" required value={fileForm.file_name}
-                    onChange={e => setFileForm({...fileForm, file_name: e.target.value})}
-                    placeholder="e.g., Blood Test Results - June 2026" />
-                </div>
-                <div className="form-group">
-                  <label className="form-label">File Category / النوع *</label>
-                  <select className="input" value={fileForm.file_type}
-                    onChange={e => setFileForm({...fileForm, file_type: e.target.value})}>
-                    {Object.entries(fileTypeLabels).map(([key, label]) => (
-                      <option key={key} value={key}>{label}</option>
-                    ))}
-                  </select>
-                </div>
-                <div className="form-group">
-                  <label className="form-label">Description / وصف</label>
-                  <textarea className="input" rows={2} value={fileForm.description}
-                    onChange={e => setFileForm({...fileForm, description: e.target.value})} />
-                </div>
-                <div className="form-group">
-                  <label className="form-label">File URL (or upload path)</label>
-                  <input className="input" value={fileForm.file_url}
-                    onChange={e => setFileForm({...fileForm, file_url: e.target.value})}
-                    placeholder="https://storage.supabase.co/..." />
-                </div>
-                <button type="submit" className="btn btn-primary w-full">
-                  <Upload size={16} /> Save File Record
+                <button className="btn btn-primary btn-sm" onClick={() => setShowAddVisit(!showAddVisit)}>
+                  {showAddVisit ? <><X size={16} /> {t('cancel')}</> : <><Plus size={16} /> {isAr ? 'إضافة زيارة' : 'Add visit'}</>}
                 </button>
-              </form>
-            </div>
-          )}
+              </div>
 
-          {/* Files Grid */}
-          {medicalFiles.length === 0 ? (
-            <div className="card-flat bg-alt text-center py-xl text-muted">
-              <FileText size={48} style={{ opacity: 0.2, margin: '0 auto 1rem' }} />
-              <p>No medical files uploaded yet.</p>
-            </div>
-          ) : (
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: '1rem' }}>
-              {medicalFiles.map(file => (
-                <div key={file.id} className="glass p-4" style={{ borderTop: `3px solid ${
-                  file.file_type === 'x-ray' ? '#8b5cf6' : 
-                  file.file_type === 'lab' ? '#3b82f6' : 
-                  file.file_type === 'prescription' ? '#10b981' : 
-                  file.file_type === 'report' ? '#f59e0b' : '#6b7280'
-                }`}}>
-                  <div className="flex items-center gap-sm mb-sm">
-                    {fileTypeIcons[file.file_type]}
-                    <span className="badge" style={{ 
-                      background: file.file_type === 'x-ray' ? 'rgba(139,92,246,0.1)' : 
-                        file.file_type === 'lab' ? 'rgba(59,130,246,0.1)' : 
-                        file.file_type === 'prescription' ? 'rgba(16,185,129,0.1)' : 'rgba(245,158,11,0.1)',
-                      color: file.file_type === 'x-ray' ? '#8b5cf6' : 
-                        file.file_type === 'lab' ? '#3b82f6' : 
-                        file.file_type === 'prescription' ? '#10b981' : '#f59e0b'
-                    }}>
-                      {fileTypeLabels[file.file_type]?.split('/')[0]?.trim()}
-                    </span>
-                  </div>
-                  <h4 style={{ margin: '0.5rem 0 0.25rem', fontSize: '0.95rem' }}>{file.file_name}</h4>
-                  {file.description && <p className="text-sm text-muted mb-sm">{file.description}</p>}
-                  <div className="text-sm text-muted">
-                    {new Date(file.created_at).toLocaleDateString()}
-                  </div>
-                </div>
-              ))}
-            </div>
-          )}
-        </div>
-      )}
-
-      {/* Prescriptions Tab */}
-      {activeTab === 'prescriptions' && (
-        <div className="animate-in">
-          <div className="flex justify-between items-center mb-md">
-            <h3 style={{ margin: 0 }}>{t('prescriptions')} / الوصفات الطبية</h3>
-            <button className="btn btn-primary" onClick={() => setShowAddRx(!showAddRx)}>
-              {showAddRx ? <><X size={16} /> {t('cancel')}</> : <><Plus size={16} /> {t('new_prescription')}</>}
-            </button>
-          </div>
-
-          {/* Add Prescription Form */}
-          {showAddRx && (
-            <div className="glass p-6 mb-xl animate-in" style={{ borderInlineStart: '4px solid #10b981' }}>
-              <h4 className="mb-md">{t('new_prescription')}</h4>
-              {rxError && (
-                <div style={{
-                  background: 'rgba(239,68,68,0.08)',
-                  border: '1px solid var(--danger)',
-                  color: 'var(--danger)',
-                  padding: '0.75rem 1rem',
-                  borderRadius: 'var(--radius-md)',
-                  marginBottom: '1rem',
-                  fontSize: '0.875rem',
-                  whiteSpace: 'pre-wrap'
-                }}>
-                  {rxError}
+              {showAddVisit && (
+                <div className="patient-emr-form-card animate-in">
+                  <h3>{isAr ? 'سجل زيارة جديد' : 'New visit record'}</h3>
+                  <form onSubmit={handleAddVisit}>
+                    <div className="form-group">
+                      <label className="form-label">Diagnosis / التشخيص *</label>
+                      <textarea className="input" rows={2} required value={visitForm.diagnosis}
+                        onChange={e => setVisitForm({...visitForm, diagnosis: e.target.value})} />
+                    </div>
+                    <div className="form-group">
+                      <label className="form-label">Treatment / العلاج *</label>
+                      <textarea className="input" rows={2} required value={visitForm.treatment}
+                        onChange={e => setVisitForm({...visitForm, treatment: e.target.value})} />
+                    </div>
+                    <div className="form-group">
+                      <label className="form-label">Doctor Notes / ملاحظات</label>
+                      <textarea className="input" rows={2} value={visitForm.notes}
+                        onChange={e => setVisitForm({...visitForm, notes: e.target.value})} />
+                    </div>
+                    <div className="form-group">
+                      <label className="form-label">Next Review Date / موعد المراجعة</label>
+                      <input className="input" type="date" value={visitForm.next_review_date}
+                        onChange={e => setVisitForm({...visitForm, next_review_date: e.target.value})} />
+                    </div>
+                    <button type="submit" className="btn btn-primary w-full">{isAr ? 'حفظ الزيارة' : 'Save visit record'}</button>
+                  </form>
                 </div>
               )}
-              <form onSubmit={handleAddPrescription}>
-                <div className="form-group">
-                  <label className="form-label">{t('diagnosis')} *</label>
-                  <textarea className="input" rows={2} required value={rxForm.diagnosis}
-                    onChange={e => setRxForm({ ...rxForm, diagnosis: e.target.value })} />
-                </div>
 
-                <label className="form-label">{t('medicines')} *</label>
-                {rxForm.medicines.map((m, idx) => (
-                  <div key={idx} className="card-flat bg-alt" style={{ marginBottom: '0.75rem' }}>
-                    <div className="flex gap-md flex-wrap">
-                      <div className="form-group mb-0" style={{ flex: '2 1 160px' }}>
+              {medicalHistory.length === 0 ? (
+                <div className="patient-emr-empty">
+                  <Stethoscope size={32} />
+                  <p>{label.none}</p>
+                </div>
+              ) : (
+                <div className="patient-emr-timeline">
+                  {medicalHistory.map((visit, idx) => (
+                    <article key={visit.id} className="patient-emr-timeline-row patient-emr-timeline-row--visit">
+                      <span className="patient-emr-timeline-dot"></span>
+                      <button type="button" onClick={() => setExpandedVisit(expandedVisit === visit.id ? null : visit.id)}>
+                        <div>
+                          <strong>{new Date(visit.visit_date).toLocaleDateString(isAr ? 'ar-IQ' : 'en-GB', { day: '2-digit', month: 'short', year: 'numeric' })}</strong>
+                          <p>{isAr ? 'د.' : 'Dr.'} {getDocName(visit.doctor_id)} · {visit.diagnosis || '-'}</p>
+                        </div>
+                        {expandedVisit === visit.id ? <ChevronUp size={18} /> : <ChevronDown size={18} />}
+                      </button>
+                      {expandedVisit !== visit.id && idx === 0 && <em>{isAr ? 'أحدث زيارة' : 'Latest visit'}</em>}
+                      {expandedVisit === visit.id && (
+                        <div className="patient-emr-visit-detail animate-in">
+                          <div><span>{t('diagnosis')}</span><p>{visit.diagnosis || '-'}</p></div>
+                          <div><span>{isAr ? 'العلاج' : 'Treatment'}</span><p>{visit.treatment || '-'}</p></div>
+                          {visit.notes && <div><span>{label.notes}</span><p>{visit.notes}</p></div>}
+                          {visit.next_review_date && <span className="badge badge-warning">{isAr ? 'المراجعة' : 'Next review'}: {new Date(visit.next_review_date).toLocaleDateString(isAr ? 'ar-IQ' : 'en-GB')}</span>}
+                        </div>
+                      )}
+                    </article>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
+
+          {activeTab === 'files' && (
+            <div className="patient-emr-panel animate-in">
+              <div className="patient-emr-panel-head">
+                <div>
+                  <span>{label.attachments}</span>
+                  <h2>{label.files}</h2>
+                </div>
+                <button className="btn btn-primary btn-sm" onClick={() => setShowAddFile(!showAddFile)}>
+                  {showAddFile ? <><X size={16} /> {t('cancel')}</> : <><Upload size={16} /> {isAr ? 'رفع ملف' : 'Upload file'}</>}
+                </button>
+              </div>
+
+              {showAddFile && (
+                <div className="patient-emr-form-card patient-emr-form-card--file animate-in">
+                  <h3>{isAr ? 'رفع ملف طبي' : 'Upload medical file'}</h3>
+                  <form onSubmit={handleAddFile}>
+                    <div className="form-group">
+                      <label className="form-label">File Name / اسم الملف *</label>
+                      <input className="input" required value={fileForm.file_name}
+                        onChange={e => setFileForm({...fileForm, file_name: e.target.value})}
+                        placeholder="e.g., Blood Test Results - June 2026" />
+                    </div>
+                    <div className="form-group">
+                      <label className="form-label">File Category / النوع *</label>
+                      <select className="input" value={fileForm.file_type}
+                        onChange={e => setFileForm({...fileForm, file_type: e.target.value})}>
+                        {Object.entries(fileTypeLabels).map(([key, text]) => (
+                          <option key={key} value={key}>{text}</option>
+                        ))}
+                      </select>
+                    </div>
+                    <div className="form-group">
+                      <label className="form-label">Description / وصف</label>
+                      <textarea className="input" rows={2} value={fileForm.description}
+                        onChange={e => setFileForm({...fileForm, description: e.target.value})} />
+                    </div>
+                    <div className="form-group">
+                      <label className="form-label">File URL (or upload path)</label>
+                      <input className="input" value={fileForm.file_url}
+                        onChange={e => setFileForm({...fileForm, file_url: e.target.value})}
+                        placeholder="https://storage.supabase.co/..." />
+                    </div>
+                    <button type="submit" className="btn btn-primary w-full">
+                      <Upload size={16} /> {isAr ? 'حفظ الملف' : 'Save file record'}
+                    </button>
+                  </form>
+                </div>
+              )}
+
+              {medicalFiles.length === 0 ? (
+                <div className="patient-emr-empty">
+                  <FileText size={32} />
+                  <p>{label.none}</p>
+                </div>
+              ) : (
+                <div className="patient-emr-file-grid">
+                  {medicalFiles.map(file => (
+                    <article key={file.id} className="patient-emr-file-card" data-type={file.file_type}>
+                      <div>
+                        {fileTypeIcons[file.file_type]}
+                        <span>{fileTypeLabels[file.file_type]?.split('/')[0]?.trim()}</span>
+                      </div>
+                      <h3>{file.file_name}</h3>
+                      {file.description && <p>{file.description}</p>}
+                      <em>{new Date(file.created_at).toLocaleDateString(isAr ? 'ar-IQ' : 'en-GB')}</em>
+                    </article>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
+
+          {activeTab === 'prescriptions' && (
+            <div className="patient-emr-panel animate-in">
+              <div className="patient-emr-panel-head">
+                <div>
+                  <span>{label.prescriptions}</span>
+                  <h2>{isAr ? 'الوصفات والأدوية' : 'Prescriptions and medicines'}</h2>
+                </div>
+                <button className="btn btn-primary btn-sm" onClick={() => setShowAddRx(!showAddRx)}>
+                  {showAddRx ? <><X size={16} /> {t('cancel')}</> : <><Plus size={16} /> {t('new_prescription')}</>}
+                </button>
+              </div>
+
+              {showAddRx && (
+                <div className="patient-emr-form-card patient-emr-form-card--rx animate-in">
+                  <h3>{t('new_prescription')}</h3>
+                  {rxError && <div className="patient-emr-alert">{rxError}</div>}
+                  <form onSubmit={handleAddPrescription}>
+                    <div className="form-group">
+                      <label className="form-label">{t('diagnosis')} *</label>
+                      <textarea className="input" rows={2} required value={rxForm.diagnosis}
+                        onChange={e => setRxForm({ ...rxForm, diagnosis: e.target.value })} />
+                    </div>
+
+                    <label className="form-label">{t('medicines')} *</label>
+                    {rxForm.medicines.map((m, idx) => (
+                      <div key={idx} className="patient-emr-med-row">
                         <input className="input" placeholder={t('medicine_name')} required={idx === 0}
                           value={m.name} onChange={e => setMed(idx, 'name', e.target.value)} />
-                      </div>
-                      <div className="form-group mb-0" style={{ flex: '1 1 120px' }}>
                         <input className="input" placeholder={t('dosage')}
                           value={m.dosage} onChange={e => setMed(idx, 'dosage', e.target.value)} />
-                      </div>
-                      <div className="form-group mb-0" style={{ flex: '2 1 160px' }}>
                         <input className="input" placeholder={t('instructions')}
                           value={m.instructions} onChange={e => setMed(idx, 'instructions', e.target.value)} />
+                        {rxForm.medicines.length > 1 && (
+                          <button type="button" className="btn btn-ghost btn-icon" onClick={() => removeMedRow(idx)}>
+                            <Trash2 size={16} style={{ color: 'var(--danger)' }} />
+                          </button>
+                        )}
                       </div>
-                      {rxForm.medicines.length > 1 && (
-                        <button type="button" className="btn btn-ghost btn-icon" onClick={() => removeMedRow(idx)}>
-                          <Trash2 size={16} style={{ color: 'var(--danger)' }} />
-                        </button>
-                      )}
+                    ))}
+                    <button type="button" className="btn btn-outline btn-sm mb-md" onClick={addMedRow}>
+                      <Plus size={14} /> {t('add_medicine')}
+                    </button>
+
+                    <div className="form-group">
+                      <label className="form-label">{t('instructions')}</label>
+                      <textarea className="input" rows={2} value={rxForm.instructions}
+                        onChange={e => setRxForm({ ...rxForm, instructions: e.target.value })} />
                     </div>
-                  </div>
-                ))}
-                <button type="button" className="btn btn-outline btn-sm mb-md" onClick={addMedRow}>
-                  <Plus size={14} /> {t('add_medicine')}
-                </button>
-
-                <div className="form-group">
-                  <label className="form-label">{t('instructions')}</label>
-                  <textarea className="input" rows={2} value={rxForm.instructions}
-                    onChange={e => setRxForm({ ...rxForm, instructions: e.target.value })} />
+                    <button type="submit" className="btn btn-primary w-full" disabled={savingRx}>
+                      {savingRx ? t('saving') : t('save_prescription')}
+                    </button>
+                  </form>
                 </div>
-                <button type="submit" className="btn btn-primary w-full" disabled={savingRx}>
-                  {savingRx ? t('saving') : t('save_prescription')}
-                </button>
-              </form>
-            </div>
-          )}
+              )}
 
-          {/* Prescriptions list */}
-          {prescriptions.length === 0 ? (
-            <div className="card-flat bg-alt text-center py-xl text-muted">
-              <Pill size={48} style={{ opacity: 0.2, margin: '0 auto 1rem' }} />
-              <p>{t('no_prescriptions')}</p>
-            </div>
-          ) : (
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))', gap: '1.25rem' }}>
-              {prescriptions.map(rx => (
-                <PrescriptionViewer
-                  key={rx.id}
-                  rx={rx}
-                  patientName={patient.full_name}
-                  doctorName={getDocName(rx.doctor_id)}
-                />
-              ))}
+              {prescriptions.length === 0 ? (
+                <div className="patient-emr-empty">
+                  <Pill size={32} />
+                  <p>{t('no_prescriptions')}</p>
+                </div>
+              ) : (
+                <div className="patient-emr-prescription-grid">
+                  {prescriptions.map(rx => (
+                    <PrescriptionViewer
+                      key={rx.id}
+                      rx={rx}
+                      patientName={patient.full_name}
+                      doctorName={getDocName(rx.doctor_id)}
+                    />
+                  ))}
+                </div>
+              )}
             </div>
           )}
-        </div>
-      )}
+        </main>
+
+        <aside className="patient-emr-side">
+          <div className="patient-emr-panel">
+            <div className="patient-emr-panel-head">
+              <div>
+                <span>{label.quickActions}</span>
+                <h2>{isAr ? 'اختصارات سريرية' : 'Clinical shortcuts'}</h2>
+              </div>
+              <Activity size={19} />
+            </div>
+            <div className="patient-emr-action-list">
+              <button onClick={() => { setActiveTab('timeline'); setShowAddVisit(true); }}>
+                <Stethoscope size={17} /><span>{isAr ? 'إضافة زيارة' : 'Add visit'}</span>
+              </button>
+              <button onClick={() => { setActiveTab('prescriptions'); setShowAddRx(true); }}>
+                <Pill size={17} /><span>{t('new_prescription')}</span>
+              </button>
+              <button onClick={() => { setActiveTab('files'); setShowAddFile(true); }}>
+                <Upload size={17} /><span>{isAr ? 'رفع ملف' : 'Upload file'}</span>
+              </button>
+              <button onClick={handleCallPatient}>
+                <Bell size={17} /><span>{isAr ? 'استدعاء المريض' : 'Call patient'}</span>
+              </button>
+            </div>
+          </div>
+
+          <div className="patient-emr-panel">
+            <div className="patient-emr-panel-head">
+              <div>
+                <span>{label.notes}</span>
+                <h2>{isAr ? 'ملاحظات حديثة' : 'Recent notes'}</h2>
+              </div>
+              <FileText size={19} />
+            </div>
+            {latestVisit ? (
+              <div className="patient-emr-note-card">
+                <strong>{latestVisit.diagnosis || '-'}</strong>
+                <p>{latestVisit.notes || latestVisit.treatment || (isAr ? 'لا توجد ملاحظات إضافية.' : 'No additional notes.')}</p>
+              </div>
+            ) : (
+              <div className="patient-emr-empty patient-emr-empty--compact">
+                <FileText size={24} />
+                <p>{label.none}</p>
+              </div>
+            )}
+          </div>
+
+          <div className="patient-emr-panel">
+            <div className="patient-emr-panel-head">
+              <div>
+                <span>{label.payments}</span>
+                <h2>{isAr ? 'مراجعة مالية' : 'Financial review'}</h2>
+              </div>
+              <CreditCard size={19} />
+            </div>
+            <div className="patient-emr-payment">
+              <div><span>{isAr ? 'الحالة' : 'Status'}</span><strong>{isAr ? 'منظم' : 'Organized'}</strong></div>
+              <div><span>{isAr ? 'المرجع' : 'Reference'}</span><strong>{patient.id}</strong></div>
+            </div>
+          </div>
+
+          <div className="patient-emr-panel">
+            <div className="patient-emr-panel-head">
+              <div>
+                <span>{label.attachments}</span>
+                <h2>{isAr ? 'آخر ملف' : 'Latest file'}</h2>
+              </div>
+              <FolderOpen size={19} />
+            </div>
+            {medicalFiles[0] ? (
+              <div className="patient-emr-note-card">
+                <strong>{medicalFiles[0].file_name}</strong>
+                <p>{medicalFiles[0].description || fileTypeLabels[medicalFiles[0].file_type]}</p>
+              </div>
+            ) : (
+              <div className="patient-emr-empty patient-emr-empty--compact">
+                <FolderOpen size={24} />
+                <p>{label.none}</p>
+              </div>
+            )}
+          </div>
+        </aside>
+      </section>
     </div>
   );
 };
