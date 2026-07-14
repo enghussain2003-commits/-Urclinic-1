@@ -29,6 +29,8 @@ import ForceChangePassword from './pages/ForceChangePassword';
 import SupportPage from './pages/SupportPage';
 import SuperAdminSupportCenter from './pages/SuperAdminSupportCenter';
 import { Menu } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
+import { routeForRole } from './services/superAdminService';
 
 const Layout = ({ children }) => {
   const location = useLocation();
@@ -74,24 +76,41 @@ const Layout = ({ children }) => {
 };
 
 const ProtectedRoute = ({ children, requiredRole }) => {
-  const { user } = useApp();
+  const { user, authLoading } = useApp();
   const location = useLocation();
+  const { t } = useTranslation();
   const staffRoles = ['super_admin', 'clinic_admin', 'employee', 'doctor'];
   const isStaff = user && staffRoles.includes(user.role);
+  const disabledStatuses = ['suspended', 'inactive', 'disabled'];
 
-  if (!user) return <Navigate to="/login" />;
+  if (authLoading) {
+    return (
+      <div className="page-padding">
+        <div className="operational-loading" role="status" aria-live="polite">
+          <span></span><span></span><span></span>
+        </div>
+        <p className="text-center text-muted">{t('loading')}</p>
+      </div>
+    );
+  }
+
+  if (!user) {
+    return <Navigate to="/login" replace state={{ authNotice: 'session_expired' }} />;
+  }
   if (user.must_change_password && location.pathname !== '/change-password') {
     return <Navigate to="/change-password" replace />;
   }
-  if (user.status === 'suspended') return <Navigate to="/login" replace />;
+  if (disabledStatuses.includes(String(user.status || '').toLowerCase()) || user.clinic_active === false) {
+    return <Navigate to="/login" replace state={{ authNotice: user.clinic_active === false ? 'clinic_disabled' : 'account_disabled' }} />;
+  }
 
   // Staff-only pages (dashboard): block non-staff.
-  if (requiredRole === 'clinic' && !isStaff) return <Navigate to="/" />;
-  if (requiredRole === 'super_admin' && user.role !== 'super_admin') return <Navigate to="/dashboard" />;
+  if (requiredRole === 'clinic' && !isStaff) return <Navigate to={routeForRole(user.role)} replace />;
+  if (requiredRole === 'super_admin' && user.role !== 'super_admin') return <Navigate to={routeForRole(user.role)} replace />;
 
   // Patient-only pages (booking): block staff and send them to their dashboard.
   if (requiredRole === 'patient' && user.role !== 'patient') {
-    return <Navigate to={isStaff ? '/dashboard' : '/'} />;
+    return <Navigate to={routeForRole(user.role)} replace />;
   }
 
   return children;

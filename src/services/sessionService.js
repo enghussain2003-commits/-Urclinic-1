@@ -1,18 +1,32 @@
-const USER_STORAGE_KEY = 'user';
+const LEGACY_USER_STORAGE_KEY = 'user';
+const USER_DISPLAY_CACHE_KEY = 'urclinic_user_display_cache';
 
 export const getStoredUser = () => {
-  try {
-    const stored = localStorage.getItem(USER_STORAGE_KEY);
-    return stored ? JSON.parse(stored) : null;
-  } catch {
-    return null;
-  }
+  // Authorization must never be reconstructed from browser storage.
+  // Keep this compatibility export non-authoritative and clear the legacy key
+  // that used to contain role, clinic_id, status, and other protected fields.
+  clearStoredUser();
+  return null;
 };
 
 export const setStoredUser = (user) => {
-  localStorage.setItem(USER_STORAGE_KEY, JSON.stringify(user));
+  try {
+    localStorage.removeItem(LEGACY_USER_STORAGE_KEY);
+    localStorage.setItem(USER_DISPLAY_CACHE_KEY, JSON.stringify({
+      id: user?.id || null,
+      name: user?.name || user?.full_name || '',
+      email: user?.email || '',
+    }));
+  } catch {
+    // Display cache is best-effort only.
+  }
 };
 
 export const clearStoredUser = () => {
-  localStorage.removeItem(USER_STORAGE_KEY);
+  try {
+    localStorage.removeItem(LEGACY_USER_STORAGE_KEY);
+    localStorage.removeItem(USER_DISPLAY_CACHE_KEY);
+  } catch {
+    // Browser storage may be unavailable.
+  }
 };

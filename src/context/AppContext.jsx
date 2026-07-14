@@ -12,7 +12,7 @@ import {
   updateDemoAppointmentStatus,
 } from '../demo/demoData';
 import { isDemoModeEnabled } from '../demo/demoMode';
-import { clearStoredUser, getStoredUser, setStoredUser } from '../services/sessionService';
+import { clearStoredUser, setStoredUser } from '../services/sessionService';
 import { SUPPORT_NOTIFICATION_TYPES } from '../services/supportService';
 import { validateIraqiPhone, validatePersonName } from '../utils/identityValidation';
 
@@ -174,8 +174,45 @@ const formatSupabaseError = (error) => {
   ].filter(Boolean).join(' | ');
 };
 
+const STAFF_ROLES = ['super_admin', 'clinic_admin', 'employee', 'doctor'];
+const DISABLED_STATUSES = ['suspended', 'inactive', 'disabled'];
+const PROFILE_AUTH_SELECT = 'id, full_name, email, phone_number, role, clinic_id, status, must_change_password';
+
+const isDisabledStatus = (status) =>
+  DISABLED_STATUSES.includes(String(status || '').trim().toLowerCase());
+
+const decodeJwtPayload = (token) => {
+  try {
+    const payload = token?.split('.')?.[1];
+    if (!payload) return {};
+    const normalized = payload.replace(/-/g, '+').replace(/_/g, '/');
+    const padded = normalized.padEnd(normalized.length + ((4 - normalized.length % 4) % 4), '=');
+    return JSON.parse(atob(padded));
+  } catch {
+    return {};
+  }
+};
+
+const canonicalUserFromSessionProfile = (sessionUser, profile, clinicActive = true) => {
+  const role = String(profile?.role || 'patient').trim().toLowerCase();
+  return {
+    id: sessionUser.id,
+    name: profile?.full_name || sessionUser.email,
+    full_name: profile?.full_name || '',
+    email: profile?.email || sessionUser.email,
+    phone: profile?.phone_number || '',
+    role,
+    clinic_id: profile?.clinic_id || null,
+    status: profile?.status || 'active',
+    must_change_password: Boolean(profile?.must_change_password),
+    clinic_active: clinicActive,
+  };
+};
+
 export const AppProvider = ({ children }) => {
-  const [user, setUser] = useState(getStoredUser());
+  const [user, setUser] = useState(null);
+  const [authLoading, setAuthLoading] = useState(true);
+  const [authNotice, setAuthNotice] = useState(null);
   const [doctors, setDoctors] = useState([]);
   const [appointments, setAppointments] = useState([]);
   const [patients, setPatients] = useState([]);
@@ -190,14 +227,117 @@ export const AppProvider = ({ children }) => {
   // the same filter as the initial fetch (null = no restriction = super_admin/patient).
   const clinicDoctorIdsRef = useRef(null);
 
+  const clearSessionState = useCallback(() => {
+    clearStoredUser();
+    setUser(null);
+    setDoctors([]);
+    setAppointments([]);
+    setPatients([]);
+    setNotifications([]);
+    setMyPatientIds([]);
+    clinicDoctorIdsRef.current = null;
+  }, []);
+
+  const refreshAuthProfile = useCallback(async (sessionOverride = null, options = {}) => {
+    const { setLoadingState = true, allowTokenRefresh = true } = options;
+    if (setLoadingState) setAuthLoading(true);
+    try {
+      let session = sessionOverride || (await supabase.auth.getSession()).data?.session;
+      if (!session?.user?.id) {
+        clearSessionState();
+        return null;
+      }
+
+      const { data: profile, error } = await supabase
+        .from('profiles')
+        .select(PROFILE_AUTH_SELECT)
+        .eq('id', session.user.id)
+        .single();
+      if (error || !profile) {
+        console.error('Canonical profile load failed:', error);
+        clearSessionState();
+        return null;
+      }
+
+      const role = String(profile.role || 'patient').trim().toLowerCase();
+      const claims = decodeJwtPayload(session.access_token);
+      const claimRole = String(claims.user_role || '').trim().toLowerCase();
+      const claimClinicId = claims.clinic_id ? String(claims.clinic_id) : null;
+      const profileClinicId = profile.clinic_id ? String(profile.clinic_id) : null;
+      const tokenClaimsAreStale =
+        (role && claimRole && claimRole !== role)
+        || (role !== 'patient' && !claimRole)
+        || (profileClinicId !== claimClinicId && role !== 'super_admin');
+
+      if (allowTokenRefresh && tokenClaimsAreStale) {
+        const { data: refreshed, error: refreshError } = await supabase.auth.refreshSession();
+        if (refreshError) {
+          console.error('Auth token refresh failed after profile change:', refreshError);
+          await supabase.auth.signOut();
+          clearSessionState();
+          return null;
+        }
+        if (refreshed?.session) {
+          session = refreshed.session;
+        }
+      }
+
+      let clinicActive = true;
+      if (STAFF_ROLES.includes(role) && role !== 'super_admin' && profile.clinic_id) {
+        const { data: clinic, error: clinicError } = await supabase
+          .from('clinics')
+          .select('is_active')
+          .eq('id', profile.clinic_id)
+          .single();
+        if (clinicError) {
+          console.warn('Clinic status check failed:', clinicError.message);
+        }
+        clinicActive = clinic?.is_active !== false;
+      }
+
+      const canonicalUser = canonicalUserFromSessionProfile(session.user, profile, clinicActive);
+      if (isDisabledStatus(canonicalUser.status) || !canonicalUser.clinic_active) {
+        setAuthNotice(!canonicalUser.clinic_active ? 'clinic_disabled' : 'account_disabled');
+        await supabase.auth.signOut();
+        clearSessionState();
+        return null;
+      }
+
+      setAuthNotice(null);
+      setUser(canonicalUser);
+      setStoredUser(canonicalUser);
+      return canonicalUser;
+    } catch (err) {
+      console.error('Secure auth profile refresh failed:', err);
+      clearSessionState();
+      return null;
+    } finally {
+      if (setLoadingState) setAuthLoading(false);
+    }
+  }, [clearSessionState]);
+
   // Fetch initial data from Supabase
   useEffect(() => {
+    if (authLoading) return undefined;
+    if (!user) {
+      const clearTimer = setTimeout(() => {
+        setDoctors([]);
+        setAppointments([]);
+        setPatients([]);
+        setNotifications([]);
+        setMyPatientIds([]);
+        clinicDoctorIdsRef.current = null;
+        setLoading(false);
+      }, 0);
+      return () => clearTimeout(clearTimer);
+    }
+
     const fetchData = async () => {
       setLoading(true);
       // Clear the previous user's appointments immediately so a clinic switch never shows
       // stale cross-clinic rows while the new scoped fetch is in flight.
       setAppointments([]);
-      const currentUser = getStoredUser();
+      const currentUser = user;
 
       if (isDemoModeEnabled(currentUser)) {
         const demoDoctors = getDemoDoctors();
@@ -212,11 +352,11 @@ export const AppProvider = ({ children }) => {
 
       const isSuperAdmin = currentUser?.role === 'super_admin';
       const isStaff = currentUser?.role &&
-        ['super_admin', 'clinic_admin', 'employee', 'doctor'].includes(currentUser.role);
+        STAFF_ROLES.includes(currentUser.role);
 
       // Resolve the staff member's clinic_id reliably.
-      // localStorage may be stale (user logged in before clinic_id was stored there),
-      // so fall back to a fresh Supabase profile lookup when it is missing.
+      // The profile in memory has already been reloaded from Supabase; if a
+      // staff clinic is still missing, use a fresh profile lookup as a safe fallback.
       let staffClinicId = null;
       if (isStaff && !isSuperAdmin) {
         staffClinicId = currentUser?.clinic_id || null;
@@ -337,7 +477,7 @@ export const AppProvider = ({ children }) => {
     // Re-run on login/logout/clinic switch. React Router navigation does NOT remount the
     // provider, so without these deps the scope ref + appointments stay stale and a newly
     // logged-in clinic would see the previous session's appointments.
-  }, [user?.id, user?.clinic_id, user?.role]);
+  }, [authLoading, user]);
 
   const refreshNotifications = useCallback(async () => {
     try {
@@ -370,32 +510,64 @@ export const AppProvider = ({ children }) => {
     }
   }, [user]);
 
-  // Sync with Supabase auth session: if the stored user has no active session, sign them out.
+  // Sync with Supabase Auth. Browser storage is never used to authorize; every
+  // startup and auth event is resolved through the active Supabase session and
+  // the canonical public.profiles row.
   useEffect(() => {
-    if (isDemoModeEnabled(user)) return;
+    let active = true;
 
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      if (!session) {
-        // No valid session → clear any leftover/stale stored user.
-        clearStoredUser();
-        setUser(null);
-        setNotifications([]);
+    const boot = async () => {
+      setAuthLoading(true);
+      try {
+        const { data: { session } } = await supabase.auth.getSession();
+        if (!active) return;
+        await refreshAuthProfile(session, { setLoadingState: false });
+      } finally {
+        if (active) setAuthLoading(false);
       }
-    });
+    };
 
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((event) => {
+    boot();
+
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
       if (event === 'SIGNED_OUT') {
-        clearStoredUser();
-        setUser(null);
-        setNotifications([]);
+        setAuthLoading(false);
+        clearSessionState();
+        return;
       }
-      if (event === 'INITIAL_SESSION' || event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED') {
-        refreshNotifications();
+      if (event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED' || event === 'USER_UPDATED') {
+        setAuthLoading(true);
+        setTimeout(() => {
+          refreshAuthProfile(session, {
+            setLoadingState: true,
+            allowTokenRefresh: event !== 'TOKEN_REFRESHED',
+          });
+        }, 0);
       }
     });
 
-    return () => subscription?.unsubscribe();
-  }, [refreshNotifications, user]);
+    return () => {
+      active = false;
+      subscription?.unsubscribe();
+    };
+  }, [clearSessionState, refreshAuthProfile]);
+
+  useEffect(() => {
+    if (!user?.id || authLoading) return undefined;
+
+    const channel = supabase
+      .channel(`profile-auth:${user.id}`)
+      .on('postgres_changes',
+        { event: 'UPDATE', schema: 'public', table: 'profiles', filter: `id=eq.${user.id}` },
+        () => {
+          refreshAuthProfile(null, { setLoadingState: true });
+        })
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [authLoading, refreshAuthProfile, user?.id]);
 
   // ---- Notifications: real DB-driven, scoped per user (RLS returns only user_id = auth.uid) ----
   // Replaces the old mock notifications. Each user — patient, doctor, admin — only ever
@@ -450,16 +622,15 @@ export const AppProvider = ({ children }) => {
     return () => { active = false; if (channel) supabase.removeChannel(channel); };
   }, [user]);
 
-  const login = (userData) => {
-    setUser(userData);
-    setStoredUser(userData);
+  const login = async () => {
+    return refreshAuthProfile(null, { setLoadingState: true });
   };
+
   const logout = async () => {
     if (!isDemoModeEnabled(user)) {
       try { await supabase.auth.signOut(); } catch { /* ignore */ }
     }
-    clearStoredUser();
-    setUser(null);
+    clearSessionState();
   };
 
   // Strict allowlist of public.doctors columns we may write. Stops the previous
@@ -1049,7 +1220,7 @@ export const AppProvider = ({ children }) => {
 
   return (
     <AppContext.Provider value={{
-      user, login, logout,
+      user, login, logout, authLoading, authNotice, refreshAuthProfile,
       doctors, appointments, patients, myPatientIds, loading, specialties,
       createAppointment, changeStatus, completeAppointmentWithPayment,
       addDoctor, deleteDoctor,

@@ -11,7 +11,7 @@ const ForceChangePassword = () => {
   const { t, i18n } = useTranslation();
   const isAr = i18n.language === 'ar';
   const navigate = useNavigate();
-  const { user, login } = useApp();
+  const { user, refreshAuthProfile } = useApp();
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
@@ -39,10 +39,9 @@ const ForceChangePassword = () => {
       if (authError) throw authError;
       const { error: profileError } = await supabase.rpc('clear_own_must_change_password');
       if (profileError) throw profileError;
-      const nextUser = { ...user, must_change_password: false };
-      login(nextUser);
+      const nextUser = await refreshAuthProfile(null, { setLoadingState: true });
       setMessage(isAr ? 'تم تغيير كلمة المرور بنجاح.' : 'Password changed successfully.');
-      setTimeout(() => navigate(routeForRole(user.role), { replace: true }), 600);
+      setTimeout(() => navigate(routeForRole(nextUser?.role || user.role), { replace: true }), 600);
     } catch (err) {
       console.error('Forced password change failed:', err);
       setError(getLocalizedErrorMessage(err, { isAr, fallback: 'request' }));

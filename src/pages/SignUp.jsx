@@ -67,15 +67,10 @@ const SignUp = () => {
 
       if (authData?.user) {
         if (authData.session) {
-          const userData = {
-            id: authData.user.id,
-            name: checkedName.value,
-            email,
-            phone: checkedPhone.value,
-            role: 'patient',
-            clinic_id: null,
-          };
-          login(userData);
+          const verifiedUser = await login();
+          if (!verifiedUser) {
+            throw new Error('Unable to verify your account after signup.');
+          }
           navigate('/');
         } else {
           // If session is null, email confirmation is required by Supabase

@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useNavigate, Link } from 'react-router-dom';
+import { useNavigate, Link, useLocation } from 'react-router-dom';
 import { Activity, AlertCircle, Eye, EyeOff, LockKeyhole, Mail, ShieldCheck, User } from 'lucide-react';
 import { supabase } from '../supabaseClient';
 import { useApp } from '../context/AppContext';
@@ -10,12 +10,32 @@ import { getLocalizedErrorMessage } from '../utils/errorMessages';
 const Login = () => {
   const { t } = useTranslation();
   const navigate = useNavigate();
-  const { login } = useApp();
+  const location = useLocation();
+  const { login, authNotice } = useApp();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
+  const routeNotice = location.state?.authNotice || authNotice;
+  const noticeText = (() => {
+    if (routeNotice === 'account_disabled') {
+      return t('email') === 'البريد الإلكتروني'
+        ? 'تم تعليق هذا الحساب. يرجى التواصل مع الإدارة.'
+        : 'This account is disabled. Please contact administration.';
+    }
+    if (routeNotice === 'clinic_disabled') {
+      return t('email') === 'البريد الإلكتروني'
+        ? 'تم تعليق العيادة المرتبطة بهذا الحساب.'
+        : 'The clinic linked to this account is suspended.';
+    }
+    if (routeNotice === 'session_expired') {
+      return t('email') === 'البريد الإلكتروني'
+        ? 'انتهت الجلسة. يرجى تسجيل الدخول مرة أخرى.'
+        : 'Your session has expired. Please sign in again.';
+    }
+    return '';
+  })();
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -50,10 +70,10 @@ const Login = () => {
         .eq('id', data.user.id)
         .single();
 
-      const actualRole = profile?.role || 'patient';
+      const actualRole = String(profile?.role || 'patient').trim().toLowerCase();
       const isStaff = ['super_admin', 'clinic_admin', 'employee', 'doctor'].includes(actualRole);
 
-      if (profile?.status === 'suspended') {
+      if (['suspended', 'inactive', 'disabled'].includes(String(profile?.status || '').toLowerCase())) {
         setError(t('email') === 'البريد الإلكتروني'
           ? 'تم تعليق هذا الحساب. يرجى التواصل مع الإدارة.'
           : 'This account is suspended. Please contact administration.');
@@ -78,19 +98,16 @@ const Login = () => {
         }
       }
 
-      const userData = {
-        id: data.user.id,
-        name: profile?.full_name || data.user.email,
-        email: data.user.email,
-        phone: profile?.phone_number || '',
-        role: actualRole,
-        clinic_id: profile?.clinic_id || null,
-        status: profile?.status || 'active',
-        must_change_password: Boolean(profile?.must_change_password),
-      };
+      const verifiedUser = await login();
+      if (!verifiedUser) {
+        setError(t('email') === 'البريد الإلكتروني'
+          ? 'تعذر التحقق من الحساب. يرجى المحاولة مرة أخرى.'
+          : 'Unable to verify your account. Please try again.');
+        setLoading(false);
+        return;
+      }
 
-      login(userData);
-      navigate(userData.must_change_password ? '/change-password' : routeForRole(actualRole), { replace: true });
+      navigate(verifiedUser.must_change_password ? '/change-password' : routeForRole(verifiedUser.role), { replace: true });
     } catch (err) {
       console.error('Login failed:', err);
       setError(getLocalizedErrorMessage(err, { isAr: t('email') === 'البريد الإلكتروني', fallback: 'login' }));
@@ -131,10 +148,10 @@ const Login = () => {
             <span>{t('email') === 'البريد الإلكتروني' ? 'استخدم نفس صفحة الدخول لكل الأدوار.' : 'Use one sign-in for patients, staff, doctors, clinic admins, and Super Admins.'}</span>
           </div>
 
-          {error && (
+          {(error || noticeText) && (
             <div className="auth-alert auth-alert--error" role="alert">
               <AlertCircle size={17} />
-              <span>{error}</span>
+              <span>{error || noticeText}</span>
             </div>
           )}
 
