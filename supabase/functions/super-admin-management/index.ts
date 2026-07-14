@@ -291,7 +291,10 @@ async function notifyUser(
 function patientProfileUpdates(input: Record<string, unknown>, partial = true) {
   const payload: Record<string, unknown> = {};
   if (!partial || input.full_name !== undefined) payload.full_name = requireText(input.full_name, 'Full name');
-  if (!partial || input.email !== undefined) payload.email = requireEmail(input.email);
+  if (!partial || input.email !== undefined) {
+    const email = optionalText(input.email);
+    if (email) payload.email = requireEmail(email);
+  }
   if (!partial || input.phone !== undefined || input.phone_number !== undefined) {
     payload.phone_number = optionalText(input.phone ?? input.phone_number);
   }
@@ -307,13 +310,75 @@ function patientProfileUpdates(input: Record<string, unknown>, partial = true) {
 async function requirePatientProfile(admin: ReturnType<typeof createClient>, profileId: string) {
   const { data, error } = await admin
     .from('profiles')
-    .select('id, full_name, email, phone_number, role, status, governorate, address, created_at, updated_at')
+    .select('id, full_name, email, phone_number, role, status, governorate, address, created_at, updated_at, must_change_password')
     .eq('id', profileId)
     .single();
   if (error || !data || data.role !== 'patient') {
     throw dbFailure('Patient profile lookup', error, 'Patient account not found', 404);
   }
   return data;
+}
+
+async function getAuthEmail(admin: ReturnType<typeof createClient>, userId: string) {
+  const { data, error } = await admin.auth.admin.getUserById(userId);
+  if (error) {
+    console.error('super-admin-management auth lookup failed', {
+      operation: 'auth.getUserById',
+      user_id: userId,
+      message: error.message,
+      status: error.status ?? null,
+    });
+    return null;
+  }
+  return data.user?.email ?? null;
+}
+
+async function normalizePatientAccount(admin: ReturnType<typeof createClient>, profile: Record<string, unknown>) {
+  const profileId = String(profile.id);
+  const authEmail = await getAuthEmail(admin, profileId);
+  const email = authEmail || (typeof profile.email === 'string' ? profile.email : null);
+  const { data: patientRows, error: patientRowsError } = await admin
+    .from('patients')
+    .select('id, clinic_id, auth_user_id, full_name, phone, created_at')
+    .eq('auth_user_id', profileId)
+    .order('created_at', { ascending: false });
+  if (patientRowsError) throw dbFailure('Patient records lookup', patientRowsError, 'Patient records lookup failed', 400);
+  const primaryPatient = (patientRows || [])[0] || null;
+
+  return {
+    ...profile,
+    id: profileId,
+    profile_id: profileId,
+    patient_id: primaryPatient?.id ?? null,
+    full_name: profile.full_name ?? primaryPatient?.full_name ?? '',
+    email,
+    phone: profile.phone_number ?? primaryPatient?.phone ?? null,
+    phone_number: profile.phone_number ?? primaryPatient?.phone ?? null,
+    profile: {
+      ...profile,
+      id: profileId,
+      email,
+    },
+    patient_records: patientRows || [],
+  };
+}
+
+async function resolvePatientProfileId(admin: ReturnType<typeof createClient>, input: Record<string, unknown>) {
+  const directProfileId = clean(input.profile_id ?? input.user_id ?? input.patient_profile_id);
+  if (directProfileId) return directProfileId;
+
+  const patientRecordId = clean(input.patient_id);
+  if (!patientRecordId) throw bad('Patient profile ID is required');
+
+  const { data, error } = await admin
+    .from('patients')
+    .select('auth_user_id')
+    .eq('id', patientRecordId)
+    .single();
+  if (error || !data?.auth_user_id) {
+    throw dbFailure('Patient profile resolution', error, 'Patient account not found', 404);
+  }
+  return data.auth_user_id;
 }
 
 async function writeManagedProfile(
@@ -584,13 +649,93 @@ Deno.serve(async (req) => {
       return json({ ok: true }, 200, cors);
     }
 
+    if (action === 'list_patient_accounts') {
+      const [profileRes, patientRes, clinicRes, appointmentRes] = await Promise.all([
+        admin.from('profiles')
+          .select('id, full_name, email, phone_number, role, status, governorate, address, created_at, updated_at, must_change_password')
+          .eq('role', 'patient')
+          .order('created_at', { ascending: false }),
+        admin.from('patients').select('id, clinic_id, auth_user_id, full_name, phone, created_at'),
+        admin.from('clinics').select('id, name, governorate'),
+        admin.from('appointments').select('id, clinic_id, patient_id, doctor_id, status, booking_code, appointment_date, appointment_time, created_at'),
+      ]);
+      const firstError = [profileRes, patientRes, clinicRes, appointmentRes].find((res) => res.error)?.error;
+      if (firstError) throw dbFailure('Patient account directory lookup', firstError, 'Patient directory lookup failed', 400);
+
+      const profiles = [];
+      for (const profile of profileRes.data || []) {
+        const authEmail = await getAuthEmail(admin, profile.id);
+        profiles.push({
+          ...profile,
+          profile_id: profile.id,
+          email: authEmail || profile.email || null,
+          phone: profile.phone_number || null,
+          profile: {
+            ...profile,
+            email: authEmail || profile.email || null,
+          },
+        });
+      }
+
+      return json({
+        ok: true,
+        profiles,
+        patients: patientRes.data || [],
+        clinics: clinicRes.data || [],
+        appointments: appointmentRes.data || [],
+      }, 200, cors);
+    }
+
+    if (action === 'get_patient_support_details') {
+      const profileId = await resolvePatientProfileId(admin, payload);
+      const profile = await requirePatientProfile(admin, profileId);
+      const patient = await normalizePatientAccount(admin, profile);
+      const patientRows = patient.patient_records || [];
+      const patientIds = patientRows.map((row: Record<string, unknown>) => row.id).filter(Boolean);
+
+      const [clinicRes, doctorRes, auditRes] = await Promise.all([
+        admin.from('clinics').select('id, name, governorate, address'),
+        admin.from('doctors').select('id, clinic_id, profile_id, full_name, specialty'),
+        admin.from('support_audit_logs')
+          .select('*')
+          .eq('target_user_id', profileId)
+          .order('created_at', { ascending: false })
+          .limit(20),
+      ]);
+      const firstError = [clinicRes, doctorRes, auditRes].find((res) => res.error)?.error;
+      if (firstError) throw dbFailure('Patient support detail lookup', firstError, 'Patient detail lookup failed', 400);
+
+      let appointments: unknown[] = [];
+      if (patientIds.length) {
+        const { data, error } = await admin
+          .from('appointments')
+          .select('*')
+          .in('patient_id', patientIds)
+          .order('appointment_date', { ascending: false });
+        if (error) throw dbFailure('Patient appointments lookup', error, 'Patient appointments lookup failed', 400);
+        appointments = data || [];
+      }
+
+      return json({
+        ok: true,
+        patient,
+        profile: patient.profile,
+        patient_records: patientRows,
+        clinics: clinicRes.data || [],
+        doctors: doctorRes.data || [],
+        appointments,
+        audit_logs: auditRes.data || [],
+      }, 200, cors);
+    }
+
     if (action === 'update_patient_account') {
-      const profileId = requireText(payload.profile_id ?? payload.user_id, 'Patient profile ID');
+      const profileId = await resolvePatientProfileId(admin, payload);
       const profile = await requirePatientProfile(admin, profileId);
       const updates = patientProfileUpdates(payload, true);
       if (Object.keys(updates).length === 0) throw bad('No patient fields to update');
 
-      if (updates.email && String(updates.email).toLowerCase() !== String(profile.email || '').toLowerCase()) {
+      const currentAuthEmail = await getAuthEmail(admin, profileId);
+      if (updates.email && String(updates.email).toLowerCase() !== String(currentAuthEmail || profile.email || '').toLowerCase()) {
         if (await emailExists(admin, String(updates.email), profileId)) throw bad('Email already exists', 409);
         const { error: authEmailError } = await admin.auth.admin.updateUserById(profileId, {
           email: String(updates.email),
@@ -618,7 +763,9 @@ Deno.serve(async (req) => {
         metadata: { synchronized_patient_records: Object.keys(patientRowUpdates) },
       });
 
-      return json({ ok: true }, 200, cors);
+      const refreshedProfile = await requirePatientProfile(admin, profileId);
+      const patient = await normalizePatientAccount(admin, refreshedProfile);
+      return json({ ok: true, email: patient.email, patient }, 200, cors);
     }
 
     if (action === 'reset_patient_password') {

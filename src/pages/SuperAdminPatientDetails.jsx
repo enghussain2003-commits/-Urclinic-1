@@ -14,7 +14,6 @@ import {
   UserRoundCog,
   X,
 } from 'lucide-react';
-import { supabase } from '../supabaseClient';
 import {
   IRAQI_GOVERNORATES,
   callSuperAdmin,
@@ -31,7 +30,7 @@ const SuperAdminPatientDetails = () => {
   const { i18n } = useTranslation();
   const toast = useToast();
   const isAr = i18n.language === 'ar';
-  const [profile, setProfile] = useState(null);
+  const [patient, setPatient] = useState(null);
   const [patientRows, setPatientRows] = useState([]);
   const [clinics, setClinics] = useState([]);
   const [doctors, setDoctors] = useState([]);
@@ -55,32 +54,13 @@ const SuperAdminPatientDetails = () => {
     setLoading(true);
     setError('');
     try {
-      const [profileRes, patientRes, clinicRes, doctorRes, auditRes] = await Promise.all([
-        supabase.from('profiles').select('id, full_name, email, phone_number, role, status, governorate, address, created_at, updated_at, must_change_password').eq('id', patientId).single(),
-        supabase.from('patients').select('*').eq('auth_user_id', patientId).order('created_at', { ascending: false }),
-        supabase.from('clinics').select('id, name, governorate, address'),
-        supabase.from('doctors').select('id, clinic_id, profile_id, full_name, specialty'),
-        supabase.from('support_audit_logs').select('*').eq('target_user_id', patientId).order('created_at', { ascending: false }).limit(20),
-      ]);
-      const firstError = [profileRes, patientRes, clinicRes, doctorRes, auditRes].find(res => res.error)?.error;
-      if (firstError) throw firstError;
-      const rows = patientRes.data || [];
-      let apptRows = [];
-      if (rows.length) {
-        const { data, error: apptError } = await supabase
-          .from('appointments')
-          .select('*')
-          .in('patient_id', rows.map(row => row.id))
-          .order('appointment_date', { ascending: false });
-        if (apptError) throw apptError;
-        apptRows = data || [];
-      }
-      setProfile(profileRes.data);
-      setPatientRows(rows);
-      setClinics(clinicRes.data || []);
-      setDoctors(doctorRes.data || []);
-      setAppointments(apptRows);
-      setAuditLogs(auditRes.data || []);
+      const data = await callSuperAdmin('get_patient_support_details', { profile_id: patientId });
+      setPatient(data.patient);
+      setPatientRows(data.patient_records || []);
+      setClinics(data.clinics || []);
+      setDoctors(data.doctors || []);
+      setAppointments(data.appointments || []);
+      setAuditLogs(data.audit_logs || []);
     } catch (err) {
       setError(err.message || (isAr ? 'تعذر تحميل حساب المريض' : 'Could not load patient account'));
     } finally {
@@ -148,7 +128,7 @@ const SuperAdminPatientDetails = () => {
       confirm_password: resetModal.confirm_password,
     }, isAr ? 'تمت إعادة تعيين كلمة المرور' : 'Password reset');
     if (ok) {
-      setOneTimeCredential({ email: profile.email, password: resetModal.password, label: profile.full_name });
+      setOneTimeCredential({ email: patient.email, password: resetModal.password, label: patient.full_name });
       setResetModal(null);
     }
   };
@@ -184,23 +164,23 @@ const SuperAdminPatientDetails = () => {
   };
 
   if (loading) return <div className="super-admin-page"><div className="super-admin-loading"><span /><span /><span /></div></div>;
-  if (!profile) return <div className="super-admin-page"><div className="super-admin-empty">{isAr ? 'حساب المريض غير موجود' : 'Patient account not found'}</div></div>;
+  if (!patient) return <div className="super-admin-page"><div className="super-admin-empty">{isAr ? 'حساب المريض غير موجود' : 'Patient account not found'}</div></div>;
 
   return (
     <div className="super-admin-page animate-in">
       <section className="super-admin-hero">
         <div>
           <button className="super-admin-back" onClick={() => navigate('/dashboard/super-admin/patients')}><ArrowLeft size={16} /> {isAr ? 'حسابات المرضى' : 'Patient Accounts'}</button>
-          <span><UserRoundCog size={16} /> {profile.status === 'suspended' ? (isAr ? 'حساب معلق' : 'Suspended account') : (isAr ? 'حساب نشط' : 'Active account')}</span>
-          <h1>{profile.full_name || '-'}</h1>
-          <p>{profile.email || '-'} · <span dir="ltr">{profile.phone_number || '-'}</span></p>
+          <span><UserRoundCog size={16} /> {patient.status === 'suspended' ? (isAr ? 'حساب معلق' : 'Suspended account') : (isAr ? 'حساب نشط' : 'Active account')}</span>
+          <h1>{patient.full_name || '-'}</h1>
+          <p>{patient.email ?? patient.profile?.email ?? '-'} · <span dir="ltr">{patient.phone_number || patient.phone || '-'}</span></p>
         </div>
         <div className="super-admin-tool-row">
-          <button className="btn btn-outline" onClick={() => setEditModal({ ...profile })}><Edit3 size={17} /> {isAr ? 'تعديل' : 'Edit'}</button>
+          <button className="btn btn-outline" onClick={() => setEditModal({ ...patient })}><Edit3 size={17} /> {isAr ? 'تعديل' : 'Edit'}</button>
           <button className="btn btn-outline" onClick={() => { const p = generateStrongPassword(); setResetModal({ password: p, confirm_password: p }); }}><KeyRound size={17} /> {isAr ? 'كلمة المرور' : 'Reset'}</button>
-          <button className={profile.status === 'suspended' ? 'btn btn-primary' : 'btn btn-danger'} disabled={busy} onClick={() => setStatus(profile.status === 'suspended' ? 'active' : 'suspended')}>
-            {profile.status === 'suspended' ? <ShieldCheck size={17} /> : <ShieldAlert size={17} />}
-            {profile.status === 'suspended' ? (isAr ? 'تفعيل' : 'Reactivate') : (isAr ? 'تعليق' : 'Suspend')}
+          <button className={patient.status === 'suspended' ? 'btn btn-primary' : 'btn btn-danger'} disabled={busy} onClick={() => setStatus(patient.status === 'suspended' ? 'active' : 'suspended')}>
+            {patient.status === 'suspended' ? <ShieldCheck size={17} /> : <ShieldAlert size={17} />}
+            {patient.status === 'suspended' ? (isAr ? 'تفعيل' : 'Reactivate') : (isAr ? 'تعليق' : 'Suspend')}
           </button>
         </div>
       </section>
@@ -217,26 +197,26 @@ const SuperAdminPatientDetails = () => {
 
       <section className="super-admin-detail-grid">
         <InfoCard title={isAr ? 'معلومات الحساب' : 'Account Information'}>
-          <Info label={isAr ? 'الاسم الكامل' : 'Full name'} value={profile.full_name} />
-          <Info label={isAr ? 'البريد الإلكتروني' : 'Email'} value={profile.email} />
-          <Info label={isAr ? 'الهاتف' : 'Phone'} value={profile.phone_number} dir="ltr" />
-          <Info label={isAr ? 'المحافظة' : 'Governorate'} value={profile.governorate} />
-          <Info label={isAr ? 'العنوان' : 'Address'} value={profile.address} />
-          <Info label={isAr ? 'الحالة' : 'Status'} value={profile.status === 'suspended' ? (isAr ? 'معلق' : 'Suspended') : (isAr ? 'نشط' : 'Active')} />
+          <Info label={isAr ? 'الاسم الكامل' : 'Full name'} value={patient.full_name} />
+          <Info label={isAr ? 'البريد الإلكتروني' : 'Email'} value={patient.email ?? patient.profile?.email} />
+          <Info label={isAr ? 'الهاتف' : 'Phone'} value={patient.phone_number || patient.phone} dir="ltr" />
+          <Info label={isAr ? 'المحافظة' : 'Governorate'} value={patient.governorate} />
+          <Info label={isAr ? 'العنوان' : 'Address'} value={patient.address} />
+          <Info label={isAr ? 'الحالة' : 'Status'} value={patient.status === 'suspended' ? (isAr ? 'معلق' : 'Suspended') : (isAr ? 'نشط' : 'Active')} />
           <Info label={isAr ? 'العيادة' : 'Clinic'} value={patientRows.map(row => clinicById.get(String(row.clinic_id))?.name).filter(Boolean).join(', ') || '-'} />
-          <Info label={isAr ? 'تاريخ الإنشاء' : 'Created'} value={formatDateTime(profile.created_at, isAr)} />
-          <Info label={isAr ? 'آخر تحديث' : 'Last updated'} value={formatDateTime(profile.updated_at, isAr)} />
+          <Info label={isAr ? 'تاريخ الإنشاء' : 'Created'} value={formatDateTime(patient.created_at, isAr)} />
+          <Info label={isAr ? 'آخر تحديث' : 'Last updated'} value={formatDateTime(patient.updated_at, isAr)} />
           <Info label={isAr ? 'آخر تسجيل دخول' : 'Last sign-in'} value={isAr ? 'متاح فقط عبر سجلات Auth الآمنة' : 'Available only through secure Auth logs'} />
         </InfoCard>
 
         <InfoCard title={isAr ? 'إجراءات الدعم' : 'Support Actions'}>
           <div className="super-admin-action-stack">
-            <button className="btn btn-outline" onClick={() => setEditModal({ ...profile })}><Edit3 size={16} /> {isAr ? 'تعديل بيانات المريض' : 'Edit patient data'}</button>
+            <button className="btn btn-outline" onClick={() => setEditModal({ ...patient })}><Edit3 size={16} /> {isAr ? 'تعديل بيانات المريض' : 'Edit patient data'}</button>
             <button className="btn btn-outline" onClick={() => { const p = generateStrongPassword(); setResetModal({ password: p, confirm_password: p }); }}><KeyRound size={16} /> {isAr ? 'إعادة تعيين كلمة المرور' : 'Reset password'}</button>
             <button className="btn btn-outline" onClick={() => setNotifyModal({ title: isAr ? 'رسالة من دعم UrClinic' : 'Message from UrClinic Support', message: '' })}><Bell size={16} /> {isAr ? 'إرسال إشعار دعم' : 'Send support notification'}</button>
-            <button className={profile.status === 'suspended' ? 'btn btn-primary' : 'btn btn-danger'} onClick={() => setStatus(profile.status === 'suspended' ? 'active' : 'suspended')}>
-              {profile.status === 'suspended' ? <ShieldCheck size={16} /> : <ShieldAlert size={16} />}
-              {profile.status === 'suspended' ? (isAr ? 'إعادة تفعيل الحساب' : 'Reactivate account') : (isAr ? 'تعليق الحساب' : 'Suspend account')}
+            <button className={patient.status === 'suspended' ? 'btn btn-primary' : 'btn btn-danger'} onClick={() => setStatus(patient.status === 'suspended' ? 'active' : 'suspended')}>
+              {patient.status === 'suspended' ? <ShieldCheck size={16} /> : <ShieldAlert size={16} />}
+              {patient.status === 'suspended' ? (isAr ? 'إعادة تفعيل الحساب' : 'Reactivate account') : (isAr ? 'تعليق الحساب' : 'Suspend account')}
             </button>
           </div>
         </InfoCard>
@@ -341,7 +321,7 @@ const EditPatientModal = ({ isAr, form, setForm, onSubmit, busy, onClose }) => (
   <Modal title={isAr ? 'تعديل حساب المريض' : 'Edit Patient Account'} onClose={onClose}>
     <form onSubmit={onSubmit} className="super-admin-form-grid">
       <Field required label={isAr ? 'الاسم الكامل' : 'Full name'} value={form.full_name} onChange={v => setForm({ ...form, full_name: v })} />
-      <Field required type="email" label={isAr ? 'البريد الإلكتروني' : 'Email'} value={form.email} onChange={v => setForm({ ...form, email: v })} />
+      <Field type="email" label={isAr ? 'البريد الإلكتروني' : 'Email'} value={form.email} onChange={v => setForm({ ...form, email: v })} />
       <Field label={isAr ? 'الهاتف' : 'Phone'} value={form.phone_number} onChange={v => setForm({ ...form, phone_number: v })} />
       <label className="form-group">
         <span className="form-label">{isAr ? 'المحافظة' : 'Governorate'}</span>

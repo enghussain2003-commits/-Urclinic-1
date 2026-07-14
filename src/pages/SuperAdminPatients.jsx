@@ -11,8 +11,7 @@ import {
   UserRoundCog,
   Users,
 } from 'lucide-react';
-import { supabase } from '../supabaseClient';
-import { IRAQI_GOVERNORATES } from '../services/superAdminService';
+import { IRAQI_GOVERNORATES, callSuperAdmin } from '../services/superAdminService';
 
 const ACTIVE_STATUSES = ['pending', 'approved', 'confirmed', 'in_progress'];
 
@@ -62,19 +61,12 @@ const SuperAdminPatients = () => {
       setLoading(true);
       setError('');
       try {
-        const [profileRes, patientRes, clinicRes, appointmentRes] = await Promise.all([
-          supabase.from('profiles').select('id, full_name, email, phone_number, role, status, governorate, address, created_at, updated_at').eq('role', 'patient').order('created_at', { ascending: false }),
-          supabase.from('patients').select('id, clinic_id, auth_user_id, full_name, phone, email, created_at'),
-          supabase.from('clinics').select('id, name, governorate'),
-          supabase.from('appointments').select('id, clinic_id, patient_id, doctor_id, status, booking_code, appointment_date, appointment_time, created_at'),
-        ]);
-        const firstError = [profileRes, patientRes, clinicRes, appointmentRes].find(res => res.error)?.error;
-        if (firstError) throw firstError;
+        const data = await callSuperAdmin('list_patient_accounts');
         if (!active) return;
-        setProfiles(profileRes.data || []);
-        setPatients(patientRes.data || []);
-        setClinics(clinicRes.data || []);
-        setAppointments(appointmentRes.data || []);
+        setProfiles(data.profiles || []);
+        setPatients(data.patients || []);
+        setClinics(data.clinics || []);
+        setAppointments(data.appointments || []);
       } catch (err) {
         if (active) setError(err.message || (isAr ? 'تعذر تحميل حسابات المرضى' : 'Could not load patient accounts'));
       } finally {
@@ -109,7 +101,7 @@ const SuperAdminPatients = () => {
       const searchText = [
         profile.full_name,
         profile.phone_number,
-        profile.email,
+        profile.email ?? profile.profile?.email,
         profile.id,
         ...patientRows.map(row => row.id),
         ...patientAppointments.map(apt => apt.booking_code),
@@ -261,7 +253,7 @@ const ActiveAppointment = ({ count, isAr }) => (
 
 const PatientRow = ({ row, isAr, navigate }) => (
   <tr>
-    <td><strong>{row.profile.full_name || '-'}</strong><small>{row.profile.email || '-'}</small></td>
+    <td><strong>{row.profile.full_name || '-'}</strong><small>{row.profile.email ?? row.profile.profile?.email ?? '-'}</small></td>
     <td dir="ltr">{row.profile.phone_number || '-'}</td>
     <td><MapPin size={14} /> {row.clinic?.name || (isAr ? 'غير مرتبطة' : 'Not linked')}</td>
     <td><AccountStatus status={row.profile.status} isAr={isAr} /></td>
@@ -277,7 +269,7 @@ const PatientCard = ({ row, isAr, navigate }) => (
       <strong>{row.profile.full_name || '-'}</strong>
       <AccountStatus status={row.profile.status} isAr={isAr} />
     </div>
-    <p>{row.profile.email || '-'} · <span dir="ltr">{row.profile.phone_number || '-'}</span></p>
+    <p>{row.profile.email ?? row.profile.profile?.email ?? '-'} · <span dir="ltr">{row.profile.phone_number || row.profile.phone || '-'}</span></p>
     <p><MapPin size={14} /> {row.clinic?.name || (isAr ? 'غير مرتبطة' : 'Not linked')}</p>
     <p>{isAr ? 'موعد نشط' : 'Active appointment'}: {row.activeAppointments.length > 0 ? (isAr ? 'نعم' : 'Yes') : (isAr ? 'لا' : 'No')}</p>
     <p>{isAr ? 'تاريخ التسجيل' : 'Registered'}: {formatDateTime(row.profile.created_at, isAr)}</p>
