@@ -22,6 +22,7 @@ import {
   generateStrongPassword,
   passwordScore,
 } from '../services/superAdminService';
+import { getLocalizedErrorMessage } from '../utils/errorMessages';
 
 const baseClinic = {
   name: '',
@@ -161,7 +162,8 @@ const SuperAdminClinicProvision = () => {
       setDoctor(baseDoctor);
       setSkipDoctor(false);
     } catch (err) {
-      setError(err.message || (isAr ? 'تعذر إنشاء العيادة' : 'Could not provision clinic'));
+      console.error('Clinic provisioning failed:', err);
+      setError(getLocalizedErrorMessage(err, { isAr, fallback: 'request' }));
     } finally {
       setSubmitting(false);
     }

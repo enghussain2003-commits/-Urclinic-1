@@ -26,6 +26,7 @@ import CalendarPicker from '../components/CalendarPicker';
 import TimeSlotGrid, { to12Hour } from '../components/TimeSlotGrid';
 import SpecialtyIcon from '../components/SpecialtyIcon';
 import { normalizeIraqiPhone, validateIraqiPhone, validatePersonName } from '../utils/identityValidation';
+import { getLocalizedErrorMessage } from '../utils/errorMessages';
 
 const BookingErrorMessage = ({ children }) => children ? (
   <div className="booking-error-message">
@@ -283,14 +284,8 @@ const Booking = () => {
       setBookingCode(created?.booking_code || (isAr ? 'قيد الإنشاء' : 'Pending'));
       setStep(6);
     } catch (err) {
-      // Show the real error instead of silently falling back to localStorage.
-      const msg = err?.message || (isAr ? 'تعذّر إكمال الحجز' : 'Booking failed');
-      const conflictMsg = isAr ? 'عذراً، تم حجز هذا الموعد قبل لحظات.' : 'Sorry, this appointment was just booked.';
-      const activeMsg = isAr ? 'لديك موعد نشط بالفعل.' : 'You already have an active appointment.';
-      setFormError(msg.includes(conflictMsg)
-        || msg.includes(activeMsg)
-        ? msg
-        : (isAr ? `تعذّر إكمال الحجز: ${msg}` : `Booking failed: ${msg}`));
+      console.error('Booking failed:', err);
+      setFormError(getLocalizedErrorMessage(err, { isAr, fallback: 'booking' }));
     } finally {
       setSubmitting(false);
     }

@@ -20,6 +20,7 @@ import PaymentCompletionModal from '../components/PaymentCompletionModal';
 import { buildContactMessage } from '../services/contactService';
 import { DEFAULT_CURRENCY, formatMoney, normalizeCurrency, normalizeCurrencyAmount } from '../utils/money';
 import { useToast } from '../hooks/useToast';
+import { getLocalizedErrorMessage } from '../utils/errorMessages';
 
 const Appointments = () => {
   const { t, i18n } = useTranslation();
@@ -139,7 +140,8 @@ const Appointments = () => {
         setSelectedAppointment(updated);
       }
     } catch (err) {
-      toast.error(err?.message || (isAr ? 'تعذر تحديث حالة الموعد.' : 'Could not update appointment status.'));
+      console.error('Appointment status change failed:', err);
+      toast.error(getLocalizedErrorMessage(err, { isAr, fallback: 'appointmentStatus' }));
     } finally {
       setStatusBusyId(null);
     }

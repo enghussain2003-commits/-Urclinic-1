@@ -17,6 +17,7 @@ import {
   validateSupportAttachment,
 } from '../services/supportService';
 import { supabase } from '../supabaseClient';
+import { getLocalizedErrorMessage } from '../utils/errorMessages';
 
 const label = (id, isAr) => ({
   appointments: isAr ? 'المواعيد' : 'Appointments',
@@ -61,7 +62,8 @@ const SupportPage = () => {
     try {
       setTickets(await fetchSupportTickets(filters));
     } catch (err) {
-      setError(err.message || (isAr ? 'تعذر تحميل طلبات الدعم' : 'Could not load support tickets'));
+      console.error('Support tickets load failed:', err);
+      setError(getLocalizedErrorMessage(err, { isAr, fallback: 'support' }));
     } finally {
       setLoading(false);
     }
@@ -184,9 +186,9 @@ const CreateTicketModal = ({ isAr, onClose, onCreated }) => {
       toast.warning(isAr ? 'يرجى إكمال الموضوع والوصف' : 'Please complete subject and description');
       return;
     }
-    if (file) validateSupportAttachment(file);
     setSending(true);
     try {
+      if (file) validateSupportAttachment(file);
       const ticket = await createSupportTicket({
         ...form,
         currentPage: window.location.pathname,
@@ -195,7 +197,8 @@ const CreateTicketModal = ({ isAr, onClose, onCreated }) => {
       if (file) await uploadSupportAttachment({ ticketId: ticket.id, file });
       onCreated(ticket);
     } catch (err) {
-      toast.error(err.message || (isAr ? 'تعذر إنشاء طلب الدعم' : 'Could not create support request'));
+      console.error('Support ticket creation failed:', err);
+      toast.error(getLocalizedErrorMessage(err, { isAr, fallback: 'support' }));
     } finally {
       setSending(false);
     }

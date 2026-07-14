@@ -28,6 +28,7 @@ import {
   normalizeCurrency,
   normalizeCurrencyAmount,
 } from '../utils/money';
+import { getLocalizedErrorMessage } from '../utils/errorMessages';
 
 const PAYMENT_STATUSES = [
   {
@@ -243,7 +244,8 @@ const PaymentCompletionModalContent = ({
       toast.success(isAr ? 'تم إكمال الموعد وتسجيل الدفعة بنجاح.' : 'Appointment completed and payment recorded successfully.');
       onClose?.();
     } catch (err) {
-      const message = err?.message || (isAr ? 'تعذر إكمال الموعد وتسجيل الدفع.' : 'Could not complete appointment and record payment.');
+      console.error('Payment completion failed:', err);
+      const message = getLocalizedErrorMessage(err, { isAr, fallback: 'payment' });
       setError(message);
       toast.error(message);
     } finally {

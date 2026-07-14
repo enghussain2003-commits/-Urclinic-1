@@ -5,6 +5,7 @@ import { Activity, AlertCircle, Eye, EyeOff, LockKeyhole, Mail, ShieldCheck, Use
 import { supabase } from '../supabaseClient';
 import { useApp } from '../context/AppContext';
 import { routeForRole } from '../services/superAdminService';
+import { getLocalizedErrorMessage } from '../utils/errorMessages';
 
 const Login = () => {
   const { t } = useTranslation();
@@ -91,7 +92,8 @@ const Login = () => {
       login(userData);
       navigate(userData.must_change_password ? '/change-password' : routeForRole(actualRole), { replace: true });
     } catch (err) {
-      setError(err.message || 'Login failed');
+      console.error('Login failed:', err);
+      setError(getLocalizedErrorMessage(err, { isAr: t('email') === 'البريد الإلكتروني', fallback: 'login' }));
     } finally {
       setLoading(false);
     }

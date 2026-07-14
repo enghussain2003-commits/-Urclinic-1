@@ -30,6 +30,7 @@ import { supabase } from '../supabaseClient';
 import PrescriptionViewer from '../components/PrescriptionViewer';
 import ContactActionsCard from '../components/ContactActionsCard';
 import { buildContactMessage } from '../services/contactService';
+import { getLocalizedErrorMessage } from '../utils/errorMessages';
 
 const StaffPatientProfile = () => {
   const { id } = useParams();
@@ -197,7 +198,7 @@ const StaffPatientProfile = () => {
       setShowAddRx(false);
       setRxForm({ diagnosis: '', instructions: '', medicines: [{ name: '', dosage: '', instructions: '' }] });
     } catch (err) {
-      const message = err?.message || 'Failed to save prescription / تعذّر حفظ الوصفة';
+      const message = getLocalizedErrorMessage(err, { isAr, fallback: 'prescription' });
       setRxError(message);
       console.error('Prescription save failed:', {
         message: err?.message,

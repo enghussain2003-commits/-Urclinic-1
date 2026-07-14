@@ -3,6 +3,7 @@ import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
 import { Activity, AlertCircle, ArrowLeft, CheckCircle2, Mail, ShieldCheck } from 'lucide-react';
 import { supabase } from '../supabaseClient';
+import { getLocalizedErrorMessage } from '../utils/errorMessages';
 
 const ForgotPassword = () => {
   const { t } = useTranslation();
@@ -42,7 +43,7 @@ const ForgotPassword = () => {
       setEmail('');
     } catch (err) {
       console.error("FULL SUPABASE ERROR OBJECT:", JSON.stringify(err, null, 2), err);
-      setError(err.message || 'Failed to send reset email');
+      setError(getLocalizedErrorMessage(err, { isAr: t('email') === 'البريد الإلكتروني', fallback: 'request' }));
     } finally {
       setLoading(false);
       isSubmittingRef.current = false;

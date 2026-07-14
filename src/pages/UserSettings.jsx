@@ -4,9 +4,11 @@ import { Settings, Lock, LogOut } from 'lucide-react';
 import { useApp } from '../context/AppContext';
 import { supabase } from '../supabaseClient';
 import { useNavigate } from 'react-router-dom';
+import { getLocalizedErrorMessage } from '../utils/errorMessages';
 
 const UserSettings = () => {
   const { t } = useTranslation();
+  const isAr = t('email') === 'البريد الإلكتروني';
   const { user, logout } = useApp();
   const navigate = useNavigate();
   
@@ -54,7 +56,8 @@ const UserSettings = () => {
       setPassword('');
       setConfirmPassword('');
     } catch (err) {
-      setError(err.message || 'Failed to update password');
+      console.error('User password update failed:', err);
+      setError(getLocalizedErrorMessage(err, { isAr, fallback: 'request' }));
     } finally {
       setLoading(false);
     }

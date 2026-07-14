@@ -3,6 +3,7 @@ import { useTranslation } from 'react-i18next';
 import { Link, useNavigate } from 'react-router-dom';
 import { Activity, AlertCircle, CheckCircle2, Eye, EyeOff, LockKeyhole, ShieldCheck } from 'lucide-react';
 import { supabase } from '../supabaseClient';
+import { getLocalizedErrorMessage } from '../utils/errorMessages';
 
 const ResetPassword = () => {
   const { t } = useTranslation();
@@ -70,7 +71,8 @@ const ResetPassword = () => {
       }, 3000);
 
     } catch (err) {
-      setError(err.message || 'Failed to update password');
+      console.error('Password reset failed:', err);
+      setError(getLocalizedErrorMessage(err, { isAr: t('email') === 'البريد الإلكتروني', fallback: 'request' }));
     } finally {
       setLoading(false);
     }

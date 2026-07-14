@@ -12,6 +12,7 @@ import {
   Users,
 } from 'lucide-react';
 import { IRAQI_GOVERNORATES, callSuperAdmin } from '../services/superAdminService';
+import { getLocalizedErrorMessage } from '../utils/errorMessages';
 
 const ACTIVE_STATUSES = ['pending', 'approved', 'confirmed', 'in_progress'];
 
@@ -68,7 +69,10 @@ const SuperAdminPatients = () => {
         setClinics(data.clinics || []);
         setAppointments(data.appointments || []);
       } catch (err) {
-        if (active) setError(err.message || (isAr ? 'تعذر تحميل حسابات المرضى' : 'Could not load patient accounts'));
+        if (active) {
+          console.error('Super admin patients load failed:', err);
+          setError(getLocalizedErrorMessage(err, { isAr, fallback: 'load' }));
+        }
       } finally {
         if (active) setLoading(false);
       }

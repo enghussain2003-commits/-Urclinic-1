@@ -21,6 +21,7 @@ import {
   validateSupportAttachment,
 } from '../../services/supportService';
 import { supabase } from '../../supabaseClient';
+import { getLocalizedErrorMessage } from '../../utils/errorMessages';
 
 const roleLabel = (role, isAr) => ({
   super_admin: isAr ? 'فريق دعم UrClinic' : 'UrClinic Support Team',
@@ -74,7 +75,8 @@ const SupportConversation = ({ ticketId, admin = false, onBack, onChanged }) => 
       await markSupportTicketRead(ticketId);
       refreshNotifications();
     } catch (err) {
-      setError(err.message || (isAr ? 'تعذر تحميل طلب الدعم' : 'Could not load support ticket'));
+      console.error('Support ticket load failed:', err);
+      setError(getLocalizedErrorMessage(err, { isAr, fallback: 'support' }));
     } finally {
       setLoading(false);
     }
@@ -107,9 +109,9 @@ const SupportConversation = ({ ticketId, admin = false, onBack, onChanged }) => 
   const submitReply = async (event) => {
     event.preventDefault();
     if (!reply.trim() && !file) return;
-    if (file) validateSupportAttachment(file);
     setSending(true);
     try {
+      if (file) validateSupportAttachment(file);
       const created = reply.trim()
         ? await addSupportMessage({ ticketId, message: reply, isInternalNote: internalNote && canInternal })
         : null;
@@ -123,7 +125,8 @@ const SupportConversation = ({ ticketId, admin = false, onBack, onChanged }) => 
       await load();
       onChanged?.();
     } catch (err) {
-      toast.error(err.message || (isAr ? 'تعذر إرسال الرد' : 'Could not send reply'));
+      console.error('Support reply failed:', err);
+      toast.error(getLocalizedErrorMessage(err, { isAr, fallback: 'support' }));
     } finally {
       setSending(false);
     }
@@ -137,7 +140,8 @@ const SupportConversation = ({ ticketId, admin = false, onBack, onChanged }) => 
       await load();
       onChanged?.();
     } catch (err) {
-      toast.error(err.message || (isAr ? 'تعذر تحديث الطلب' : 'Could not update ticket'));
+      console.error('Support ticket update failed:', err);
+      toast.error(getLocalizedErrorMessage(err, { isAr, fallback: 'support' }));
     } finally {
       setSaving(false);
     }
@@ -148,7 +152,8 @@ const SupportConversation = ({ ticketId, admin = false, onBack, onChanged }) => 
       const url = await createSignedAttachmentUrl(attachment.file_path);
       window.open(url, '_blank', 'noopener,noreferrer');
     } catch (err) {
-      toast.error(err.message || (isAr ? 'تعذر فتح المرفق' : 'Could not open attachment'));
+      console.error('Support attachment open failed:', err);
+      toast.error(getLocalizedErrorMessage(err, { isAr, fallback: 'fileUpload' }));
     }
   };
 

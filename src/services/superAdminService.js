@@ -38,8 +38,14 @@ export const callSuperAdmin = async (action, payload = {}) => {
   const { data, error } = await supabase.functions.invoke('super-admin-management', {
     body: { action, payload },
   });
-  if (error) throw new Error(error.message || 'Request failed');
-  if (data?.error) throw new Error(data.error);
+  if (error) {
+    console.error('Super Admin function failed:', { action, error });
+    throw new Error('super_admin_request_failed');
+  }
+  if (data?.error) {
+    console.error('Super Admin function returned an error:', { action, error: data.error });
+    throw new Error('super_admin_request_failed');
+  }
   return data;
 };
 

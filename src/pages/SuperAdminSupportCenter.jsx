@@ -5,6 +5,7 @@ import { Clock, Headset, Inbox, Search, ShieldCheck, TicketCheck, TimerReset } f
 import SupportConversation from '../components/support/SupportConversation';
 import { fetchSupportTickets, SUPPORT_CATEGORIES, SUPPORT_PRIORITIES, SUPPORT_STATUSES } from '../services/supportService';
 import { supabase } from '../supabaseClient';
+import { getLocalizedErrorMessage } from '../utils/errorMessages';
 
 const label = (id, isAr) => ({
   appointments: isAr ? 'المواعيد' : 'Appointments',
@@ -53,7 +54,8 @@ const SuperAdminSupportCenter = () => {
     try {
       setTickets(await fetchSupportTickets(filters));
     } catch (err) {
-      setError(err.message || (isAr ? 'تعذر تحميل مركز الدعم' : 'Could not load support center'));
+      console.error('Super admin support center load failed:', err);
+      setError(getLocalizedErrorMessage(err, { isAr, fallback: 'support' }));
     } finally {
       setLoading(false);
     }

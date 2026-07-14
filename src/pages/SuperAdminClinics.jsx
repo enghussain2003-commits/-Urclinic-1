@@ -14,6 +14,7 @@ import {
 } from 'lucide-react';
 import { supabase } from '../supabaseClient';
 import { IRAQI_GOVERNORATES } from '../services/superAdminService';
+import { getLocalizedErrorMessage } from '../utils/errorMessages';
 
 const SuperAdminClinics = () => {
   const { i18n } = useTranslation();
@@ -58,7 +59,10 @@ const SuperAdminClinics = () => {
         setPatients(patientRes.data || []);
         setAppointments(appointmentRes.data || []);
       } catch (err) {
-        if (active) setError(err.message || (isAr ? 'تعذر تحميل العيادات' : 'Could not load clinics'));
+        if (active) {
+          console.error('Super admin clinics load failed:', err);
+          setError(getLocalizedErrorMessage(err, { isAr, fallback: 'load' }));
+        }
       } finally {
         if (active) setLoading(false);
       }

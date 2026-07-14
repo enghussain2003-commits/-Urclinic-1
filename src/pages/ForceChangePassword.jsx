@@ -5,6 +5,7 @@ import { AlertCircle, CheckCircle2, Eye, EyeOff, LockKeyhole, ShieldCheck } from
 import { useApp } from '../context/AppContext';
 import { supabase } from '../supabaseClient';
 import { passwordScore, routeForRole } from '../services/superAdminService';
+import { getLocalizedErrorMessage } from '../utils/errorMessages';
 
 const ForceChangePassword = () => {
   const { t, i18n } = useTranslation();
@@ -46,7 +47,8 @@ const ForceChangePassword = () => {
       setMessage(isAr ? 'تم تغيير كلمة المرور بنجاح.' : 'Password changed successfully.');
       setTimeout(() => navigate(routeForRole(user.role), { replace: true }), 600);
     } catch (err) {
-      setError(err.message || (isAr ? 'تعذر تغيير كلمة المرور' : 'Could not change password'));
+      console.error('Forced password change failed:', err);
+      setError(getLocalizedErrorMessage(err, { isAr, fallback: 'request' }));
     } finally {
       setLoading(false);
     }

@@ -31,6 +31,7 @@ import { to12Hour } from '../components/TimeSlotGrid';
 import PaymentCompletionModal from '../components/PaymentCompletionModal';
 import { formatMoney } from '../utils/money';
 import { useToast } from '../hooks/useToast';
+import { getLocalizedErrorMessage } from '../utils/errorMessages';
 
 const AdminDashboard = () => {
   const { t, i18n } = useTranslation();
@@ -123,7 +124,8 @@ const AdminDashboard = () => {
     try {
       await changeStatus(apt.id, nextStatus);
     } catch (err) {
-      toast.error(err?.message || (isAr ? 'تعذر تحديث حالة الموعد.' : 'Could not update appointment status.'));
+      console.error('Admin appointment status change failed:', err);
+      toast.error(getLocalizedErrorMessage(err, { isAr, fallback: 'appointmentStatus' }));
     } finally {
       setStatusBusyId(null);
     }

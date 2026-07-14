@@ -23,6 +23,7 @@ import {
 import { useToast } from '../hooks/useToast';
 import ContactActionsCard from '../components/ContactActionsCard';
 import { buildContactMessage } from '../services/contactService';
+import { getLocalizedErrorMessage } from '../utils/errorMessages';
 
 const ACTIVE_STATUSES = ['pending', 'approved', 'confirmed', 'in_progress'];
 
@@ -64,7 +65,8 @@ const SuperAdminPatientDetails = () => {
       setAppointments(data.appointments || []);
       setAuditLogs(data.audit_logs || []);
     } catch (err) {
-      setError(err.message || (isAr ? 'تعذر تحميل حساب المريض' : 'Could not load patient account'));
+      console.error('Super admin patient load failed:', err);
+      setError(getLocalizedErrorMessage(err, { isAr, fallback: 'load' }));
     } finally {
       setLoading(false);
     }
@@ -92,7 +94,8 @@ const SuperAdminPatientDetails = () => {
       await load();
       return true;
     } catch (err) {
-      const message = err.message || (isAr ? 'فشل الطلب' : 'Request failed');
+      console.error('Super admin patient action failed:', err);
+      const message = getLocalizedErrorMessage(err, { isAr, fallback: 'request' });
       setError(message);
       toast.error(message);
       return false;

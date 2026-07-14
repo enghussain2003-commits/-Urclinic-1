@@ -5,6 +5,7 @@ import { Activity, AlertCircle, Eye, EyeOff, LockKeyhole, Mail, Phone, ShieldChe
 import { supabase } from '../supabaseClient';
 import { useApp } from '../context/AppContext';
 import { validateIraqiPhone, validatePersonName } from '../utils/identityValidation';
+import { getLocalizedErrorMessage } from '../utils/errorMessages';
 
 const SignUp = () => {
   const { t, i18n } = useTranslation();
@@ -84,10 +85,8 @@ const SignUp = () => {
         }
       }
     } catch (err) {
-      const duplicate = err?.code === '23505' || /duplicate|unique|already/i.test(err?.message || '');
-      setError(duplicate
-        ? (isAr ? 'رقم الهاتف مستخدم مسبقاً' : 'Phone number is already in use.')
-        : (err.message || 'An error occurred during sign up.'));
+      console.error('Signup failed:', err);
+      setError(getLocalizedErrorMessage(err, { isAr, fallback: 'auth' }));
     } finally {
       setLoading(false);
     }

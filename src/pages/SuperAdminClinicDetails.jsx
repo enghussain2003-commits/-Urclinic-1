@@ -30,6 +30,7 @@ import {
 import { supabase } from '../supabaseClient';
 import ContactActionsCard from '../components/ContactActionsCard';
 import { buildContactMessage } from '../services/contactService';
+import { getLocalizedErrorMessage } from '../utils/errorMessages';
 
 const emptyUserForm = {
   role: 'doctor',
@@ -94,7 +95,8 @@ const SuperAdminClinicDetails = () => {
       setPatients(patientRes.data || []);
       setAppointments(appointmentRes.data || []);
     } catch (err) {
-      setError(err.message || (isAr ? 'تعذر تحميل العيادة' : 'Could not load clinic'));
+      console.error('Super admin clinic load failed:', err);
+      setError(getLocalizedErrorMessage(err, { isAr, fallback: 'load' }));
     } finally {
       setLoading(false);
     }
@@ -126,7 +128,8 @@ const SuperAdminClinicDetails = () => {
       await load();
       return true;
     } catch (err) {
-      setError(err.message || (isAr ? 'فشل الطلب' : 'Request failed'));
+      console.error('Super admin clinic action failed:', err);
+      setError(getLocalizedErrorMessage(err, { isAr, fallback: 'request' }));
       return false;
     } finally {
       setBusy(false);

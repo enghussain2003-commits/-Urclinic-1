@@ -7,6 +7,7 @@ import StatCard from '../components/analytics/StatCard';
 import { to12Hour } from '../components/TimeSlotGrid';
 import PaymentCompletionModal from '../components/PaymentCompletionModal';
 import { useToast } from '../hooks/useToast';
+import { getLocalizedErrorMessage } from '../utils/errorMessages';
 
 const VOID = ['cancelled', 'rejected', 'completed'];
 
@@ -73,7 +74,8 @@ const EmployeeDashboard = () => {
     try {
       await changeStatus(apt.id, nextStatus);
     } catch (err) {
-      toast.error(err?.message || (isAr ? 'تعذر تحديث حالة الموعد.' : 'Could not update appointment status.'));
+      console.error('Employee appointment status change failed:', err);
+      toast.error(getLocalizedErrorMessage(err, { isAr, fallback: 'appointmentStatus' }));
     } finally {
       setStatusBusyId(null);
     }

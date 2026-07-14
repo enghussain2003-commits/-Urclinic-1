@@ -32,7 +32,10 @@ export const fetchRecentActivity = async ({ userId, limit = 7 } = {}) => {
     if (userId) query = query.eq('user_id', userId);
 
     const { data, error } = await query;
-    if (error) return { data: [], error: error.message };
+    if (error) {
+      console.error('Recent activity fetch failed:', error);
+      return { data: [], error: 'activity_fetch_failed' };
+    }
 
     // Normalize → ActivityItem  (UI never depends on raw DB shape)
     const normalized = (data || []).map(row => ({
@@ -46,6 +49,7 @@ export const fetchRecentActivity = async ({ userId, limit = 7 } = {}) => {
 
     return { data: normalized, error: null };
   } catch (err) {
-    return { data: [], error: err.message };
+    console.error('Recent activity fetch failed:', err);
+    return { data: [], error: 'activity_fetch_failed' };
   }
 };

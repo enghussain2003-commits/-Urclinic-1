@@ -25,6 +25,7 @@ import { useToast } from '../hooks/useToast';
 import { supabase } from '../supabaseClient';
 import ContactActionsCard from '../components/ContactActionsCard';
 import { buildContactMessage } from '../services/contactService';
+import { getLocalizedErrorMessage } from '../utils/errorMessages';
 
 const WEEK_DAYS = [
   { id: 'sat', label: 'Sat', labelAr: 'السبت' },
@@ -197,7 +198,8 @@ const DoctorManagement = () => {
       });
       await loadClinicDoctors();
     } catch (err) {
-      setError(err.message);
+      console.error('Doctor creation failed:', err);
+      setError(getLocalizedErrorMessage(err, { isAr, fallback: 'request' }));
     } finally {
       setSaving(false);
     }
