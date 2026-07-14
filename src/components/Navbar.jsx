@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
-import { Activity, Globe, User, LogOut, Settings, X, Menu } from 'lucide-react';
+import { Activity, Globe, User, LogOut, Settings, X, Menu, Headset } from 'lucide-react';
 import { useApp } from '../context/AppContext';
 import NotificationBell from './NotificationBell';
 import { LANGUAGE_PREFERENCE_KEY } from '../i18n';
@@ -12,7 +12,9 @@ const Navbar = () => {
   const navigate = useNavigate();
   const { user, logout } = useApp();
   const [mobileOpen, setMobileOpen] = useState(false);
-  const isStaff = user && ['super_admin', 'clinic_admin', 'employee', 'doctor'].includes(user.role);
+  const normalizedRole = String(user?.role || '').trim().toLowerCase();
+  const isStaff = user && ['super_admin', 'clinic_admin', 'employee', 'doctor'].includes(normalizedRole);
+  const isPatient = normalizedRole === 'patient';
 
   const handleLogout = () => {
     logout();
@@ -62,6 +64,12 @@ const Navbar = () => {
         <Link to="/" className={`navbar-link ${isActive('/') ? 'active' : ''}`}>{t('home')}</Link>
         {!isStaff && (
           <Link to="/booking" className={`navbar-link ${isActive('/booking') ? 'active' : ''}`}>{t('book_now')}</Link>
+        )}
+        {isPatient && (
+          <Link to="/dashboard/support" className={`navbar-link ${isActive('/dashboard/support') ? 'active' : ''}`}>
+            <Headset size={16} />
+            {i18n.language === 'ar' ? 'الدعم الفني' : 'Support'}
+          </Link>
         )}
         {isStaff && (
           <Link to="/dashboard" className={`navbar-link ${isActive('/dashboard') ? 'active' : ''}`}>{t('dashboard')}</Link>
@@ -126,6 +134,11 @@ const Navbar = () => {
           <Link to="/" className={`mobile-nav-link ${isActive('/') ? 'active' : ''}`}>{t('home')}</Link>
           {!isStaff && (
             <Link to="/booking" className={`mobile-nav-link ${isActive('/booking') ? 'active' : ''}`}>{t('book_now')}</Link>
+          )}
+          {isPatient && (
+            <Link to="/dashboard/support" className={`mobile-nav-link ${isActive('/dashboard/support') ? 'active' : ''}`}>
+              <Headset size={18} /> {i18n.language === 'ar' ? 'الدعم الفني' : 'Support'}
+            </Link>
           )}
           {isStaff && (
             <Link to="/dashboard" className={`mobile-nav-link ${isActive('/dashboard') ? 'active' : ''}`}>{t('dashboard')}</Link>

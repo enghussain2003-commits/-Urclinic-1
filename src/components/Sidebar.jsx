@@ -12,6 +12,7 @@ const Sidebar = ({ isOpen, onClose }) => {
   const location = useLocation();
   const { logout, user, supportUnreadCount } = useApp();
   const isActive = (path) => location.pathname === path || location.pathname.startsWith(`${path}/`);
+  const normalizedRole = String(user?.role || '').trim().toLowerCase();
 
   const toggleLang = () => {
     i18n.changeLanguage(i18n.language === 'en' ? 'ar' : 'en');
@@ -40,10 +41,10 @@ const Sidebar = ({ isOpen, onClose }) => {
     { path: '/dashboard/schedule', icon: CalendarDays, label: t('schedule_menu') },
     { path: '/dashboard/settings', icon: Settings, label: t('settings') || 'Settings' },
   ];
-  const canUseRegularSupport = ['clinic_admin', 'doctor', 'employee', 'patient'].includes(user?.role);
+  const canUseRegularSupport = ['clinic_admin', 'doctor', 'employee', 'patient'].includes(normalizedRole);
 
   const items = [
-    ...(user?.role === 'patient' ? [] : staffItems),
+    ...(normalizedRole === 'patient' ? [] : staffItems),
     ...(canUseRegularSupport ? [{
       path: '/dashboard/support',
       icon: Headset,
@@ -91,7 +92,7 @@ const Sidebar = ({ isOpen, onClose }) => {
 
         <div className="sidebar-section-title">{t('clinic_panel')}</div>
         <nav className="sidebar-nav">
-          {user?.role === 'super_admin' && (
+          {normalizedRole === 'super_admin' && (
             <>
               <div className="sidebar-section-title sidebar-section-title--nested">
                 {i18n.language === 'ar' ? 'إدارة العيادات' : 'Clinic Management'}
