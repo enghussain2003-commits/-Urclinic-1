@@ -23,6 +23,8 @@ import {
 import { useApp } from '../context/AppContext';
 import { useToast } from '../hooks/useToast';
 import { supabase } from '../supabaseClient';
+import ContactActionsCard from '../components/ContactActionsCard';
+import { buildContactMessage } from '../services/contactService';
 
 const WEEK_DAYS = [
   { id: 'sat', label: 'Sat', labelAr: 'السبت' },
@@ -385,6 +387,7 @@ const DoctorManagement = () => {
                   isAr={isAr}
                   t={t}
                   todayCount={todayByDoctor.get(String(doc.id)) || 0}
+                  user={user}
                 />
               ))}
             </div>
@@ -617,6 +620,7 @@ const DoctorManagementCard = ({
   isAr,
   t,
   todayCount,
+  user,
 }) => {
   const active = doc.is_active !== false;
   return (
@@ -642,6 +646,20 @@ const DoctorManagementCard = ({
         <span><CalendarClock size={14} /> {isAr ? `مواعيد اليوم: ${todayCount}` : `Today: ${todayCount}`}</span>
         <span><CheckCircle2 size={14} /> {getWorkDaysLabel(doc)}</span>
       </div>
+      <ContactActionsCard
+        title={isAr ? 'تواصل سريع' : 'Quick Contact'}
+        subtitle={isAr ? 'يستخدم رقم الطبيب إذا كان متاحاً في هذا السجل.' : 'Uses the doctor phone only when it is available on this authorized record.'}
+        phone={doc.phone || doc.phone_number}
+        whatsappMessage={buildContactMessage({
+          type: 'staff',
+          isAr,
+          name: getDoctorName(doc),
+        })}
+        unavailableMessage={isAr ? 'لا يوجد رقم واتساب متاح لهذا الطبيب.' : 'No WhatsApp number is available for this doctor.'}
+        actor={user}
+        target={{ role: 'doctor', clinic_id: doc.clinic_id }}
+        compact
+      />
       {canDelete && (
         <button className="btn btn-outline doctor-management-delete" onClick={() => handleDelete(doc.id)}>
           <Trash2 size={16} /> {t('delete')}

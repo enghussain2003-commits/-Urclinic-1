@@ -28,6 +28,8 @@ import { useApp } from '../context/AppContext';
 import { useToast } from '../hooks/useToast';
 import { supabase } from '../supabaseClient';
 import PrescriptionViewer from '../components/PrescriptionViewer';
+import ContactActionsCard from '../components/ContactActionsCard';
+import { buildContactMessage } from '../services/contactService';
 
 const StaffPatientProfile = () => {
   const { id } = useParams();
@@ -607,6 +609,20 @@ const StaffPatientProfile = () => {
         </main>
 
         <aside className="patient-emr-side">
+          <ContactActionsCard
+            title={isAr ? 'تواصل سريع' : 'Quick Contact'}
+            subtitle={isAr ? 'تواصل مع المريض باستخدام الرقم المصرح داخل نفس العيادة.' : 'Contact this patient using the authorized same-clinic phone number.'}
+            phone={patient.phone}
+            whatsappMessage={buildContactMessage({
+              type: 'patient',
+              isAr,
+              patientName: patient.full_name,
+              clinicName: user?.clinic_name || 'UrClinic',
+            })}
+            actor={user}
+            target={{ role: 'patient', clinic_id: patient.clinic_id }}
+          />
+
           <div className="patient-emr-panel">
             <div className="patient-emr-panel-head">
               <div>

@@ -15,12 +15,14 @@ import {
   XCircle,
 } from 'lucide-react';
 import { to12Hour } from '../components/TimeSlotGrid';
+import ContactActionsCard from '../components/ContactActionsCard';
+import { buildContactMessage } from '../services/contactService';
 
 const Appointments = () => {
   const { t, i18n } = useTranslation();
   const isAr = i18n.language === 'ar';
   const navigate = useNavigate();
-  const { appointments, doctors, changeStatus, loading } = useApp();
+  const { appointments, doctors, changeStatus, loading, user } = useApp();
 
   const [filter, setFilter] = useState('all');
   const [query, setQuery] = useState('');
@@ -275,6 +277,22 @@ const Appointments = () => {
             <span className="operational-kicker"><UserRound size={15} /> {isAr ? 'تفاصيل الموعد' : 'Appointment details'}</span>
             <h2>{selectedAppointment.patient_name || '-'}</h2>
             <span className={`badge ${statusBadge(selectedAppointment.status)}`}>{statusLabel(selectedAppointment.status)}</span>
+            <ContactActionsCard
+              title={isAr ? 'تواصل بخصوص الموعد' : 'Appointment contact'}
+              subtitle={isAr ? 'رسالة واتساب جاهزة ببيانات الموعد.' : 'WhatsApp message prefilled with appointment details.'}
+              phone={selectedAppointment.patient_phone}
+              whatsappMessage={buildContactMessage({
+                type: 'appointment',
+                isAr,
+                patientName: selectedAppointment.patient_name,
+                clinicName: 'UrClinic',
+                appointmentDate: appointmentDateTime(selectedAppointment).date,
+                appointmentTime: to12Hour(appointmentDateTime(selectedAppointment).time, isAr),
+              })}
+              actor={user}
+              target={{ role: 'patient', clinic_id: selectedAppointment.clinic_id }}
+              compact
+            />
             <div className="operational-detail-grid">
               <div><span>{isAr ? 'رقم الحجز' : 'Booking code'}</span><strong dir="ltr">{selectedAppointment.booking_code || '-'}</strong></div>
               <div><span>{isAr ? 'الهاتف' : 'Phone'}</span><strong dir="ltr">{selectedAppointment.patient_phone || '-'}</strong></div>

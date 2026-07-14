@@ -24,7 +24,9 @@ import { useApp } from '../context/AppContext';
 import { useToast } from '../hooks/useToast';
 import { supabase } from '../supabaseClient';
 import Countdown from '../components/Countdown';
+import ContactActionsCard from '../components/ContactActionsCard';
 import { to12Hour } from '../components/TimeSlotGrid';
+import { buildContactMessage } from '../services/contactService';
 import { downloadPrescriptionPdf } from '../utils/prescriptionPdf';
 
 const PatientProfile = () => {
@@ -37,6 +39,7 @@ const PatientProfile = () => {
   const [prescriptionsError, setPrescriptionsError] = useState('');
   const [visibleRxCount, setVisibleRxCount] = useState(6);
   const [selectedRx, setSelectedRx] = useState(null);
+  const [clinicContact, setClinicContact] = useState(null);
   const patientUserId = user?.id || null;
 
   // STRICT ID-only linkage. The previous phone/name fallback caused ghost bookings:
@@ -145,6 +148,29 @@ const PatientProfile = () => {
       (a.date || '').localeCompare(b.date || '') ||
       (a.time || '').localeCompare(b.time || '')
     )[0] || null;
+  const contactClinicId = activeAppointment?.clinic_id || myAppointments.find(a => a.clinic_id)?.clinic_id || null;
+
+  useEffect(() => {
+    let active = true;
+    const id = window.setTimeout(() => {
+      if (!contactClinicId) {
+        if (active) setClinicContact(null);
+        return;
+      }
+      supabase
+        .from('clinics')
+        .select('id, name, phone')
+        .eq('id', contactClinicId)
+        .maybeSingle()
+        .then(({ data }) => {
+          if (active) setClinicContact(data || null);
+        });
+    }, 0);
+    return () => {
+      active = false;
+      window.clearTimeout(id);
+    };
+  }, [contactClinicId]);
   const completedAppointments = [...myAppointments]
     .filter(a => a.status === 'completed')
     .sort((a, b) => new Date(b.completed_at || b.date || 0) - new Date(a.completed_at || a.date || 0));
@@ -359,6 +385,23 @@ const PatientProfile = () => {
         </main>
 
         <aside className="patient-emr-side">
+          <ContactActionsCard
+            title={isAr ? 'تواصل مع العيادة' : 'Contact clinic support'}
+            subtitle={isAr ? 'يفتح واتساب برسالة جاهزة لفريق العيادة.' : 'Opens WhatsApp with a prefilled message for the clinic team.'}
+            phone={clinicContact?.phone}
+            whatsappMessage={buildContactMessage({
+              type: activeAppointment ? 'appointment' : 'support',
+              isAr,
+              patientName: user?.name,
+              clinicName: clinicContact?.name || 'UrClinic',
+              appointmentDate: activeAppointment?.date,
+              appointmentTime: activeAppointment ? to12Hour(activeAppointment.time, isAr) : '',
+            })}
+            actor={user}
+            target={{ role: 'clinic_support', clinic_id: clinicContact?.id }}
+            unavailableMessage={isAr ? 'لا يوجد رقم واتساب متاح للعيادة حالياً.' : 'No WhatsApp number is available for this clinic yet.'}
+          />
+
           <div className="patient-emr-panel">
             <div className="patient-emr-panel-head">
               <div>

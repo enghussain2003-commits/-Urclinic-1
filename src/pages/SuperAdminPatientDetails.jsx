@@ -21,6 +21,8 @@ import {
   passwordScore,
 } from '../services/superAdminService';
 import { useToast } from '../hooks/useToast';
+import ContactActionsCard from '../components/ContactActionsCard';
+import { buildContactMessage } from '../services/contactService';
 
 const ACTIVE_STATUSES = ['pending', 'approved', 'confirmed', 'in_progress'];
 
@@ -211,6 +213,20 @@ const SuperAdminPatientDetails = () => {
 
         <InfoCard title={isAr ? 'إجراءات الدعم' : 'Support Actions'}>
           <div className="super-admin-action-stack">
+            <ContactActionsCard
+              title={isAr ? 'تواصل واتساب' : 'WhatsApp Contact'}
+              subtitle={isAr ? 'رقم المريض ظاهر للمشرف العام فقط من مسار الدعم الآمن.' : 'Patient phone is visible here only through the secure Super Admin support flow.'}
+              phone={patient.phone_number || patient.phone}
+              whatsappMessage={buildContactMessage({
+                type: 'patient',
+                isAr,
+                patientName: patient.full_name,
+                clinicName: patientRows.map(row => clinicById.get(String(row.clinic_id))?.name).filter(Boolean)[0] || 'UrClinic',
+              })}
+              actor={{ role: 'super_admin' }}
+              target={{ role: 'patient' }}
+              compact
+            />
             <button className="btn btn-outline" onClick={() => setEditModal({ ...patient })}><Edit3 size={16} /> {isAr ? 'تعديل بيانات المريض' : 'Edit patient data'}</button>
             <button className="btn btn-outline" onClick={() => { const p = generateStrongPassword(); setResetModal({ password: p, confirm_password: p }); }}><KeyRound size={16} /> {isAr ? 'إعادة تعيين كلمة المرور' : 'Reset password'}</button>
             <button className="btn btn-outline" onClick={() => setNotifyModal({ title: isAr ? 'رسالة من دعم UrClinic' : 'Message from UrClinic Support', message: '' })}><Bell size={16} /> {isAr ? 'إرسال إشعار دعم' : 'Send support notification'}</button>

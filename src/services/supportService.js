@@ -97,7 +97,7 @@ export const fetchSupportTickets = async ({ search = '', status = 'all', categor
     .select(`
       *,
       requester:profiles!support_tickets_created_by_fkey(id, full_name, role, email, clinic_id),
-      clinic:clinics(id, name),
+      clinic:clinics(id, name, phone),
       messages:support_messages(id, sender_id, is_internal_note, created_at, reads:support_message_reads(id, user_id))
     `);
 

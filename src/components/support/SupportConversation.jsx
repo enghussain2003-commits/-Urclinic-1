@@ -4,6 +4,8 @@ import { ArrowLeft, Lock, Paperclip, RefreshCw, Send, ShieldCheck, XCircle } fro
 import { useNavigate } from 'react-router-dom';
 import { useApp } from '../../context/AppContext';
 import { useToast } from '../../hooks/useToast';
+import ContactActionsCard from '../ContactActionsCard';
+import { buildContactMessage } from '../../services/contactService';
 import {
   addSupportMessage,
   canAddInternalNote,
@@ -247,6 +249,25 @@ const SupportConversation = ({ ticketId, admin = false, onBack, onChanged }) => 
         </main>
 
         <aside className="support-side-panel">
+          <ContactActionsCard
+            title={admin ? (isAr ? 'تواصل مع طالب الدعم' : 'Contact requester') : (isAr ? 'تواصل مع العيادة' : 'Contact clinic support')}
+            subtitle={admin
+              ? (isAr ? 'استخدم الرقم المرتبط بحساب طالب الدعم.' : 'Use the phone linked to the requester account.')
+              : (isAr ? 'يفتح واتساب مع رقم دعم العيادة إن وجد.' : 'Opens WhatsApp with the clinic support number when available.')}
+            phone={admin ? (ticket.requester?.phone_number || ticket.requester?.phone) : ticket.clinic?.phone}
+            whatsappMessage={buildContactMessage({
+              type: admin ? 'patient' : 'support',
+              isAr,
+              patientName: ticket.requester?.full_name,
+              clinicName: ticket.clinic?.name || 'UrClinic',
+            })}
+            actor={user}
+            target={admin
+              ? { role: ticket.requester?.role, clinic_id: ticket.requester?.clinic_id }
+              : { role: 'clinic_support', clinic_id: ticket.clinic_id }}
+            unavailableMessage={isAr ? 'لا يوجد رقم واتساب متاح لهذا الطلب.' : 'No WhatsApp number is available for this ticket.'}
+          />
+
           <div className="support-side-card">
             <h3>{isAr ? 'معلومات الطلب' : 'Ticket details'}</h3>
             <Info label={isAr ? 'طالب الدعم' : 'Requester'} value={ticket.requester?.full_name} />

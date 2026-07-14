@@ -28,6 +28,8 @@ import {
   passwordScore,
 } from '../services/superAdminService';
 import { supabase } from '../supabaseClient';
+import ContactActionsCard from '../components/ContactActionsCard';
+import { buildContactMessage } from '../services/contactService';
 
 const emptyUserForm = {
   role: 'doctor',
@@ -234,6 +236,13 @@ const SuperAdminClinicDetails = () => {
       {tab === 'overview' && clinicForm && (
         <section className="super-admin-card">
           <div className="super-admin-card-head"><span><Edit3 /></span><h2>{isAr ? 'تعديل معلومات العيادة' : 'Edit clinic information'}</h2></div>
+          <ContactActionsCard
+            title={isAr ? 'تواصل مع العيادة' : 'Contact clinic'}
+            subtitle={isAr ? 'رقم العيادة الرسمي، بدون كشف أرقام شخصية.' : 'Official clinic number without exposing personal staff phones.'}
+            phone={clinicForm.phone}
+            whatsappMessage={buildContactMessage({ type: 'support', isAr })}
+            compact
+          />
           <div className="super-admin-form-grid">
             <Field label={isAr ? 'اسم العيادة' : 'Clinic name'} value={clinicForm.name} onChange={v => setClinicForm({ ...clinicForm, name: v })} />
             <SelectField label={isAr ? 'المحافظة' : 'Governorate'} value={clinicForm.governorate} onChange={v => setClinicForm({ ...clinicForm, governorate: v })} options={IRAQI_GOVERNORATES.map(g => ({ value: g.id, label: isAr ? g.ar : g.en }))} />
@@ -329,6 +338,7 @@ const AccountList = ({ title, rows, isAr, onEdit, onReset, onStatus, extraAction
 
 const AccountCard = ({ row, isAr, onEdit, onReset, onStatus }) => {
   const suspended = row.status === 'suspended';
+  const contactPhone = row.phone_number || row.phone || row.doctor?.phone;
   return (
     <article className="super-admin-account-card">
       <div>
@@ -337,6 +347,19 @@ const AccountCard = ({ row, isAr, onEdit, onReset, onStatus }) => {
         <em className={suspended ? 'suspended' : 'active'}>{suspended ? (isAr ? 'معلق' : 'Suspended') : (isAr ? 'نشط' : 'Active')}</em>
       </div>
       <p>{row.role === 'doctor' ? row.doctor?.specialty : row.role}</p>
+      <ContactActionsCard
+        title={isAr ? 'تواصل سريع' : 'Quick Contact'}
+        subtitle={isAr ? 'رقم الحساب ضمن هذه العيادة.' : 'Account phone within this clinic.'}
+        phone={contactPhone}
+        whatsappMessage={buildContactMessage({
+          type: 'staff',
+          isAr,
+          name: row.full_name,
+        })}
+        actor={{ role: 'super_admin' }}
+        target={{ role: row.role }}
+        compact
+      />
       <div className="super-admin-account-actions">
         <button className="btn btn-sm btn-outline" onClick={() => onEdit(row)}><Edit3 size={14} /> {isAr ? 'تعديل' : 'Edit'}</button>
         <button className="btn btn-sm btn-outline" onClick={() => onReset(row)}><KeyRound size={14} /> {isAr ? 'كلمة المرور' : 'Reset'}</button>
