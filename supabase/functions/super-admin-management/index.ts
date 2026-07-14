@@ -12,6 +12,15 @@ const ROLES = new Set(['clinic_admin', 'doctor', 'employee']);
 const STATUSES = new Set(['active', 'suspended']);
 const DURATIONS = new Set([15, 20, 30, 45, 60]);
 const DAY_IDS = new Set(['sat', 'sun', 'mon', 'tue', 'wed', 'thu', 'fri']);
+const PATIENT_SUPPORT_ACTIONS = new Set([
+  'patient_profile_updated',
+  'patient_email_updated',
+  'patient_password_reset',
+  'patient_account_suspended',
+  'patient_account_reactivated',
+  'appointment_cancelled_by_support',
+  'support_notification_sent',
+]);
 
 function corsHeaders(reqOrigin: string | null): Record<string, string> {
   const allowAll = ALLOWED_ORIGINS.includes('*');
@@ -222,6 +231,89 @@ async function audit(admin: ReturnType<typeof createClient>, actor: { id: string
     action_type: action,
     metadata,
   });
+}
+
+async function supportAudit(
+  admin: ReturnType<typeof createClient>,
+  actor: { id: string; role: string },
+  action: string,
+  details: {
+    target_user_id?: string | null;
+    patient_id?: string | null;
+    appointment_id?: string | null;
+    clinic_id?: string | null;
+    old_values?: Record<string, unknown> | null;
+    new_values?: Record<string, unknown> | null;
+    reason?: string | null;
+    metadata?: Record<string, unknown>;
+  } = {},
+) {
+  if (!PATIENT_SUPPORT_ACTIONS.has(action)) throw bad('Invalid support audit action', 400);
+  const { error } = await admin.from('support_audit_logs').insert({
+    actor_user_id: actor.id,
+    actor_role: actor.role,
+    action_type: action,
+    target_user_id: details.target_user_id ?? null,
+    patient_id: details.patient_id ?? null,
+    appointment_id: details.appointment_id ?? null,
+    clinic_id: details.clinic_id ?? null,
+    old_values: details.old_values ?? null,
+    new_values: details.new_values ?? null,
+    reason: details.reason ?? null,
+    metadata: details.metadata ?? {},
+  });
+  if (error) throw dbFailure('Support audit insert', error, 'Support audit failed', 400);
+}
+
+async function notifyUser(
+  admin: ReturnType<typeof createClient>,
+  userId: string | null | undefined,
+  row: {
+    clinic_id?: string | null;
+    title: string;
+    message: string;
+    type: string;
+    metadata?: Record<string, unknown>;
+  },
+) {
+  if (!userId) return;
+  const { error } = await admin.from('notifications').insert({
+    clinic_id: row.clinic_id ?? null,
+    user_id: userId,
+    title: row.title,
+    message: row.message,
+    type: row.type,
+    metadata: row.metadata ?? {},
+  });
+  if (error) throw dbFailure('Notification insert', error, 'Notification failed', 400);
+}
+
+function patientProfileUpdates(input: Record<string, unknown>, partial = true) {
+  const payload: Record<string, unknown> = {};
+  if (!partial || input.full_name !== undefined) payload.full_name = requireText(input.full_name, 'Full name');
+  if (!partial || input.email !== undefined) payload.email = requireEmail(input.email);
+  if (!partial || input.phone !== undefined || input.phone_number !== undefined) {
+    payload.phone_number = optionalText(input.phone ?? input.phone_number);
+  }
+  if (!partial || input.governorate !== undefined) {
+    const governorate = optionalText(input.governorate);
+    if (governorate && !IRAQI_GOVERNORATES.has(governorate)) throw bad('Invalid governorate');
+    payload.governorate = governorate;
+  }
+  if (!partial || input.address !== undefined) payload.address = optionalText(input.address);
+  return Object.fromEntries(Object.entries(payload).filter(([, value]) => value !== undefined));
+}
+
+async function requirePatientProfile(admin: ReturnType<typeof createClient>, profileId: string) {
+  const { data, error } = await admin
+    .from('profiles')
+    .select('id, full_name, email, phone_number, role, status, governorate, address, created_at, updated_at')
+    .eq('id', profileId)
+    .single();
+  if (error || !data || data.role !== 'patient') {
+    throw dbFailure('Patient profile lookup', error, 'Patient account not found', 404);
+  }
+  return data;
 }
 
 async function writeManagedProfile(
@@ -489,6 +581,223 @@ Deno.serve(async (req) => {
       const { error } = await admin.from('clinics').update({ is_active: status === 'active' }).eq('id', clinicId);
       if (error) throw dbFailure('Clinic status update', error, 'Clinic status update failed', 400);
       await audit(admin, actor, status === 'active' ? 'clinic_activated' : 'clinic_suspended', clinicId, null);
+      return json({ ok: true }, 200, cors);
+    }
+
+    if (action === 'update_patient_account') {
+      const profileId = requireText(payload.profile_id ?? payload.user_id, 'Patient profile ID');
+      const profile = await requirePatientProfile(admin, profileId);
+      const updates = patientProfileUpdates(payload, true);
+      if (Object.keys(updates).length === 0) throw bad('No patient fields to update');
+
+      if (updates.email && String(updates.email).toLowerCase() !== String(profile.email || '').toLowerCase()) {
+        if (await emailExists(admin, String(updates.email), profileId)) throw bad('Email already exists', 409);
+        const { error: authEmailError } = await admin.auth.admin.updateUserById(profileId, {
+          email: String(updates.email),
+          email_confirm: true,
+        });
+        if (authEmailError) throw bad('Auth email update failed', 400);
+      }
+
+      const { error: profileError } = await admin.from('profiles').update(updates).eq('id', profileId);
+      if (profileError) throw dbFailure('Patient profile update', profileError, 'Patient profile update failed', 400);
+
+      const patientRowUpdates: Record<string, unknown> = {};
+      if (updates.full_name !== undefined) patientRowUpdates.full_name = updates.full_name;
+      if (updates.email !== undefined) patientRowUpdates.email = updates.email;
+      if (updates.phone_number !== undefined) patientRowUpdates.phone = updates.phone_number;
+      if (Object.keys(patientRowUpdates).length > 0) {
+        const { error: patientRowsError } = await admin.from('patients').update(patientRowUpdates).eq('auth_user_id', profileId);
+        if (patientRowsError) throw dbFailure('Patient records update', patientRowsError, 'Patient records update failed', 400);
+      }
+
+      await supportAudit(admin, actor, updates.email && updates.email !== profile.email ? 'patient_email_updated' : 'patient_profile_updated', {
+        target_user_id: profileId,
+        old_values: profile,
+        new_values: updates,
+        metadata: { synchronized_patient_records: Object.keys(patientRowUpdates) },
+      });
+
+      return json({ ok: true }, 200, cors);
+    }
+
+    if (action === 'reset_patient_password') {
+      const profileId = requireText(payload.profile_id ?? payload.user_id, 'Patient profile ID');
+      const password = requirePasswordPair(payload.password, payload.confirm_password);
+      const profile = await requirePatientProfile(admin, profileId);
+      const { error } = await admin.auth.admin.updateUserById(profileId, { password });
+      if (error) throw bad('Password reset failed', 400);
+      const { error: profileError } = await admin.from('profiles').update({ must_change_password: true }).eq('id', profileId);
+      if (profileError) throw dbFailure('Patient password flag update', profileError, 'Password reset failed', 400);
+
+      await notifyUser(admin, profileId, {
+        title: 'تمت إعادة تعيين كلمة المرور',
+        message: 'قام فريق دعم UrClinic بتعيين كلمة مرور مؤقتة لحسابك. يرجى تغييرها بعد تسجيل الدخول.',
+        type: 'support_password_reset',
+        metadata: {
+          patient_profile_id: profileId,
+          support_admin_id: actor.id,
+          notification_type: 'support_password_reset',
+          timestamp: new Date().toISOString(),
+        },
+      });
+      await supportAudit(admin, actor, 'patient_password_reset', {
+        target_user_id: profileId,
+        metadata: { patient_name: profile.full_name },
+      });
+      return json({ ok: true }, 200, cors);
+    }
+
+    if (action === 'suspend_patient_account' || action === 'reactivate_patient_account') {
+      const profileId = requireText(payload.profile_id ?? payload.user_id, 'Patient profile ID');
+      const profile = await requirePatientProfile(admin, profileId);
+      const status = action === 'suspend_patient_account' ? 'suspended' : 'active';
+      const reason = optionalText(payload.reason);
+      const { error } = await admin.from('profiles').update({ status }).eq('id', profileId);
+      if (error) throw dbFailure('Patient status update', error, 'Patient status update failed', 400);
+      await notifyUser(admin, profileId, {
+        title: status === 'suspended' ? 'تم تعليق حسابك' : 'تم تفعيل حسابك',
+        message: status === 'suspended'
+          ? 'قام فريق دعم UrClinic بتعليق حسابك مؤقتاً. يرجى التواصل مع الدعم للمزيد من التفاصيل.'
+          : 'قام فريق دعم UrClinic بإعادة تفعيل حسابك.',
+        type: status === 'suspended' ? 'support_account_suspended' : 'support_account_reactivated',
+        metadata: {
+          patient_profile_id: profileId,
+          support_admin_id: actor.id,
+          reason,
+          timestamp: new Date().toISOString(),
+        },
+      });
+      await supportAudit(admin, actor, status === 'suspended' ? 'patient_account_suspended' : 'patient_account_reactivated', {
+        target_user_id: profileId,
+        old_values: { status: profile.status },
+        new_values: { status },
+        reason,
+      });
+      return json({ ok: true }, 200, cors);
+    }
+
+    if (action === 'send_patient_support_notification') {
+      const profileId = requireText(payload.profile_id ?? payload.user_id, 'Patient profile ID');
+      await requirePatientProfile(admin, profileId);
+      const title = optionalText(payload.title) || 'رسالة من دعم UrClinic';
+      const message = requireText(payload.message, 'Message');
+      await notifyUser(admin, profileId, {
+        title,
+        message,
+        type: 'support_message',
+        metadata: {
+          patient_profile_id: profileId,
+          support_admin_id: actor.id,
+          notification_type: 'support_message',
+          timestamp: new Date().toISOString(),
+        },
+      });
+      await supportAudit(admin, actor, 'support_notification_sent', {
+        target_user_id: profileId,
+        metadata: { title },
+      });
+      return json({ ok: true }, 200, cors);
+    }
+
+    if (action === 'cancel_patient_appointment') {
+      const appointmentId = requireText(payload.appointment_id, 'Appointment ID');
+      const reason = requireText(payload.cancellation_reason ?? payload.reason, 'Cancellation reason');
+      const supportNotes = optionalText(payload.support_notes);
+      const notifyPatient = payload.notify_patient !== false;
+      const notifyDoctor = payload.notify_doctor !== false;
+      const notifyClinicAdmin = payload.notify_clinic_admin !== false;
+
+      const { data: appointment, error: appointmentError } = await admin
+        .from('appointments')
+        .select('*, patients(id, auth_user_id, full_name, phone, email), doctors(id, profile_id, full_name), clinics(id, name)')
+        .eq('id', appointmentId)
+        .single();
+      if (appointmentError || !appointment) {
+        throw dbFailure('Appointment lookup', appointmentError, 'Appointment not found', 404);
+      }
+      if (String(appointment.status) === 'cancelled') throw bad('Appointment is already cancelled', 409);
+      if (String(appointment.status) === 'completed') throw bad('Completed appointments cannot be cancelled', 409);
+
+      const cancelledAt = new Date().toISOString();
+      const { error: updateError } = await admin.from('appointments').update({
+        status: 'cancelled',
+        cancelled_by_role: 'super_admin',
+        cancelled_by_user_id: actor.id,
+        cancellation_reason: reason,
+        support_notes: supportNotes,
+        cancelled_at: cancelledAt,
+      }).eq('id', appointmentId);
+      if (updateError) throw dbFailure('Support appointment cancellation', updateError, 'Appointment cancellation failed', 400);
+
+      const metadata = {
+        appointment_id: appointmentId,
+        booking_code: appointment.booking_code,
+        patient_id: appointment.patient_id,
+        patient_profile_id: appointment.patients?.auth_user_id ?? null,
+        doctor_id: appointment.doctor_id,
+        clinic_id: appointment.clinic_id,
+        cancellation_reason: reason,
+        support_admin_id: actor.id,
+        timestamp: cancelledAt,
+        notification_type: 'support_appointment_cancelled',
+      };
+
+      if (notifyPatient) {
+        await notifyUser(admin, appointment.patients?.auth_user_id, {
+          clinic_id: appointment.clinic_id,
+          title: 'تم إلغاء الحجز',
+          message: 'تم إلغاء حجزك بواسطة فريق دعم UrClinic بسبب اختيار الطبيب أو الموعد بشكل غير صحيح. يمكنك إنشاء حجز جديد.',
+          type: 'support_appointment_cancelled',
+          metadata,
+        });
+      }
+      if (notifyDoctor) {
+        await notifyUser(admin, appointment.doctors?.profile_id, {
+          clinic_id: appointment.clinic_id,
+          title: 'تم إلغاء حجز مريض',
+          message: `تم إلغاء حجز المريض ${appointment.patients?.full_name || ''} بواسطة فريق دعم UrClinic. السبب: ${reason}.`,
+          type: 'support_appointment_cancelled',
+          metadata,
+        });
+      }
+      if (notifyClinicAdmin) {
+        const { data: admins, error: adminsError } = await admin
+          .from('profiles')
+          .select('id')
+          .eq('clinic_id', appointment.clinic_id)
+          .eq('role', 'clinic_admin')
+          .eq('status', 'active');
+        if (adminsError) throw dbFailure('Clinic admin notification lookup', adminsError, 'Clinic admin lookup failed', 400);
+        for (const clinicAdmin of admins || []) {
+          await notifyUser(admin, clinicAdmin.id, {
+            clinic_id: appointment.clinic_id,
+            title: 'إلغاء حجز بواسطة الدعم',
+            message: `قام فريق دعم UrClinic بإلغاء الحجز رقم ${appointment.booking_code || appointmentId}. السبب: ${reason}.`,
+            type: 'support_appointment_cancelled',
+            metadata,
+          });
+        }
+      }
+
+      await supportAudit(admin, actor, 'appointment_cancelled_by_support', {
+        target_user_id: appointment.patients?.auth_user_id ?? null,
+        patient_id: appointment.patient_id,
+        appointment_id: appointmentId,
+        clinic_id: appointment.clinic_id,
+        old_values: { status: appointment.status },
+        new_values: {
+          status: 'cancelled',
+          cancelled_by_role: 'super_admin',
+          cancelled_by_user_id: actor.id,
+          cancellation_reason: reason,
+          support_notes: supportNotes,
+          cancelled_at: cancelledAt,
+        },
+        reason,
+        metadata,
+      });
+
       return json({ ok: true }, 200, cors);
     }
 

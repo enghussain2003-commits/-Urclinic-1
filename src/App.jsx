@@ -23,6 +23,8 @@ import UserSettings from './pages/UserSettings';
 import SuperAdminClinics from './pages/SuperAdminClinics';
 import SuperAdminClinicProvision from './pages/SuperAdminClinicProvision';
 import SuperAdminClinicDetails from './pages/SuperAdminClinicDetails';
+import SuperAdminPatients from './pages/SuperAdminPatients';
+import SuperAdminPatientDetails from './pages/SuperAdminPatientDetails';
 import ForceChangePassword from './pages/ForceChangePassword';
 import { Menu } from 'lucide-react';
 
@@ -170,6 +172,16 @@ function App() {
             <Route path="/dashboard/super-admin/clinics/:id" element={
               <ProtectedRoute requiredRole="super_admin">
                 <SuperAdminClinicDetails />
+              </ProtectedRoute>
+            } />
+            <Route path="/dashboard/super-admin/patients" element={
+              <ProtectedRoute requiredRole="super_admin">
+                <SuperAdminPatients />
+              </ProtectedRoute>
+            } />
+            <Route path="/dashboard/super-admin/patients/:patientId" element={
+              <ProtectedRoute requiredRole="super_admin">
+                <SuperAdminPatientDetails />
               </ProtectedRoute>
             } />
             <Route path="/settings" element={

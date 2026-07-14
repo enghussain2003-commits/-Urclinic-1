@@ -3,7 +3,7 @@ import { useTranslation } from 'react-i18next';
 import { Link, useLocation } from 'react-router-dom';
 import {
   Activity, LayoutDashboard, CalendarDays, Users,
-  Settings, Stethoscope, Globe, LogOut, User, X, Building2, PlusCircle, ShieldCheck,
+  Settings, Stethoscope, Globe, LogOut, User, X, Building2, PlusCircle, ShieldCheck, UserRoundCog,
 } from 'lucide-react';
 import { useApp } from '../context/AppContext';
 
@@ -45,6 +45,7 @@ const Sidebar = ({ isOpen, onClose }) => {
   const superAdminItems = [
     { path: '/dashboard/super-admin/clinics', icon: Building2, label: i18n.language === 'ar' ? 'العيادات' : 'Clinics' },
     { path: '/dashboard/super-admin/clinics/new', icon: PlusCircle, label: i18n.language === 'ar' ? 'إضافة عيادة' : 'Add New Clinic' },
+    { path: '/dashboard/super-admin/patients', icon: UserRoundCog, label: i18n.language === 'ar' ? 'إدارة حسابات المرضى' : 'Patient Accounts' },
     { path: '/dashboard/super-admin/clinics', icon: ShieldCheck, label: i18n.language === 'ar' ? 'إدارة الحسابات' : 'Account Management' },
   ];
 

@@ -8869,6 +8869,11 @@ tbody tr:last-child td { border-bottom: none; }
   background: #fffbeb;
 }
 
+.super-admin-status.neutral {
+  color: #475569;
+  background: #f1f5f9;
+}
+
 .super-admin-mobile-list {
   display: none;
   padding: 0.85rem;
@@ -9026,6 +9031,81 @@ tbody tr:last-child td { border-bottom: none; }
   color: #0f172a;
 }
 
+.super-admin-toolbar--patient {
+  grid-template-columns: minmax(260px, 2fr) repeat(5, minmax(150px, 1fr)) auto;
+}
+
+.super-admin-detail-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1.35fr) minmax(280px, 0.65fr);
+  gap: 1rem;
+}
+
+.super-admin-info-list {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.85rem;
+}
+
+.super-admin-info-list > div {
+  padding: 0.75rem;
+  border: 1px solid #e2e8f0;
+  border-radius: 14px;
+  background: rgba(248, 250, 252, 0.82);
+  min-width: 0;
+}
+
+.super-admin-info-list span {
+  display: block;
+  color: #64748b;
+  font-size: 0.78rem;
+  margin-bottom: 0.25rem;
+}
+
+.super-admin-info-list strong {
+  display: block;
+  color: #0f172a;
+  overflow-wrap: anywhere;
+}
+
+.super-admin-action-stack {
+  display: grid;
+  gap: 0.65rem;
+}
+
+.super-admin-action-stack .btn {
+  justify-content: flex-start;
+  width: 100%;
+}
+
+.super-admin-check--inline {
+  min-height: 44px;
+  align-items: center;
+  margin: 0;
+}
+
+.super-admin-audit-list {
+  display: grid;
+  gap: 0.75rem;
+  padding: 1rem;
+}
+
+.super-admin-audit-list > div {
+  display: grid;
+  gap: 0.2rem;
+  border: 1px solid #e2e8f0;
+  border-radius: 14px;
+  padding: 0.85rem;
+  background: rgba(248, 250, 252, 0.82);
+}
+
+.super-admin-audit-list span,
+.super-admin-audit-list p {
+  margin: 0;
+  color: #64748b;
+  font-size: 0.82rem;
+}
+
 .spin {
   animation: spin 0.9s linear infinite;
 }
@@ -9037,6 +9117,11 @@ tbody tr:last-child td { border-bottom: none; }
 @media (max-width: 1023px) {
   .super-admin-toolbar,
   .super-admin-provision-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .super-admin-toolbar--patient,
+  .super-admin-detail-grid {
     grid-template-columns: 1fr;
   }
 
@@ -9070,6 +9155,10 @@ tbody tr:last-child td { border-bottom: none; }
 
   .super-admin-wide {
     grid-column: auto;
+  }
+
+  .super-admin-info-list {
+    grid-template-columns: 1fr;
   }
 
   .super-admin-card-head {

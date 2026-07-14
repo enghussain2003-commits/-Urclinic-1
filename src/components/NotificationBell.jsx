@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect } from 'react';
-import { Bell, CheckCheck, Volume2, CalendarPlus, RefreshCw, XCircle } from 'lucide-react';
+import { Bell, CheckCheck, Volume2, CalendarPlus, RefreshCw, XCircle, UserRoundCog, KeyRound } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { useApp } from '../context/AppContext';
 
@@ -27,6 +27,10 @@ const NotificationBell = () => {
       case 'appointment_new': return <CalendarPlus size={18} color="var(--success)" />;
       case 'appointment_update': return <RefreshCw size={18} color="var(--info)" />;
       case 'appointment_cancel': return <XCircle size={18} color="var(--danger)" />;
+      case 'new_patient_account': return <UserRoundCog size={18} color="var(--primary)" />;
+      case 'support_appointment_cancelled': return <XCircle size={18} color="var(--danger)" />;
+      case 'support_password_reset': return <KeyRound size={18} color="var(--warning)" />;
+      case 'support_message': return <Bell size={18} color="var(--primary)" />;
       default: return <Bell size={18} color="var(--text-secondary)" />;
     }
   };
