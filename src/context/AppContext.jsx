@@ -13,6 +13,7 @@ import {
 } from '../demo/demoData';
 import { isDemoModeEnabled } from '../demo/demoMode';
 import { clearStoredUser, getStoredUser, setStoredUser } from '../services/sessionService';
+import { SUPPORT_NOTIFICATION_TYPES } from '../services/supportService';
 
 const AppContext = createContext();
 
@@ -809,6 +810,9 @@ export const AppProvider = ({ children }) => {
   };
 
   const unreadCount = notifications.filter(n => !n.is_read).length;
+  const supportUnreadCount = notifications.filter(n =>
+    !n.is_read && SUPPORT_NOTIFICATION_TYPES.includes(n.type)
+  ).length;
 
   return (
     <AppContext.Provider value={{
@@ -817,7 +821,7 @@ export const AppProvider = ({ children }) => {
       createAppointment, changeStatus,
       addDoctor, deleteDoctor,
       addMedicalHistory, addMedicalFile, sendNotification, createPrescription,
-      notifications, refreshNotifications, readAllNotifications, markNotificationRead, markAllNotificationsRead, unreadCount,
+      notifications, refreshNotifications, readAllNotifications, markNotificationRead, markAllNotificationsRead, unreadCount, supportUnreadCount,
     }}>
       {children}
     </AppContext.Provider>

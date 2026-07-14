@@ -3,15 +3,15 @@ import { useTranslation } from 'react-i18next';
 import { Link, useLocation } from 'react-router-dom';
 import {
   Activity, LayoutDashboard, CalendarDays, Users,
-  Settings, Stethoscope, Globe, LogOut, User, X, Building2, PlusCircle, ShieldCheck, UserRoundCog,
+  Settings, Stethoscope, Globe, LogOut, User, X, Building2, PlusCircle, ShieldCheck, UserRoundCog, Headset,
 } from 'lucide-react';
 import { useApp } from '../context/AppContext';
 
 const Sidebar = ({ isOpen, onClose }) => {
   const { t, i18n } = useTranslation();
   const location = useLocation();
-  const { logout, user } = useApp();
-  const isActive = (path) => location.pathname === path;
+  const { logout, user, supportUnreadCount } = useApp();
+  const isActive = (path) => location.pathname === path || location.pathname.startsWith(`${path}/`);
 
   const toggleLang = () => {
     i18n.changeLanguage(i18n.language === 'en' ? 'ar' : 'en');
@@ -32,13 +32,24 @@ const Sidebar = ({ isOpen, onClose }) => {
     return () => { document.body.style.overflow = ''; };
   }, [isOpen]);
 
-  const items = [
+  const staffItems = [
     { path: '/dashboard', icon: LayoutDashboard, label: t('overview') },
     { path: '/dashboard/appointments', icon: CalendarDays, label: t('appointments') },
     { path: '/dashboard/doctors', icon: Stethoscope, label: t('doctors_menu') },
     { path: '/dashboard/patients', icon: Users, label: t('patients_menu') },
     { path: '/dashboard/schedule', icon: CalendarDays, label: t('schedule_menu') },
     { path: '/dashboard/settings', icon: Settings, label: t('settings') || 'Settings' },
+  ];
+  const canUseRegularSupport = ['clinic_admin', 'doctor', 'employee', 'patient'].includes(user?.role);
+
+  const items = [
+    ...(user?.role === 'patient' ? [] : staffItems),
+    ...(canUseRegularSupport ? [{
+      path: '/dashboard/support',
+      icon: Headset,
+      label: i18n.language === 'ar' ? 'الدعم الفني' : 'Support',
+      badge: supportUnreadCount,
+    }] : []),
     { path: '/settings', icon: User, label: t('user_settings') || 'Account Settings' },
   ];
 
@@ -46,6 +57,7 @@ const Sidebar = ({ isOpen, onClose }) => {
     { path: '/dashboard/super-admin/clinics', icon: Building2, label: i18n.language === 'ar' ? 'العيادات' : 'Clinics' },
     { path: '/dashboard/super-admin/clinics/new', icon: PlusCircle, label: i18n.language === 'ar' ? 'إضافة عيادة' : 'Add New Clinic' },
     { path: '/dashboard/super-admin/patients', icon: UserRoundCog, label: i18n.language === 'ar' ? 'إدارة حسابات المرضى' : 'Patient Accounts' },
+    { path: '/dashboard/super-admin/support', icon: Headset, label: i18n.language === 'ar' ? 'فريق الدعم' : 'Support Center', badge: supportUnreadCount },
     { path: '/dashboard/super-admin/clinics', icon: ShieldCheck, label: i18n.language === 'ar' ? 'إدارة الحسابات' : 'Account Management' },
   ];
 
@@ -92,6 +104,7 @@ const Sidebar = ({ isOpen, onClose }) => {
                 >
                   <item.icon size={20} />
                   <span>{item.label}</span>
+                  {item.badge > 0 && <em className="sidebar-badge">{item.badge > 9 ? '9+' : item.badge}</em>}
                 </Link>
               ))}
             </>
@@ -104,6 +117,7 @@ const Sidebar = ({ isOpen, onClose }) => {
             >
               <item.icon size={20} />
               <span>{item.label}</span>
+              {item.badge > 0 && <em className="sidebar-badge">{item.badge > 9 ? '9+' : item.badge}</em>}
             </Link>
           ))}
         </nav>

@@ -1,7 +1,9 @@
 import { useState, useRef, useEffect } from 'react';
 import { Bell, CheckCheck, Volume2, CalendarPlus, RefreshCw, XCircle, UserRoundCog, KeyRound } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
+import { useNavigate } from 'react-router-dom';
 import { useApp } from '../context/AppContext';
+import { localizedSupportText, markSupportTicketRead, supportRouteForNotification } from '../services/supportService';
 
 const NotificationBell = () => {
   const { t, i18n } = useTranslation();
@@ -9,6 +11,7 @@ const NotificationBell = () => {
   const [isOpen, setIsOpen] = useState(false);
   const dropdownRef = useRef(null);
   const isAr = i18n.language === 'ar';
+  const navigate = useNavigate();
 
   // Close dropdown when clicking outside
   useEffect(() => {
@@ -31,6 +34,15 @@ const NotificationBell = () => {
       case 'support_appointment_cancelled': return <XCircle size={18} color="var(--danger)" />;
       case 'support_password_reset': return <KeyRound size={18} color="var(--warning)" />;
       case 'support_message': return <Bell size={18} color="var(--primary)" />;
+      case 'support_ticket_created':
+      case 'support_user_reply':
+      case 'support_admin_reply':
+      case 'support_status_in_progress':
+      case 'support_status_waiting':
+      case 'support_status_resolved':
+      case 'support_status_closed':
+      case 'support_status_reopened':
+        return <Bell size={18} color="var(--primary)" />;
       default: return <Bell size={18} color="var(--text-secondary)" />;
     }
   };
@@ -50,6 +62,20 @@ const NotificationBell = () => {
     const nextOpen = !isOpen;
     setIsOpen(nextOpen);
     if (nextOpen) refreshNotifications();
+  };
+
+  const handleNotificationClick = async (notif) => {
+    if (!notif.is_read) await markNotificationRead(notif.id);
+    const route = supportRouteForNotification(notif);
+    if (route) {
+      const ticketId = notif.support_ticket_id || notif.metadata?.ticket_id;
+      if (ticketId) {
+        try { await markSupportTicketRead(ticketId); } catch { /* RLS handles inaccessible tickets. */ }
+      }
+      setIsOpen(false);
+      navigate(route);
+      refreshNotifications();
+    }
   };
 
   return (
@@ -94,7 +120,7 @@ const NotificationBell = () => {
             notifications.slice(0, 20).map(notif => (
               <div
                 key={notif.id}
-                onClick={() => { if (!notif.is_read) markNotificationRead(notif.id); }}
+                onClick={() => handleNotificationClick(notif)}
                 className={`notif-item ${notif.is_read ? '' : 'unread'}`}
               >
                 <span style={{ fontSize: '1.25rem', flexShrink: 0, marginTop: 2 }}>
@@ -106,7 +132,7 @@ const NotificationBell = () => {
                     fontSize: '0.875rem',
                     marginBottom: 2
                   }}>
-                    {notif.title}
+                    {localizedSupportText(notif, 'title', isAr)}
                   </div>
                   <p style={{ 
                     margin: 0, fontSize: '0.8rem', 
@@ -115,7 +141,7 @@ const NotificationBell = () => {
                     overflow: 'hidden', textOverflow: 'ellipsis',
                     display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical'
                   }}>
-                    {notif.message}
+                    {localizedSupportText(notif, 'message', isAr)}
                   </p>
                   <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)', marginTop: 4, display: 'block' }}>
                     {getTimeAgo(notif.created_at)}

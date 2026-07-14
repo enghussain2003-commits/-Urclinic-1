@@ -26,6 +26,8 @@ import SuperAdminClinicDetails from './pages/SuperAdminClinicDetails';
 import SuperAdminPatients from './pages/SuperAdminPatients';
 import SuperAdminPatientDetails from './pages/SuperAdminPatientDetails';
 import ForceChangePassword from './pages/ForceChangePassword';
+import SupportPage from './pages/SupportPage';
+import SuperAdminSupportCenter from './pages/SuperAdminSupportCenter';
 import { Menu } from 'lucide-react';
 
 const Layout = ({ children }) => {
@@ -157,6 +159,26 @@ function App() {
             <Route path="/dashboard/settings" element={
               <ProtectedRoute requiredRole="clinic">
                 <ClinicSettings />
+              </ProtectedRoute>
+            } />
+            <Route path="/dashboard/support" element={
+              <ProtectedRoute>
+                <SupportPage />
+              </ProtectedRoute>
+            } />
+            <Route path="/dashboard/support/tickets/:ticketId" element={
+              <ProtectedRoute>
+                <SupportPage />
+              </ProtectedRoute>
+            } />
+            <Route path="/dashboard/super-admin/support" element={
+              <ProtectedRoute requiredRole="super_admin">
+                <SuperAdminSupportCenter />
+              </ProtectedRoute>
+            } />
+            <Route path="/dashboard/super-admin/support/:ticketId" element={
+              <ProtectedRoute requiredRole="super_admin">
+                <SuperAdminSupportCenter />
               </ProtectedRoute>
             } />
             <Route path="/dashboard/super-admin/clinics" element={
