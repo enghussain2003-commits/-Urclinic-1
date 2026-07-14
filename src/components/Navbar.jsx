@@ -4,7 +4,6 @@ import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { Activity, Globe, User, LogOut, Settings, X, Menu, Headset } from 'lucide-react';
 import { useApp } from '../context/AppContext';
 import NotificationBell from './NotificationBell';
-import { LANGUAGE_PREFERENCE_KEY } from '../i18n';
 
 const Navbar = () => {
   const { t, i18n } = useTranslation();
@@ -24,18 +23,8 @@ const Navbar = () => {
 
   const toggleLang = () => {
     const nextLanguage = i18n.language === 'en' ? 'ar' : 'en';
-    try {
-      window.localStorage.setItem(LANGUAGE_PREFERENCE_KEY, nextLanguage);
-    } catch {
-      // Language preference is local-only and best-effort.
-    }
     i18n.changeLanguage(nextLanguage);
   };
-
-  useEffect(() => {
-    document.documentElement.dir = i18n.language === 'ar' ? 'rtl' : 'ltr';
-    document.documentElement.lang = i18n.language;
-  }, [i18n.language]);
 
   // Close mobile menu on route change
   useEffect(() => {

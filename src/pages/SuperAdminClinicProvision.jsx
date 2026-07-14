@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
 import {
@@ -78,11 +78,6 @@ const SuperAdminClinicProvision = () => {
 
   const adminStrength = passwordScore(clinicAdmin.password);
   const doctorStrength = passwordScore(doctor.password);
-
-  useEffect(() => {
-    document.documentElement.dir = isAr ? 'rtl' : 'ltr';
-    document.documentElement.lang = isAr ? 'ar' : 'en';
-  }, [isAr]);
 
   const update = (setter) => (key, value) => setter(prev => ({ ...prev, [key]: value }));
   const updateClinic = update(setClinic);

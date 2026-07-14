@@ -33,11 +33,6 @@ const SuperAdminClinics = () => {
   const [sort, setSort] = useState('created_desc');
 
   useEffect(() => {
-    document.documentElement.dir = isAr ? 'rtl' : 'ltr';
-    document.documentElement.lang = isAr ? 'ar' : 'en';
-  }, [isAr]);
-
-  useEffect(() => {
     let active = true;
     const load = async () => {
       setLoading(true);

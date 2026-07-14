@@ -2,16 +2,42 @@ import i18n from 'i18next';
 import { initReactI18next } from 'react-i18next';
 
 export const LANGUAGE_PREFERENCE_KEY = 'urclinic_language_preference';
+export const SUPPORTED_LANGUAGES = ['ar', 'en'];
+
+export const normalizeLanguage = (language) =>
+  String(language || '').toLowerCase().startsWith('en') ? 'en' : 'ar';
+
+export const directionForLanguage = (language) =>
+  normalizeLanguage(language) === 'ar' ? 'rtl' : 'ltr';
+
+export const applyDocumentLanguage = (language) => {
+  if (typeof document === 'undefined') return;
+  const normalized = normalizeLanguage(language);
+  document.documentElement.lang = normalized;
+  document.documentElement.dir = directionForLanguage(normalized);
+};
+
+export const persistLanguagePreference = (language) => {
+  if (typeof window === 'undefined') return;
+  try {
+    window.localStorage.setItem(LANGUAGE_PREFERENCE_KEY, normalizeLanguage(language));
+  } catch {
+    // Local language persistence is best-effort; i18n state remains authoritative.
+  }
+};
 
 const getInitialLanguage = () => {
   if (typeof window === 'undefined') return 'ar';
   try {
     const stored = window.localStorage.getItem(LANGUAGE_PREFERENCE_KEY);
-    return stored === 'en' || stored === 'ar' ? stored : 'ar';
+    return SUPPORTED_LANGUAGES.includes(stored) ? stored : 'ar';
   } catch {
     return 'ar';
   }
 };
+
+const initialLanguage = getInitialLanguage();
+applyDocumentLanguage(initialLanguage);
 
 const resources = {
   en: {
@@ -748,9 +774,15 @@ const resources = {
 
 i18n.use(initReactI18next).init({
   resources,
-  lng: getInitialLanguage(),
+  lng: initialLanguage,
   fallbackLng: "en",
   interpolation: { escapeValue: false }
+});
+
+i18n.on('languageChanged', (language) => {
+  const normalized = normalizeLanguage(language);
+  persistLanguagePreference(normalized);
+  applyDocumentLanguage(normalized);
 });
 
 export default i18n;

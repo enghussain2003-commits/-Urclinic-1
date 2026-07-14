@@ -55,11 +55,6 @@ const DoctorManagement = () => {
   const [clinics, setClinics] = useState([]);
 
   useEffect(() => {
-    document.documentElement.dir = isAr ? 'rtl' : 'ltr';
-    document.documentElement.lang = isAr ? 'ar' : 'en';
-  }, [isAr]);
-
-  useEffect(() => {
     if (user?.role !== 'super_admin') return;
     supabase.from('clinics').select('id, name').eq('is_active', true).order('name')
       .then(({ data }) => setClinics(data || []));

@@ -49,11 +49,6 @@ const ScheduleView = () => {
   const [weekStart, setWeekStart] = useState(() => startOfWorkWeek(new Date()));
   const [selectedDoctorId, setSelectedDoctorId] = useState('');
 
-  useEffect(() => {
-    document.documentElement.dir = isAr ? 'rtl' : 'ltr';
-    document.documentElement.lang = i18n.language;
-  }, [i18n.language, isAr]);
-
   const activeDoctors = useMemo(() => doctors.filter(d => d.is_active !== false), [doctors]);
   const myDoctor = useMemo(() =>
     activeDoctors.find(d =>

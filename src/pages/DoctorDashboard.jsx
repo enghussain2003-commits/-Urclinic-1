@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
 import { useApp } from '../context/AppContext';
@@ -50,11 +50,6 @@ const DoctorDashboard = () => {
   const [statusBusyId, setStatusBusyId] = useState(null);
   const [callBusyId, setCallBusyId] = useState(null);
   const [recentlyCalledIds, setRecentlyCalledIds] = useState([]);
-
-  useEffect(() => {
-    document.documentElement.dir = isAr ? 'rtl' : 'ltr';
-    document.documentElement.lang = i18n.language;
-  }, [i18n.language, isAr]);
 
   const stats = useDoctorStats({ appointments, doctors, patients, user });
   const todayKey = localDateKey();

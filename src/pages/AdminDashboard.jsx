@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
 import { useApp } from '../context/AppContext';
@@ -53,11 +53,6 @@ const AdminDashboard = () => {
   const [dateRange, setDateRange] = useState('month');
   const [paymentAppointment, setPaymentAppointment] = useState(null);
   const [statusBusyId, setStatusBusyId] = useState(null);
-
-  useEffect(() => {
-    document.documentElement.dir = isAr ? 'rtl' : 'ltr';
-    document.documentElement.lang = i18n.language;
-  }, [i18n.language, isAr]);
 
   const { stats, loading: statsLoading } = useDashboardStats({
     appointments,

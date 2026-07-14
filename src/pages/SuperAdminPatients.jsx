@@ -47,11 +47,6 @@ const SuperAdminPatients = () => {
   });
 
   useEffect(() => {
-    document.documentElement.dir = isAr ? 'rtl' : 'ltr';
-    document.documentElement.lang = isAr ? 'ar' : 'en';
-  }, [isAr]);
-
-  useEffect(() => {
     const timer = window.setTimeout(() => setDebouncedQuery(query.trim().toLowerCase()), 250);
     return () => window.clearTimeout(timer);
   }, [query]);

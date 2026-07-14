@@ -72,11 +72,6 @@ const SuperAdminClinicDetails = () => {
   const [editUser, setEditUser] = useState(null);
   const [oneTimeCredential, setOneTimeCredential] = useState(null);
 
-  useEffect(() => {
-    document.documentElement.dir = isAr ? 'rtl' : 'ltr';
-    document.documentElement.lang = isAr ? 'ar' : 'en';
-  }, [isAr]);
-
   const load = async () => {
     setLoading(true);
     setError('');

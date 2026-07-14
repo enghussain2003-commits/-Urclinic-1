@@ -85,11 +85,6 @@ const StaffPatientProfile = () => {
   });
 
   useEffect(() => {
-    document.documentElement.dir = isAr ? 'rtl' : 'ltr';
-    document.documentElement.lang = i18n.language;
-  }, [i18n.language, isAr]);
-
-  useEffect(() => {
     const fetchPatientData = async () => {
       setLoading(true);
       try {

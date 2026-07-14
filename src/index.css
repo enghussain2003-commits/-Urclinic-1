@@ -244,7 +244,7 @@ select.input { appearance: none; cursor: pointer; }
 
 /* ========== SIDEBAR (Desktop) ========== */
 .sidebar {
-  position: fixed; top: 0; bottom: 0;
+  position: fixed; top: 0; bottom: 0; inset-inline-start: 0;
   width: var(--sidebar-width);
   background: var(--sidebar-bg);
   color: var(--sidebar-text);
@@ -254,8 +254,6 @@ select.input { appearance: none; cursor: pointer; }
   overflow-y: auto;
   overflow-x: hidden;
 }
-[dir="ltr"] .sidebar { left: 0; }
-[dir="rtl"] .sidebar { right: 0; }
 
 /* Mobile: hidden by default */
 @media (max-width: 1023px) {
@@ -478,7 +476,7 @@ select.input { appearance: none; cursor: pointer; }
 /* Mobile panel */
 .mobile-nav-panel {
   display: none;
-  position: fixed; top: 0;
+  position: fixed; top: 0; inset-inline-start: 0;
   width: min(320px, 85vw);
   height: 100vh;
   background: var(--surface);
@@ -489,10 +487,8 @@ select.input { appearance: none; cursor: pointer; }
   transition: transform var(--transition-slow);
 }
 [dir="rtl"] .mobile-nav-panel {
-  left: auto; right: 0;
   transform: translateX(110%);
 }
-[dir="ltr"] .mobile-nav-panel { left: 0; }
 .mobile-nav-panel.open { transform: translateX(0); }
 
 .mobile-nav-header {
@@ -543,12 +539,11 @@ select.input { appearance: none; cursor: pointer; }
 }
 .notif-btn:hover { background: var(--primary-50); color: var(--primary); }
 .notif-badge {
-  position: absolute; top: 2px; right: 2px;
+  position: absolute; top: 2px; inset-inline-end: 2px;
   width: 8px; height: 8px; border-radius: 50%;
   background: var(--danger);
   border: 2px solid var(--surface);
 }
-[dir="rtl"] .notif-badge { right: auto; left: 2px; }
 
 .notif-count-badge {
   position: absolute;
@@ -575,6 +570,7 @@ select.input { appearance: none; cursor: pointer; }
 
 .notif-dropdown {
   position: absolute; top: calc(100% + 0.5rem);
+  inset-inline-end: 0;
   width: min(340px, 90vw);
   max-height: min(70vh, 520px);
   background: var(--surface);
@@ -587,8 +583,6 @@ select.input { appearance: none; cursor: pointer; }
   display: flex;
   flex-direction: column;
 }
-[dir="ltr"] .notif-dropdown { right: 0; }
-[dir="rtl"] .notif-dropdown { left: 0; }
 
 .notif-header {
   padding: 1rem 1.25rem;
@@ -3565,14 +3559,9 @@ tbody tr:last-child td { border-bottom: none; }
 
 .admin-dashboard .analytics-stat-card {
   min-height: 116px;
-  border-left-width: 0;
+  border-inline-start-width: 0;
   border-top: 3px solid var(--stat-accent, var(--primary));
   border-radius: 1rem;
-}
-
-[dir="rtl"] .admin-dashboard .analytics-stat-card {
-  border-right: 1px solid rgba(221,229,239,0.92);
-  border-top: 3px solid var(--stat-accent, var(--primary));
 }
 
 .admin-dashboard .analytics-stat-icon {
@@ -4218,11 +4207,6 @@ tbody tr:last-child td { border-bottom: none; }
   background: rgba(255,255,255,0.94);
 }
 
-[dir="rtl"] .doctor-dashboard-page .analytics-stat-card {
-  border-right: 1px solid rgba(221,229,239,0.92);
-  border-top: 3px solid var(--stat-accent, var(--primary));
-}
-
 .doctor-main-grid {
   display: grid;
   grid-template-columns: minmax(0, 1fr) minmax(310px, 0.36fr);
@@ -4519,13 +4503,9 @@ tbody tr:last-child td { border-bottom: none; }
   background: var(--surface);
   border-radius: var(--radius-lg);
   border: 1px solid var(--border);
-  border-left: 3px solid var(--stat-accent, var(--primary));
+  border-inline-start: 3px solid var(--stat-accent, var(--primary));
   box-shadow: var(--shadow-xs);
   transition: all var(--transition);
-}
-[dir="rtl"] .analytics-stat-card {
-  border-left: none;
-  border-right: 3px solid var(--stat-accent, var(--primary));
 }
 .analytics-stat-card:hover { box-shadow: var(--shadow-md); transform: translateY(-2px); }
 
@@ -5503,10 +5483,15 @@ tbody tr:last-child td { border-bottom: none; }
   .search-box { width: 100% !important; }
 }
 
-/* RTL-specific adjustments */
-[dir="rtl"] .sidebar-item { text-align: right; }
-[dir="rtl"] .timeline-item { padding-left: 0; padding-right: 2.5rem; margin-left: 0; margin-right: 0.75rem; }
-[dir="rtl"] .timeline-item .timeline-dot { left: auto; right: -0.5rem; }
+/* Direction-safe adjustments */
+.sidebar-item { text-align: start; }
+.timeline-item {
+  padding-inline-start: 2.5rem;
+  margin-inline-start: 0.75rem;
+}
+.timeline-item .timeline-dot {
+  inset-inline-start: -0.5rem;
+}
 
 /* ========== PREMIUM OPERATIONAL SCHEDULE + APPOINTMENTS ========== */
 .operational-page {
@@ -5729,20 +5714,14 @@ tbody tr:last-child td { border-bottom: none; }
 
 .operational-table td:first-child {
   border-inline-start: 1px solid var(--border-light);
-  border-radius: var(--radius-md) 0 0 var(--radius-md);
+  border-start-start-radius: var(--radius-md);
+  border-end-start-radius: var(--radius-md);
 }
 
 .operational-table td:last-child {
   border-inline-end: 1px solid var(--border-light);
-  border-radius: 0 var(--radius-md) var(--radius-md) 0;
-}
-
-[dir="rtl"] .operational-table td:first-child {
-  border-radius: 0 var(--radius-md) var(--radius-md) 0;
-}
-
-[dir="rtl"] .operational-table td:last-child {
-  border-radius: var(--radius-md) 0 0 var(--radius-md);
+  border-start-end-radius: var(--radius-md);
+  border-end-end-radius: var(--radius-md);
 }
 
 .operational-patient-cell {
