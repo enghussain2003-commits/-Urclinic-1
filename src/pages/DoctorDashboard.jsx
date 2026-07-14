@@ -25,13 +25,15 @@ import {
 import StatCard from '../components/analytics/StatCard';
 import SvgBarChart from '../components/analytics/SvgBarChart';
 import { to12Hour } from '../components/TimeSlotGrid';
+import PaymentCompletionModal from '../components/PaymentCompletionModal';
 
 const DoctorDashboard = () => {
   const { t, i18n } = useTranslation();
   const isAr = i18n.language === 'ar';
   const navigate = useNavigate();
-  const { user, appointments, doctors, patients, notifications, changeStatus, loading } = useApp();
+  const { user, appointments, doctors, patients, notifications, changeStatus, completeAppointmentWithPayment, loading } = useApp();
   const [patientQuery, setPatientQuery] = useState('');
+  const [paymentAppointment, setPaymentAppointment] = useState(null);
 
   useEffect(() => {
     document.documentElement.dir = isAr ? 'rtl' : 'ltr';
@@ -56,7 +58,7 @@ const DoctorDashboard = () => {
           <button className="btn btn-sm btn-primary" onClick={() => changeStatus(apt.id, 'in_progress')}>
             <Play size={13} /> {t('start_visit')}
           </button>
-          <button className="btn btn-sm btn-success" onClick={() => changeStatus(apt.id, 'completed')}>
+          <button className="btn btn-sm btn-success" onClick={() => setPaymentAppointment(apt)}>
             <CheckCircle size={13} /> {t('complete_visit')}
           </button>
           <button className="btn btn-sm btn-outline doctor-btn-danger" onClick={() => changeStatus(apt.id, 'cancelled')}>
@@ -68,7 +70,7 @@ const DoctorDashboard = () => {
     if (s === 'in_progress') {
       return (
         <div className="doctor-action-row">
-          <button className="btn btn-sm btn-success" onClick={() => changeStatus(apt.id, 'completed')}>
+          <button className="btn btn-sm btn-success" onClick={() => setPaymentAppointment(apt)}>
             <CheckCircle size={13} /> {t('complete_visit')}
           </button>
           <button className="btn btn-sm btn-outline doctor-btn-danger" onClick={() => changeStatus(apt.id, 'cancelled')}>
@@ -355,6 +357,13 @@ const DoctorDashboard = () => {
           </div>
         </aside>
       </section>
+      <PaymentCompletionModal
+        appointment={paymentAppointment}
+        doctors={doctors}
+        user={user}
+        onClose={() => setPaymentAppointment(null)}
+        onSubmit={completeAppointmentWithPayment}
+      />
     </div>
   );
 };

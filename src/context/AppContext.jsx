@@ -40,6 +40,24 @@ const APPOINTMENTS_WITH_PATIENT_SELECT = `
     full_name,
     phone,
     email
+  ),
+  clinic:clinics (
+    id,
+    default_consultation_fee,
+    currency
+  ),
+  payment:appointment_payments (
+    id,
+    consultation_fee,
+    paid_amount,
+    payment_status,
+    payment_method,
+    currency,
+    note,
+    paid_at,
+    recorded_by,
+    created_at,
+    updated_at
   )
 `;
 
@@ -50,14 +68,23 @@ const APPOINTMENTS_WITH_PATIENT_SELECT = `
 const fromDbAppt = (row, patientProfile = null) => {
   if (!row) return row;
   const patient = Array.isArray(row.patient) ? row.patient[0] : row.patient;
+  const clinic = Array.isArray(row.clinic) ? row.clinic[0] : row.clinic;
+  const payment = Array.isArray(row.payment) ? row.payment[0] : row.payment;
 
   return {
     ...row,
     patient,
+    clinic,
+    payment,
     patient_profile: patientProfile,
     patient_name: patient?.full_name || row.patient_name || patientProfile?.full_name || null,
     patient_phone: patient?.phone || patient?.phone_number || row.patient_phone || patientProfile?.phone_number || null,
     patient_email: patient?.email || row.patient_email || patientProfile?.email || null,
+    consultation_fee: payment?.consultation_fee ?? row.consultation_fee ?? row.fee ?? null,
+    paid_amount: payment?.paid_amount ?? row.paid_amount ?? (row.paid ? row.fee : 0),
+    payment_status: payment?.payment_status ?? row.payment_status ?? (row.paid ? 'paid' : null),
+    payment_method: payment?.payment_method ?? row.payment_method ?? null,
+    payment_currency: payment?.currency ?? row.payment_currency ?? clinic?.currency ?? null,
     date: row.date ?? row.appointment_date,
     time: row.time ?? row.appointment_time,
     booking_code: row.booking_code ?? row.bookingCode ?? '',
@@ -692,6 +719,10 @@ export const AppProvider = ({ children }) => {
   };
 
   const changeStatus = async (id, status) => {
+    if (status === 'completed') {
+      throw new Error('Use completeAppointmentWithPayment to complete appointments with payment recording.');
+    }
+
     const apt = appointments.find(a => a.id === id);
     const completedAt = status === 'completed' ? new Date().toISOString() : null;
     // Update in-memory immediately (re-scope as a safety net).
@@ -731,6 +762,70 @@ export const AppProvider = ({ children }) => {
         );
       }
     }
+  };
+
+  const completeAppointmentWithPayment = async (id, paymentInput = {}) => {
+    const apt = appointments.find(a => String(a.id) === String(id));
+    if (!apt) throw new Error('Appointment not found');
+
+    if (isDemoModeEnabled(user)) {
+      const payment = {
+        id: `demo-payment-${Date.now()}`,
+        appointment_id: id,
+        clinic_id: apt.clinic_id,
+        patient_id: apt.patient_id,
+        doctor_id: apt.doctor_id,
+        consultation_fee: Number(paymentInput.consultation_fee) || 0,
+        paid_amount: Number(paymentInput.paid_amount) || 0,
+        payment_status: paymentInput.payment_status || 'unpaid',
+        payment_method: paymentInput.payment_method || null,
+        currency: paymentInput.currency || 'IQD',
+        note: paymentInput.note || null,
+        paid_at: Number(paymentInput.paid_amount) > 0 ? new Date().toISOString() : null,
+        recorded_by: user?.id || null,
+        created_at: new Date().toISOString(),
+      };
+      const updated = fromDbAppt({
+        ...apt,
+        status: 'completed',
+        completed_at: new Date().toISOString(),
+        fee: payment.consultation_fee,
+        paid: payment.paid_amount > 0,
+        payment_method: payment.payment_method,
+        payment,
+      });
+      updateDemoAppointmentStatus(id, 'completed');
+      setAppointments(prev => scopeToClinic(prev.map(a => String(a.id) === String(id) ? updated : a), clinicDoctorIdsRef.current));
+      return { appointment: updated, payment };
+    }
+
+    const { data, error } = await supabase.rpc('complete_appointment_with_payment', {
+      p_appointment_id: id,
+      p_consultation_fee: Number(paymentInput.consultation_fee),
+      p_paid_amount: Number(paymentInput.paid_amount),
+      p_payment_status: paymentInput.payment_status,
+      p_payment_method: paymentInput.payment_method || null,
+      p_note: paymentInput.note || null,
+      p_currency: paymentInput.currency || null,
+    });
+
+    if (error) {
+      throw new Error(formatSupabaseError(error));
+    }
+
+    const payload = Array.isArray(data) ? data[0] : data;
+    const appointmentRow = payload?.appointment || {};
+    const paymentRow = payload?.payment || null;
+    const updated = fromDbAppt({
+      ...apt,
+      ...appointmentRow,
+      payment: paymentRow,
+      patient: apt.patient,
+      clinic: apt.clinic,
+    }, apt.patient_profile || null);
+
+    setAppointments(prev => scopeToClinic(prev.map(a => String(a.id) === String(id) ? updated : a), clinicDoctorIdsRef.current));
+    return { appointment: updated, payment: paymentRow, already_recorded: !!payload?.already_recorded };
   };
 
   const markNotificationRead = async (id) => {
@@ -888,7 +983,7 @@ export const AppProvider = ({ children }) => {
     <AppContext.Provider value={{
       user, login, logout,
       doctors, appointments, patients, myPatientIds, loading, specialties,
-      createAppointment, changeStatus,
+      createAppointment, changeStatus, completeAppointmentWithPayment,
       addDoctor, deleteDoctor,
       addMedicalHistory, addMedicalFile, sendNotification, createPrescription,
       notifications, refreshNotifications, readAllNotifications, markNotificationRead, markAllNotificationsRead, unreadCount, supportUnreadCount,

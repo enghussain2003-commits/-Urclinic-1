@@ -28,6 +28,8 @@ import DateRangeFilter from '../components/analytics/DateRangeFilter';
 import RecentPayments from '../components/analytics/RecentPayments';
 import RecentActivity from '../components/analytics/RecentActivity';
 import { to12Hour } from '../components/TimeSlotGrid';
+import PaymentCompletionModal from '../components/PaymentCompletionModal';
+import { formatMoney } from '../utils/money';
 
 const AdminDashboard = () => {
   const { t, i18n } = useTranslation();
@@ -40,11 +42,13 @@ const AdminDashboard = () => {
     notifications,
     unreadCount,
     changeStatus,
+    completeAppointmentWithPayment,
     loading: ctxLoading,
     user,
   } = useApp();
 
   const [dateRange, setDateRange] = useState('month');
+  const [paymentAppointment, setPaymentAppointment] = useState(null);
 
   useEffect(() => {
     document.documentElement.dir = isAr ? 'rtl' : 'ltr';
@@ -105,9 +109,10 @@ const AdminDashboard = () => {
     { label: t('schedule_menu'), desc: t('weekly_view'), icon: <Clock size={18} />, path: '/dashboard/schedule' },
   ];
 
-  const formatMoney = value => isAr
-    ? `${Number(value || 0).toLocaleString()} ر.س`
-    : `$${Number(value || 0).toLocaleString()}`;
+  const money = value => formatMoney(value, {
+    currency: stats?.currency,
+    locale: isAr ? 'ar-IQ' : 'en-US',
+  });
 
   return (
     <div className="page-padding admin-dashboard animate-in">
@@ -181,7 +186,7 @@ const AdminDashboard = () => {
             <DollarSign size={22} />
           </div>
           <div>
-            <div className="revenue-card__value">{loading ? '...' : formatMoney(stats?.totalRevenue)}</div>
+            <div className="revenue-card__value">{loading ? '...' : money(stats?.totalRevenue)}</div>
             <div className="revenue-card__label">{t('total_revenue')}</div>
             <div className="revenue-card__sub">{t('from_paid_appointments')}</div>
           </div>
@@ -193,9 +198,9 @@ const AdminDashboard = () => {
               <TrendingUp size={22} />
             </div>
             <div>
-              <div className="revenue-card__value">{formatMoney(stats.netProfit)}</div>
+              <div className="revenue-card__value">{money(stats.netProfit)}</div>
               <div className="revenue-card__label">{t('net_profit')}</div>
-              <div className="revenue-card__sub">{t('expenses')}: {formatMoney(stats.totalExpenses)}</div>
+              <div className="revenue-card__sub">{t('expenses')}: {money(stats.totalExpenses)}</div>
             </div>
           </div>
         ) : (
@@ -466,7 +471,7 @@ const AdminDashboard = () => {
                             </button>
                           </div>
                         ) : ['approved', 'confirmed', 'in_progress'].includes(apt.status) ? (
-                          <button className="btn btn-sm btn-success" onClick={() => changeStatus(apt.id, 'completed')}>
+                          <button className="btn btn-sm btn-success" onClick={() => setPaymentAppointment(apt)}>
                             <CheckCircle size={13} /> {isAr ? 'إكمال' : 'Complete'}
                           </button>
                         ) : <span className="text-muted text-sm">—</span>}
@@ -522,7 +527,7 @@ const AdminDashboard = () => {
                   )}
                   {['approved', 'confirmed', 'in_progress'].includes(apt.status) && (
                     <div className="mobile-card-actions">
-                      <button className="btn btn-sm btn-success" onClick={() => changeStatus(apt.id, 'completed')}>
+                      <button className="btn btn-sm btn-success" onClick={() => setPaymentAppointment(apt)}>
                         <CheckCircle size={13} /> {isAr ? 'إكمال' : 'Complete'}
                       </button>
                     </div>
@@ -533,6 +538,13 @@ const AdminDashboard = () => {
           </div>
         </div>
       </section>
+      <PaymentCompletionModal
+        appointment={paymentAppointment}
+        doctors={doctors}
+        user={user}
+        onClose={() => setPaymentAppointment(null)}
+        onSubmit={completeAppointmentWithPayment}
+      />
     </div>
   );
 };

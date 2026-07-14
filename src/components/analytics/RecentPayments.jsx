@@ -1,15 +1,19 @@
 import { useTranslation } from 'react-i18next';
 import { CreditCard, DollarSign } from 'lucide-react';
+import { formatMoney } from '../../utils/money';
 
 /**
- * RecentPayments — displays real payment records from appointments.
- *
- * Only shows appointments where paid=true AND fee>0.
- * No calculated placeholders — if no records, shows empty state.
+ * RecentPayments — displays persisted appointment payment records.
  */
 const RecentPayments = ({ payments = [], loading = false }) => {
   const { t, i18n } = useTranslation();
   const isAr = i18n.language === 'ar';
+  const methodLabel = method => ({
+    cash: isAr ? 'نقداً' : 'Cash',
+    card: isAr ? 'بطاقة' : 'Card',
+    transfer: isAr ? 'تحويل بنكي' : 'Bank transfer',
+    other: isAr ? 'أخرى' : 'Other',
+  }[method] || method || t('cash'));
 
   if (loading) {
     return (
@@ -33,9 +37,10 @@ const RecentPayments = ({ payments = [], loading = false }) => {
   return (
     <div className="payment-list">
       {payments.map((p, i) => {
-        const amount = Number(p.fee || 0);
-        const method = p.payment_method || t('cash');
-        const date   = p.date || p.appointment_date || '—';
+        const amount = Number(p.paid_amount || 0);
+        const method = methodLabel(p.payment_method);
+        const date = p.paid_at?.slice(0, 10) || p.appointment?.appointment_date || '—';
+        const patientName = p.patient?.full_name || p.patient_name || t('patient');
 
         return (
           <div key={p.id || i} className="payment-item">
@@ -46,7 +51,7 @@ const RecentPayments = ({ payments = [], loading = false }) => {
 
             {/* Info */}
             <div className="payment-info">
-              <div className="payment-name">{p.patient_name || t('patient')}</div>
+              <div className="payment-name">{patientName}</div>
               <div className="payment-meta">
                 {date} · <span className="payment-method">{method}</span>
               </div>
@@ -54,10 +59,7 @@ const RecentPayments = ({ payments = [], loading = false }) => {
 
             {/* Amount */}
             <div className="payment-amount">
-              {isAr
-                ? `${amount.toLocaleString()} ر.س`
-                : `$${amount.toLocaleString()}`
-              }
+              {formatMoney(amount, { currency: p.currency, locale: isAr ? 'ar-IQ' : 'en-US' })}
             </div>
           </div>
         );

@@ -1,10 +1,11 @@
-import { useMemo } from 'react';
+import { useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
 import { useApp } from '../context/AppContext';
 import { Calendar, Clock, Users, CheckCircle, XCircle, ArrowRight } from 'lucide-react';
 import StatCard from '../components/analytics/StatCard';
 import { to12Hour } from '../components/TimeSlotGrid';
+import PaymentCompletionModal from '../components/PaymentCompletionModal';
 
 const VOID = ['cancelled', 'rejected', 'completed'];
 
@@ -17,7 +18,8 @@ const EmployeeDashboard = () => {
   const { t, i18n } = useTranslation();
   const isAr = i18n.language === 'ar';
   const navigate = useNavigate();
-  const { appointments, doctors, changeStatus, loading } = useApp();
+  const { appointments, doctors, changeStatus, completeAppointmentWithPayment, user, loading } = useApp();
+  const [paymentAppointment, setPaymentAppointment] = useState(null);
 
   const today = new Date().toISOString().slice(0, 10);
 
@@ -160,7 +162,7 @@ const EmployeeDashboard = () => {
                       <button
                         className="btn btn-sm"
                         style={{ background: 'var(--success)', color: '#fff' }}
-                        onClick={() => changeStatus(apt.id, 'completed')}
+                          onClick={() => setPaymentAppointment(apt)}
                       >
                         <CheckCircle size={13} /> {isAr ? 'إكمال' : 'Complete'}
                       </button>
@@ -222,7 +224,7 @@ const EmployeeDashboard = () => {
                       <button
                         className="btn btn-sm"
                         style={{ background: 'var(--success)', color: '#fff', flex: 1 }}
-                        onClick={() => changeStatus(apt.id, 'completed')}
+                        onClick={() => setPaymentAppointment(apt)}
                       >
                         <CheckCircle size={13} /> {isAr ? 'إكمال' : 'Complete'}
                       </button>
@@ -266,6 +268,13 @@ const EmployeeDashboard = () => {
           </div>
         </div>
       )}
+      <PaymentCompletionModal
+        appointment={paymentAppointment}
+        doctors={doctors}
+        user={user}
+        onClose={() => setPaymentAppointment(null)}
+        onSubmit={completeAppointmentWithPayment}
+      />
     </div>
   );
 };

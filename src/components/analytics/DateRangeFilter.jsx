@@ -3,16 +3,15 @@ import { useTranslation } from 'react-i18next';
 /**
  * DateRangeFilter — segmented control for dashboard date range.
  *
- * Architecture: ALL future ranges are declared here.
- * Set active=true to enable a range, active=false to show it as "coming soon".
  * The onChange callback receives the range id string — consumers decide what to do with it.
  */
 
 const DATE_RANGE_OPTIONS = [
-  { id: 'today',  labelEn: 'Today',      labelAr: 'اليوم',        active: true  },
-  { id: 'week',   labelEn: 'This Week',  labelAr: 'هذا الأسبوع',  active: false }, // future
-  { id: 'month',  labelEn: 'This Month', labelAr: 'هذا الشهر',    active: true  },
-  { id: 'year',   labelEn: 'This Year',  labelAr: 'هذا العام',    active: false }, // future
+  { id: 'today',  labelEn: 'Today',      labelAr: 'اليوم' },
+  { id: 'week',   labelEn: 'This Week',  labelAr: 'هذا الأسبوع' },
+  { id: 'month',  labelEn: 'This Month', labelAr: 'هذا الشهر' },
+  { id: 'year',   labelEn: 'This Year',  labelAr: 'هذا العام' },
+  { id: 'all',    labelEn: 'All Time',   labelAr: 'كل الوقت' },
 ];
 
 const DateRangeFilter = ({ value = 'month', onChange }) => {
@@ -27,11 +26,8 @@ const DateRangeFilter = ({ value = 'month', onChange }) => {
           className={[
             'date-range-btn',
             value === opt.id ? 'active' : '',
-            !opt.active    ? 'soon'   : '',
           ].filter(Boolean).join(' ')}
-          onClick={() => opt.active && onChange?.(opt.id)}
-          disabled={!opt.active}
-          title={!opt.active ? (isAr ? 'قريباً' : 'Coming soon') : undefined}
+          onClick={() => onChange?.(opt.id)}
           aria-pressed={value === opt.id}
         >
           {isAr ? opt.labelAr : opt.labelEn}

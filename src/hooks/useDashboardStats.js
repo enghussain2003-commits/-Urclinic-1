@@ -2,14 +2,15 @@
  * useDashboardStats — Clinic Admin analytics hook.
  *
  * Design principles:
- *  • Uses appointments/doctors/patients already in AppContext → NO duplicate Supabase calls.
- *  • Fetches ONLY what AppContext doesn't have (employee count + expenses) in parallel (Promise.allSettled).
+ *  • Uses appointments/doctors/patients already in AppContext for operational counts.
+ *  • Fetches persisted payment records for revenue so finances do not depend on appointment UI state.
  *  • Date-range architecture supports Today/Week/Month/Year/Custom — only 'month' is active now.
  *  • Expenses table is optional: expensesAvailable=false → UI shows placeholder, never 0.
  *  • Caching-ready: abortRef pattern prevents stale updates; TTL cache can be added later.
  */
 import { useState, useEffect, useMemo, useRef } from 'react';
 import { supabase } from '../supabaseClient';
+import { DEFAULT_CURRENCY, normalizeCurrency, normalizeCurrencyAmount } from '../utils/money';
 
 // ── Date helpers ──────────────────────────────────────────────────────────────
 
@@ -20,7 +21,7 @@ const isoToday = () => new Date().toISOString().slice(0, 10);
  * Architecture is open-ended — add cases here for future range support.
  * Only 'today' and 'month' are currently wired to the UI.
  *
- * @param {'today'|'week'|'month'|'year'|'custom'} range
+ * @param {'today'|'week'|'month'|'year'|'all'|'custom'} range
  * @param {{ from?: string, to?: string }} [custom]  Used only when range='custom'.
  */
 export const getDateBounds = (range = 'month', custom = {}) => {
@@ -42,6 +43,9 @@ export const getDateBounds = (range = 'month', custom = {}) => {
       return { from: iso(s), to: iso(now) };
     }
 
+    case 'all':
+      return { from: null, to: null };
+
     case 'custom':
       return { from: custom.from || iso(now), to: custom.to || iso(now) };
 
@@ -59,7 +63,7 @@ export const getDateBounds = (range = 'month', custom = {}) => {
  * Builds last-N-months data for line/bar charts.
  * Returns [{ key:'YYYY-MM', label:'Jan', count:N, revenue:N }]
  */
-const buildMonthlyData = (appointments, monthsBack = 6) => {
+const buildMonthlyData = (appointments, payments = [], monthsBack = 6) => {
   const result = [];
   for (let i = monthsBack - 1; i >= 0; i--) {
     const d = new Date();
@@ -68,9 +72,9 @@ const buildMonthlyData = (appointments, monthsBack = 6) => {
     const key   = d.toISOString().slice(0, 7);                   // 'YYYY-MM'
     const label = d.toLocaleString('default', { month: 'short' }); // 'Jan'
     const monthAppts = appointments.filter(a => (a.date || '').startsWith(key));
-    const revenue    = monthAppts
-      .filter(a => a.paid && a.status === 'completed')
-      .reduce((s, a) => s + (Number(a.fee) || 0), 0);
+    const revenue = payments
+      .filter(p => (p.paid_at || p.created_at || '').startsWith(key))
+      .reduce((s, p) => s + normalizeCurrencyAmount(p.paid_amount, p.currency), 0);
     result.push({ key, label, count: monthAppts.length, revenue });
   }
   return result;
@@ -100,6 +104,11 @@ export const useDashboardStats = ({
     total:     null,
     items:     [],
   });
+  const [paymentsInfo, setPaymentsInfo] = useState({
+    available: null,
+    currency: DEFAULT_CURRENCY,
+    items: [],
+  });
   const abortRef = useRef(false);
 
   // ── Fetch ONLY extra data (employees + expenses) — parallel, non-duplicate ──
@@ -124,8 +133,44 @@ export const useDashboardStats = ({
         .order('date', { ascending: false })
         .limit(100);
 
+      let clinicQ = null;
+      if (clinicId) {
+        clinicQ = supabase
+          .from('clinics')
+          .select('currency')
+          .eq('id', clinicId)
+          .maybeSingle();
+      }
+
+      let paymentsQ = supabase
+        .from('appointment_payments')
+        .select(`
+          id,
+          appointment_id,
+          clinic_id,
+          patient_id,
+          doctor_id,
+          consultation_fee,
+          paid_amount,
+          payment_status,
+          payment_method,
+          currency,
+          paid_at,
+          created_at,
+          patient:patients(full_name),
+          appointment:appointments(appointment_date, appointment_time, booking_code)
+        `)
+        .order('created_at', { ascending: false })
+        .limit(1000);
+      if (clinicId) paymentsQ = paymentsQ.eq('clinic_id', clinicId);
+
       // Parallel — allSettled so one failure doesn't block the other
-      const [empResult, expResult] = await Promise.allSettled([empQ, expQ]);
+      const [empResult, expResult, clinicResult, paymentsResult] = await Promise.allSettled([
+        empQ,
+        expQ,
+        clinicQ || Promise.resolve({ data: null, error: null }),
+        paymentsQ,
+      ]);
 
       if (abortRef.current) return;
 
@@ -147,6 +192,21 @@ export const useDashboardStats = ({
         setExpensesInfo({ available: false, total: null, items: [] });
       }
 
+      const clinicCurrency = clinicResult.status === 'fulfilled' && !clinicResult.value?.error
+        ? normalizeCurrency(clinicResult.value?.data?.currency)
+        : DEFAULT_CURRENCY;
+
+      if (paymentsResult.status === 'fulfilled' && !paymentsResult.value?.error) {
+        const items = paymentsResult.value?.data || [];
+        setPaymentsInfo({
+          available: true,
+          currency: normalizeCurrency(items[0]?.currency || clinicCurrency),
+          items,
+        });
+      } else {
+        setPaymentsInfo({ available: false, currency: clinicCurrency, items: [] });
+      }
+
       setExtraLoading(false);
     };
 
@@ -164,15 +224,29 @@ export const useDashboardStats = ({
     const VOID            = ['cancelled', 'rejected'];
 
     const inRange  = d  => d && d >= from && d <= to;
+    const inSelectedRange = d => {
+      if (!from || !to) return true;
+      return inRange(d);
+    };
     const apptDate = a  => a.date || '';
+    const paymentDate = p => String(p.paid_at || p.created_at || '').slice(0, 10);
+    const paymentAmount = (p, field) => normalizeCurrencyAmount(p?.[field], p?.currency || paymentsInfo.currency);
 
     const todayAppts  = appointments.filter(a => apptDate(a) === today);
-    const rangeAppts  = appointments.filter(a => inRange(apptDate(a)));
+    const rangeAppts  = appointments.filter(a => inSelectedRange(apptDate(a)));
+    const rangePayments = paymentsInfo.items.filter(p => inSelectedRange(paymentDate(p)));
 
-    // Revenue in range (paid + completed)
-    const totalRevenue = rangeAppts
-      .filter(a => a.paid && a.status === 'completed')
-      .reduce((s, a) => s + (Number(a.fee) || 0), 0);
+    // Collected revenue in range, from persisted payment records only.
+    const totalRevenue = rangePayments
+      .filter(p => ['paid', 'partially_paid'].includes(p.payment_status))
+      .reduce((s, p) => s + paymentAmount(p, 'paid_amount'), 0);
+
+    const expectedFees = rangePayments
+      .reduce((s, p) => s + paymentAmount(p, 'consultation_fee'), 0);
+
+    const outstandingAmount = rangePayments
+      .filter(p => p.payment_status !== 'waived')
+      .reduce((s, p) => s + Math.max(paymentAmount(p, 'consultation_fee') - paymentAmount(p, 'paid_amount'), 0), 0);
 
     // Net profit only when expenses are configured
     const netProfit = expensesInfo.available === true
@@ -189,10 +263,10 @@ export const useDashboardStats = ({
       rejected:    appointments.filter(a => a.status === 'rejected').length,
     };
 
-    // Recent payments — real records only (paid=true, fee>0)
-    const recentPayments = [...appointments]
-      .filter(a => a.paid && Number(a.fee) > 0)
-      .sort((a, b) => apptDate(b).localeCompare(apptDate(a)))
+    // Recent payments — persisted ledger records only.
+    const recentPayments = [...paymentsInfo.items]
+      .filter(p => Number(p.paid_amount) > 0)
+      .sort((a, b) => String(b.paid_at || b.created_at || '').localeCompare(String(a.paid_at || a.created_at || '')))
       .slice(0, 5);
 
     return {
@@ -208,18 +282,22 @@ export const useDashboardStats = ({
 
       // Financial
       totalRevenue,
+      expectedFees,
+      outstandingAmount,
+      currency:         paymentsInfo.currency,
+      paymentsAvailable: paymentsInfo.available,
       expensesAvailable:  expensesInfo.available,   // null|true|false
       totalExpenses:      expensesInfo.total,        // null when not configured
       netProfit,                                     // null when expenses absent
 
       // Charts
-      monthlyData:        buildMonthlyData(appointments, 6),
+      monthlyData:        buildMonthlyData(appointments, paymentsInfo.items, 6),
       statusCounts,
 
       // Lists
       recentPayments,
     };
-  }, [appointments, doctors, patients, employeeCount, expensesInfo, dateRange]);
+  }, [appointments, doctors, patients, employeeCount, expensesInfo, paymentsInfo, dateRange]);
 
   return { stats, loading: extraLoading };
 };

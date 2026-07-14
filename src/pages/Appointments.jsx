@@ -16,17 +16,20 @@ import {
 } from 'lucide-react';
 import { to12Hour } from '../components/TimeSlotGrid';
 import ContactActionsCard from '../components/ContactActionsCard';
+import PaymentCompletionModal from '../components/PaymentCompletionModal';
 import { buildContactMessage } from '../services/contactService';
+import { DEFAULT_CURRENCY, formatMoney, normalizeCurrency, normalizeCurrencyAmount } from '../utils/money';
 
 const Appointments = () => {
   const { t, i18n } = useTranslation();
   const isAr = i18n.language === 'ar';
   const navigate = useNavigate();
-  const { appointments, doctors, changeStatus, loading, user } = useApp();
+  const { appointments, doctors, changeStatus, completeAppointmentWithPayment, loading, user } = useApp();
 
   const [filter, setFilter] = useState('all');
   const [query, setQuery] = useState('');
   const [selectedAppointment, setSelectedAppointment] = useState(null);
+  const [paymentAppointment, setPaymentAppointment] = useState(null);
 
   useEffect(() => {
     document.documentElement.dir = isAr ? 'rtl' : 'ltr';
@@ -83,6 +86,55 @@ const Appointments = () => {
     apt?.patient_profile?.email ||
     '';
 
+  const canCompleteAppointment = (apt) => {
+    if (!apt || user?.role === 'patient') return false;
+    if (user?.role === 'doctor') {
+      const doc = doctors.find(d => String(d.id) === String(apt.doctor_id));
+      return String(doc?.profile_id || '') === String(user?.id || '');
+    }
+    return ['clinic_admin', 'employee', 'super_admin'].includes(user?.role);
+  };
+
+  const paymentStatusText = status => ({
+    paid: isAr ? 'مدفوع' : 'Paid',
+    partially_paid: isAr ? 'مدفوع جزئياً' : 'Partially paid',
+    unpaid: isAr ? 'غير مدفوع' : 'Unpaid',
+    waived: isAr ? 'معفى' : 'Waived',
+  }[status] || '-');
+
+  const paymentMethodText = method => ({
+    cash: isAr ? 'نقداً' : 'Cash',
+    card: isAr ? 'بطاقة' : 'Card',
+    transfer: isAr ? 'تحويل بنكي' : 'Bank transfer',
+    other: isAr ? 'أخرى' : 'Other',
+  }[method] || '-');
+
+  const paymentSummary = (apt) => {
+    const payment = apt?.payment || {};
+    const currency = normalizeCurrency(payment.currency || apt?.payment_currency || apt?.clinic?.currency || DEFAULT_CURRENCY);
+    const consultationFee = normalizeCurrencyAmount(payment.consultation_fee ?? apt?.consultation_fee ?? apt?.fee ?? 0, currency);
+    const paidAmount = normalizeCurrencyAmount(payment.paid_amount ?? apt?.paid_amount ?? 0, currency);
+    const outstanding = payment.payment_status === 'waived' ? 0 : Math.max(consultationFee - paidAmount, 0);
+    const locale = isAr ? 'ar-IQ' : 'en-US';
+    return {
+      consultationFee: formatMoney(consultationFee, { currency, locale }),
+      paidAmount: formatMoney(paidAmount, { currency, locale }),
+      outstanding: formatMoney(outstanding, { currency, locale }),
+      status: paymentStatusText(payment.payment_status || apt?.payment_status),
+      method: paymentMethodText(payment.payment_method || apt?.payment_method),
+      paidAt: payment.paid_at ? new Date(payment.paid_at).toLocaleString(isAr ? 'ar-IQ' : 'en-US') : '-',
+      recordedBy: payment.recorded_by || '-',
+    };
+  };
+
+  const handleCompleteAppointment = async (id, paymentInput) => {
+    const result = await completeAppointmentWithPayment(id, paymentInput);
+    if (selectedAppointment && String(selectedAppointment.id) === String(id)) {
+      setSelectedAppointment(result.appointment);
+    }
+    return result;
+  };
+
   const filtered = appointments.filter(a => {
     const matchesFilter =
       filter === 'all' ? true :
@@ -131,7 +183,7 @@ const Appointments = () => {
     }
     if (apt.status === 'approved' || apt.status === 'confirmed' || apt.status === 'in_progress') {
       return (
-        <button className="btn btn-sm btn-success" onClick={() => changeStatus(apt.id, 'completed')}>
+        <button className="btn btn-sm btn-success" onClick={() => setPaymentAppointment(apt)} disabled={!canCompleteAppointment(apt)}>
           <CheckCircle size={15} /> {isAr ? 'إكمال' : 'Complete'}
         </button>
       );
@@ -303,6 +355,7 @@ const Appointments = () => {
               const patientPhone = getPatientPhone(selectedAppointment);
               const patientEmail = getPatientEmail(selectedAppointment);
               const dt = appointmentDateTime(selectedAppointment);
+              const pay = paymentSummary(selectedAppointment);
               return (
                 <>
             <button className="btn btn-ghost btn-icon operational-detail-close" onClick={() => setSelectedAppointment(null)} aria-label={isAr ? 'إغلاق' : 'Close'}>
@@ -327,6 +380,15 @@ const Appointments = () => {
               target={{ role: 'patient', clinic_id: selectedAppointment.clinic_id }}
               compact
             />
+            <div className="payment-summary-panel">
+              <div><span>{isAr ? 'الكشفية' : 'Consultation fee'}</span><strong>{pay.consultationFee}</strong></div>
+              <div><span>{isAr ? 'حالة الدفع' : 'Payment status'}</span><strong>{pay.status}</strong></div>
+              <div><span>{isAr ? 'المدفوع' : 'Paid amount'}</span><strong>{pay.paidAmount}</strong></div>
+              <div><span>{isAr ? 'المتبقي' : 'Outstanding'}</span><strong>{pay.outstanding}</strong></div>
+              <div><span>{isAr ? 'طريقة الدفع' : 'Payment method'}</span><strong>{pay.method}</strong></div>
+              <div><span>{isAr ? 'تاريخ الدفع' : 'Payment date'}</span><strong>{pay.paidAt}</strong></div>
+              <div><span>{isAr ? 'سجل بواسطة' : 'Recorded by'}</span><strong dir="ltr">{pay.recordedBy}</strong></div>
+            </div>
             <div className="operational-detail-grid">
               <div><span>{isAr ? 'رقم الحجز' : 'Booking code'}</span><strong dir="ltr">{selectedAppointment.booking_code || '-'}</strong></div>
               <div><span>{isAr ? 'الهاتف' : 'Phone'}</span><strong dir="ltr">{patientPhone || '-'}</strong></div>
@@ -335,7 +397,7 @@ const Appointments = () => {
               <div><span>{isAr ? 'الوقت' : 'Time'}</span><strong>{to12Hour(dt.time, isAr)}</strong></div>
               <div><span>{isAr ? 'العيادة' : 'Clinic'}</span><strong>{selectedAppointment.clinic_id || '-'}</strong></div>
               <div><span>{isAr ? 'البريد' : 'Email'}</span><strong>{patientEmail || '-'}</strong></div>
-              <div><span>{isAr ? 'الدفع' : 'Payment'}</span><strong>{selectedAppointment.paid ? (isAr ? 'مدفوع' : 'Paid') : (isAr ? 'غير مدفوع' : 'Unpaid')}</strong></div>
+              <div><span>{isAr ? 'الدفع' : 'Payment'}</span><strong>{pay.status}</strong></div>
             </div>
             <div className="operational-detail-actions">
               {renderActionButtons(selectedAppointment)}
@@ -349,6 +411,13 @@ const Appointments = () => {
           </aside>
         </div>
       )}
+      <PaymentCompletionModal
+        appointment={paymentAppointment}
+        doctors={doctors}
+        user={user}
+        onClose={() => setPaymentAppointment(null)}
+        onSubmit={handleCompleteAppointment}
+      />
     </div>
   );
 };
