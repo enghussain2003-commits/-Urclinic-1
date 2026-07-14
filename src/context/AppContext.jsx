@@ -31,17 +31,88 @@ const mergeById = (a = [], b = []) => {
 const scopeToClinic = (list = [], ids) =>
   ids == null ? list : list.filter(a => a && ids.includes(String(a.doctor_id)));
 
+const APPOINTMENTS_WITH_PATIENT_SELECT = `
+  *,
+  patient:patients (
+    id,
+    clinic_id,
+    auth_user_id,
+    full_name,
+    phone,
+    email
+  )
+`;
+
 // ---- Schema adapter for the appointments table ----
 // The DB columns are `appointment_date` / `appointment_time`, but the entire UI
 // reads `date` / `time`. Map at the supabase boundary so the in-memory shape stays
 // stable and we don't have to touch every component.
-const fromDbAppt = (row) => row && ({
-  ...row,
-  date: row.date ?? row.appointment_date,
-  time: row.time ?? row.appointment_time,
-  booking_code: row.booking_code ?? row.bookingCode ?? '',
-  completed_at: row.completed_at ?? null,
-});
+const fromDbAppt = (row, patientProfile = null) => {
+  if (!row) return row;
+  const patient = Array.isArray(row.patient) ? row.patient[0] : row.patient;
+
+  return {
+    ...row,
+    patient,
+    patient_profile: patientProfile,
+    patient_name: patient?.full_name || row.patient_name || patientProfile?.full_name || null,
+    patient_phone: patient?.phone || patient?.phone_number || row.patient_phone || patientProfile?.phone_number || null,
+    patient_email: patient?.email || row.patient_email || patientProfile?.email || null,
+    date: row.date ?? row.appointment_date,
+    time: row.time ?? row.appointment_time,
+    booking_code: row.booking_code ?? row.bookingCode ?? '',
+    completed_at: row.completed_at ?? null,
+  };
+};
+
+const hydrateAppointments = async (rows = []) => {
+  const authUserIds = Array.from(new Set(rows
+    .map(row => {
+      const patient = Array.isArray(row.patient) ? row.patient[0] : row.patient;
+      return patient?.auth_user_id;
+    })
+    .filter(Boolean)
+    .map(String)));
+
+  const profileById = new Map();
+  if (authUserIds.length) {
+    const { data, error } = await supabase
+      .from('profiles')
+      .select('id, full_name, phone_number, email')
+      .in('id', authUserIds);
+    if (error) {
+      console.warn('appointment patient profile fallback error:', error.message);
+    } else {
+      (data || []).forEach(profile => profileById.set(String(profile.id), profile));
+    }
+  }
+
+  return rows.map(row => {
+    const patient = Array.isArray(row.patient) ? row.patient[0] : row.patient;
+    const profile = patient?.auth_user_id ? profileById.get(String(patient.auth_user_id)) : null;
+    return fromDbAppt(row, profile || null);
+  });
+};
+
+const fetchAppointmentsWithPatients = async (clinicDoctorIds = null) => {
+  if (clinicDoctorIds && clinicDoctorIds.length === 0) {
+    return { data: [], error: null };
+  }
+
+  let query = supabase
+    .from('appointments')
+    .select(APPOINTMENTS_WITH_PATIENT_SELECT)
+    .order('appointment_date', { ascending: false });
+
+  if (clinicDoctorIds) {
+    query = query.in('doctor_id', clinicDoctorIds);
+  }
+
+  const { data, error } = await query;
+  if (error) return { data: null, error };
+
+  return { data: await hydrateAppointments(data || []), error: null };
+};
 
 const ACTIVE_APPOINTMENT_STATUSES = ['pending', 'approved', 'in_progress', 'confirmed'];
 
@@ -153,26 +224,14 @@ export const AppProvider = ({ children }) => {
         // Persist in ref so the Realtime callback uses the same filter.
         clinicDoctorIdsRef.current = clinicDoctorIds;
 
-        let apts, aptError;
-        if (clinicDoctorIds && clinicDoctorIds.length === 0) {
-          // Clinic exists but has no doctors yet → no appointments possible.
-          apts = [];
-          aptError = null;
-        } else {
-          let aptQuery = supabase.from('appointments').select('*').order('appointment_date', { ascending: false });
-          if (clinicDoctorIds) {
-            // Filter Supabase rows to only appointments belonging to this clinic's doctors.
-            aptQuery = aptQuery.in('doctor_id', clinicDoctorIds);
-          }
-          ({ data: apts, error: aptError } = await aptQuery);
-        }
+        const { data: apts, error: aptError } = await fetchAppointmentsWithPatients(clinicDoctorIds);
 
         if (aptError) {
           console.warn("appointments fetch error:", aptError.message);
           setAppointments([]);
         } else {
-          // Map DB columns → UI shape (appointment_date → date, appointment_time → time).
-          setAppointments(scopeToClinic((apts || []).map(fromDbAppt), clinicDoctorIds));
+          // Map DB columns → UI shape and attach patients via appointments.patient_id → patients.id.
+          setAppointments(scopeToClinic(apts || [], clinicDoctorIds));
         }
 
         // Fetch Patients — staff (non-super_admin) see only their clinic's patient records.
@@ -223,14 +282,12 @@ export const AppProvider = ({ children }) => {
           return;
         }
 
-        let q = supabase.from('appointments').select('*').order('appointment_date', { ascending: false });
-        if (ids !== null) {
-          // Restrict to this clinic's doctors — same logic as initial fetch.
-          q = q.in('doctor_id', ids);
-        }
-
-        q.then(({ data }) => {
-          setAppointments(scopeToClinic((data || []).map(fromDbAppt), ids));
+        fetchAppointmentsWithPatients(ids).then(({ data, error }) => {
+          if (error) {
+            console.warn("appointments realtime refresh error:", error.message);
+            return;
+          }
+          setAppointments(scopeToClinic(data || [], ids));
         });
       })
       .subscribe();
@@ -572,7 +629,20 @@ export const AppProvider = ({ children }) => {
 
     // Reflect immediately in state with the UI shape (date/time aliases). The
     // realtime channel will re-fetch in a moment, but this avoids a visible lag.
-    const uiRow = fromDbAppt({ ...data, patient_name, patient_phone });
+    const uiRow = fromDbAppt({
+      ...data,
+      patient_name,
+      patient_phone,
+      patient_email,
+      patient: {
+        id: patientId,
+        clinic_id,
+        auth_user_id: null,
+        full_name: patient_name,
+        phone: patient_phone,
+        email: patient_email,
+      },
+    });
     setAppointments(prev => scopeToClinic([uiRow, ...prev], clinicDoctorIdsRef.current));
 
     // Notify the booked doctor (best-effort — only works if the doctor row has a

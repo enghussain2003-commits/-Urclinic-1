@@ -62,6 +62,27 @@ const Appointments = () => {
     return isAr ? 'مرفوض' : 'Rejected';
   };
 
+  const unknownPatientLabel = isAr ? 'مريض غير معروف' : 'Unknown patient';
+
+  const getPatientName = (apt) =>
+    apt?.patient?.full_name ||
+    apt?.patient_name ||
+    apt?.patient_profile?.full_name ||
+    unknownPatientLabel;
+
+  const getPatientPhone = (apt) =>
+    apt?.patient?.phone ||
+    apt?.patient?.phone_number ||
+    apt?.patient_phone ||
+    apt?.patient_profile?.phone_number ||
+    '';
+
+  const getPatientEmail = (apt) =>
+    apt?.patient?.email ||
+    apt?.patient_email ||
+    apt?.patient_profile?.email ||
+    '';
+
   const filtered = appointments.filter(a => {
     const matchesFilter =
       filter === 'all' ? true :
@@ -70,9 +91,11 @@ const Appointments = () => {
       filter === 'completed' ? a.status === 'completed' :
       filter === 'rejected' ? (a.status === 'rejected' || a.status === 'cancelled') : true;
     const q = query.toLowerCase();
+    const patientName = getPatientName(a).toLowerCase();
+    const patientPhone = getPatientPhone(a);
     const matchesQuery = !q ||
-      (a.patient_name || '').toLowerCase().includes(q) ||
-      (a.patient_phone || '').includes(q);
+      patientName.includes(q) ||
+      patientPhone.includes(q);
     return matchesFilter && matchesQuery;
   });
 
@@ -198,16 +221,18 @@ const Appointments = () => {
                 <tr><td colSpan="7"><div className="operational-empty">{isAr ? 'لا توجد حجوزات' : 'No bookings found'}</div></td></tr>
               ) : filtered.map(apt => {
                 const dt = appointmentDateTime(apt);
+                const patientName = getPatientName(apt);
+                const patientPhone = getPatientPhone(apt);
                 return (
                   <tr key={apt.id}>
                     <td>
                       <button className="operational-patient-cell" onClick={() => setSelectedAppointment(apt)}>
-                        <span>{(apt.patient_name || '?').charAt(0).toUpperCase()}</span>
-                        <strong>{apt.patient_name || '-'}</strong>
+                        <span>{patientName.charAt(0).toUpperCase()}</span>
+                        <strong>{patientName}</strong>
                       </button>
                     </td>
                     <td className="operational-code" dir="ltr">{apt.booking_code || '-'}</td>
-                    <td dir="ltr">{apt.patient_phone || '-'}</td>
+                    <td dir="ltr">{patientPhone || '-'}</td>
                     <td>{getDocName(apt.doctor_id)}</td>
                     <td>
                       <div className="operational-date-cell">
@@ -239,14 +264,16 @@ const Appointments = () => {
           <div className="operational-empty">{isAr ? 'لا توجد حجوزات' : 'No bookings found'}</div>
         ) : filtered.map(apt => {
           const dt = appointmentDateTime(apt);
+          const patientName = getPatientName(apt);
+          const patientPhone = getPatientPhone(apt);
           return (
             <article key={apt.id} className="operational-appointment-card">
               <header>
                 <div className="operational-card-patient">
-                  <span>{(apt.patient_name || '?').charAt(0).toUpperCase()}</span>
+                  <span>{patientName.charAt(0).toUpperCase()}</span>
                   <div>
-                    <strong>{apt.patient_name || '-'}</strong>
-                    <em dir="ltr"><Phone size={12} /> {apt.patient_phone || '-'}</em>
+                    <strong>{patientName}</strong>
+                    <em dir="ltr"><Phone size={12} /> {patientPhone || '-'}</em>
                   </div>
                 </div>
                 <span className={`badge ${statusBadge(apt.status)}`}>{statusLabel(apt.status)}</span>
@@ -271,23 +298,30 @@ const Appointments = () => {
       {selectedAppointment && (
         <div className="operational-detail-backdrop" onClick={() => setSelectedAppointment(null)}>
           <aside className="operational-detail-panel" onClick={e => e.stopPropagation()}>
+            {(() => {
+              const patientName = getPatientName(selectedAppointment);
+              const patientPhone = getPatientPhone(selectedAppointment);
+              const patientEmail = getPatientEmail(selectedAppointment);
+              const dt = appointmentDateTime(selectedAppointment);
+              return (
+                <>
             <button className="btn btn-ghost btn-icon operational-detail-close" onClick={() => setSelectedAppointment(null)} aria-label={isAr ? 'إغلاق' : 'Close'}>
               <X size={18} />
             </button>
             <span className="operational-kicker"><UserRound size={15} /> {isAr ? 'تفاصيل الموعد' : 'Appointment details'}</span>
-            <h2>{selectedAppointment.patient_name || '-'}</h2>
+            <h2>{patientName}</h2>
             <span className={`badge ${statusBadge(selectedAppointment.status)}`}>{statusLabel(selectedAppointment.status)}</span>
             <ContactActionsCard
               title={isAr ? 'تواصل بخصوص الموعد' : 'Appointment contact'}
               subtitle={isAr ? 'رسالة واتساب جاهزة ببيانات الموعد.' : 'WhatsApp message prefilled with appointment details.'}
-              phone={selectedAppointment.patient_phone}
+              phone={patientPhone}
               whatsappMessage={buildContactMessage({
                 type: 'appointment',
                 isAr,
-                patientName: selectedAppointment.patient_name,
+                patientName,
                 clinicName: 'UrClinic',
-                appointmentDate: appointmentDateTime(selectedAppointment).date,
-                appointmentTime: to12Hour(appointmentDateTime(selectedAppointment).time, isAr),
+                appointmentDate: dt.date,
+                appointmentTime: to12Hour(dt.time, isAr),
               })}
               actor={user}
               target={{ role: 'patient', clinic_id: selectedAppointment.clinic_id }}
@@ -295,12 +329,12 @@ const Appointments = () => {
             />
             <div className="operational-detail-grid">
               <div><span>{isAr ? 'رقم الحجز' : 'Booking code'}</span><strong dir="ltr">{selectedAppointment.booking_code || '-'}</strong></div>
-              <div><span>{isAr ? 'الهاتف' : 'Phone'}</span><strong dir="ltr">{selectedAppointment.patient_phone || '-'}</strong></div>
+              <div><span>{isAr ? 'الهاتف' : 'Phone'}</span><strong dir="ltr">{patientPhone || '-'}</strong></div>
               <div><span>{t('doctor')}</span><strong>{getDocName(selectedAppointment.doctor_id)}</strong></div>
-              <div><span>{isAr ? 'التاريخ' : 'Date'}</span><strong>{appointmentDateTime(selectedAppointment).date}</strong></div>
-              <div><span>{isAr ? 'الوقت' : 'Time'}</span><strong>{to12Hour(appointmentDateTime(selectedAppointment).time, isAr)}</strong></div>
+              <div><span>{isAr ? 'التاريخ' : 'Date'}</span><strong>{dt.date}</strong></div>
+              <div><span>{isAr ? 'الوقت' : 'Time'}</span><strong>{to12Hour(dt.time, isAr)}</strong></div>
               <div><span>{isAr ? 'العيادة' : 'Clinic'}</span><strong>{selectedAppointment.clinic_id || '-'}</strong></div>
-              <div><span>{isAr ? 'البريد' : 'Email'}</span><strong>{selectedAppointment.patient_email || '-'}</strong></div>
+              <div><span>{isAr ? 'البريد' : 'Email'}</span><strong>{patientEmail || '-'}</strong></div>
               <div><span>{isAr ? 'الدفع' : 'Payment'}</span><strong>{selectedAppointment.paid ? (isAr ? 'مدفوع' : 'Paid') : (isAr ? 'غير مدفوع' : 'Unpaid')}</strong></div>
             </div>
             <div className="operational-detail-actions">
@@ -309,6 +343,9 @@ const Appointments = () => {
                 <User size={15} /> {isAr ? 'عرض المرضى' : 'View patients'}
               </button>
             </div>
+                </>
+              );
+            })()}
           </aside>
         </div>
       )}
