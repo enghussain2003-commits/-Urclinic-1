@@ -29,6 +29,13 @@ import SpecialtyIcon from '../components/SpecialtyIcon';
 import { normalizeIraqiPhone, validateIraqiPhone, validatePersonName } from '../utils/identityValidation';
 import { getLocalizedErrorMessage } from '../utils/errorMessages';
 import { IRAQI_GOVERNORATES, governorateLabel, normalizeGovernorate } from '../services/superAdminService';
+import {
+  evaluateAvailability,
+  generateAvailabilitySlots,
+  loadAvailabilityForClinics,
+  localDateKey,
+  periodsForDate,
+} from '../services/availabilityService';
 
 const BookingErrorMessage = ({ children }) => children ? (
   <div className="booking-error-message">
@@ -84,6 +91,8 @@ const Booking = () => {
   const [submitting, setSubmitting] = useState(false);
   const [bookedSlotsByDate, setBookedSlotsByDate] = useState({});
   const [availabilityLoading, setAvailabilityLoading] = useState(false);
+  const [availabilityPeriods, setAvailabilityPeriods] = useState([]);
+  const [availabilityClosures, setAvailabilityClosures] = useState([]);
 
   const paymentMethods = [
     { id: 'cash', Icon: Banknote, label: 'Cash at Clinic', labelAr: 'كاش في العيادة', desc: 'Pay on arrival', descAr: 'الدفع عند الحضور' },
@@ -96,9 +105,19 @@ const Booking = () => {
     return () => window.clearTimeout(timer);
   }, [doctorSearch]);
 
-  const toBookingDoctor = (row) => {
+  const toBookingDoctor = (row, availability = { periods: [], closures: [] }) => {
     const clinic = Array.isArray(row.clinic) ? row.clinic[0] : row.clinic;
     const clinicGovernorate = normalizeGovernorate(clinic?.governorate || '');
+    const clinicPeriods = availability.periods.filter(period => String(period.clinic_id) === String(row.clinic_id) && !period.doctor_id);
+    const doctorPeriods = availability.periods.filter(period => String(period.doctor_id || '') === String(row.id));
+    const status = evaluateAvailability({
+      clinicPeriods,
+      doctorPeriods,
+      closures: availability.closures.filter(closure => String(closure.clinic_id) === String(row.clinic_id)),
+      doctor: row,
+      dateKey: localDateKey(),
+      isAr,
+    });
     return {
       ...row,
       clinic,
@@ -111,8 +130,12 @@ const Booking = () => {
       name: row.full_name || row.name,
       nameAr: row.full_name || row.nameAr,
       avatar: (row.full_name || '?').charAt(0).toUpperCase(),
-      available: true,
-      nextSlot: isAr ? 'متاح' : 'Available',
+      availability_status: status,
+      availability_periods: doctorPeriods,
+      clinic_availability_periods: clinicPeriods,
+      availability_closures: availability.closures.filter(closure => String(closure.clinic_id) === String(row.clinic_id)),
+      available: status.available !== false,
+      nextSlot: status.label || (isAr ? 'متاح' : 'Available'),
     };
   };
 
@@ -155,7 +178,12 @@ const Booking = () => {
           setDiscoveryDoctors([]);
           setClinics([]);
         } else {
-          const doctors = (data || []).map(toBookingDoctor);
+          const clinicIds = Array.from(new Set((data || []).map(row => row.clinic_id).filter(Boolean)));
+          const availability = await loadAvailabilityForClinics(clinicIds);
+          if (cancelled) return;
+          setAvailabilityPeriods(availability.periods);
+          setAvailabilityClosures(availability.closures);
+          const doctors = (data || []).map(row => toBookingDoctor(row, availability));
           setDiscoveryDoctors(doctors);
           const clinicMap = new Map();
           doctors.forEach(doc => {
@@ -420,59 +448,36 @@ const Booking = () => {
     ? clinicDoctors.filter(d => d.specialty === selectedSpecialty)
     : clinicDoctors;
 
-  // JS getDay(): 0=Sun..6=Sat → our day ids
-  const DAY_IDS = ['sun', 'mon', 'tue', 'wed', 'thu', 'fri', 'sat'];
-
-  const toMinutes = (hhmm) => {
-    const [h, m] = hhmm.split(':').map(Number);
-    return h * 60 + m;
-  };
-  const toHHMM = (mins) => {
-    const h = String(Math.floor(mins / 60)).padStart(2, '0');
-    const m = String(mins % 60).padStart(2, '0');
-    return `${h}:${m}`;
-  };
-
-  const isToday = (dateStr) => dateStr === new Date().toISOString().slice(0, 10);
-  const nowMinutes = () => {
-    const n = new Date();
-    return n.getHours() * 60 + n.getMinutes();
-  };
-
-  const doctorWorkDays = (doc) => Array.isArray(doc?.work_days) && doc.work_days.length
-    ? doc.work_days
-    : ['sat', 'sun', 'mon', 'tue', 'wed', 'thu'];
-
-  // #3: Build slots from the doctor's working-hours settings.
+  // Build slots from the normalized availability tables with legacy doctor hours as fallback.
   const generateTimeSlots = (doc, dateStr, occupiedOverride = null) => {
-    const open = doc.open_time || '09:00';
-    const close = doc.close_time || '17:00';
-    const breakStart = doc.break_start || null;
-    const breakEnd = doc.break_end || null;
-    const workDays = doctorWorkDays(doc);
-
-    // Closed on this weekday?
-    const dayId = DAY_IDS[new Date(dateStr).getDay()];
-    if (!workDays.includes(dayId)) return [];
-
-    const step = 30;
-    const slots = [];
-    for (let m = toMinutes(open); m + step <= toMinutes(close); m += step) {
-      const time = toHHMM(m);
-      const inBreak = breakStart && breakEnd && m >= toMinutes(breakStart) && m < toMinutes(breakEnd);
-      const booked = (occupiedOverride || bookedSlotsByDate[dateStr] || []).includes(time);
-      const past = isToday(dateStr) && m <= nowMinutes();
-      const status = inBreak ? 'break' : past ? 'past' : booked ? 'booked' : 'available';
-      slots.push({ time, status });
-    }
-
-    return slots.length ? slots : [{ time: open, status: 'unavailable' }];
+    const doctorPeriods = availabilityPeriods.filter(period => String(period.doctor_id || '') === String(doc.id));
+    const clinicPeriods = availabilityPeriods.filter(period => String(period.clinic_id || '') === String(doc.clinic_id) && !period.doctor_id);
+    return generateAvailabilitySlots({
+      doctor: doc,
+      dateKey: dateStr,
+      doctorPeriods,
+      clinicPeriods,
+      closures: availabilityClosures.filter(closure => String(closure.clinic_id) === String(doc.clinic_id)),
+      occupied: occupiedOverride || bookedSlotsByDate[dateStr] || [],
+      step: doc.appointment_duration || doc.clinic?.appointment_duration || 30,
+    });
   };
 
   const getDateMeta = (dateStr) => {
     if (!selectedDoctor) return null;
-    const dayId = DAY_IDS[new Date(dateStr).getDay()];
-    if (!doctorWorkDays(selectedDoctor).includes(dayId)) {
+    const doctorPeriods = availabilityPeriods.filter(period => String(period.doctor_id || '') === String(selectedDoctor.id));
+    const clinicPeriods = availabilityPeriods.filter(period => String(period.clinic_id || '') === String(selectedDoctor.clinic_id) && !period.doctor_id);
+    const closures = availabilityClosures.filter(closure => String(closure.clinic_id) === String(selectedDoctor.clinic_id));
+    const status = evaluateAvailability({
+      clinicPeriods,
+      doctorPeriods,
+      closures,
+      doctor: selectedDoctor,
+      dateKey: dateStr,
+      isAr,
+    });
+    const effectivePeriods = periodsForDate({ periods: doctorPeriods, doctor: selectedDoctor, dateKey: dateStr, doctorOnly: true });
+    if (status.available === false || effectivePeriods.length === 0) {
       return { status: 'closed', disabled: true, label: isAr ? 'عطلة' : 'Closed' };
     }
     const slots = generateTimeSlots(selectedDoctor, dateStr);

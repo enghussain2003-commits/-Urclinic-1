@@ -15,6 +15,7 @@ import Dashboard from './pages/Dashboard';
 import Appointments from './pages/Appointments';
 import DoctorManagement from './pages/DoctorManagement';
 import ScheduleView from './pages/ScheduleView';
+import AvailabilityManagement from './pages/AvailabilityManagement';
 import PatientsList from './pages/PatientsList';
 import StaffPatientProfile from './pages/StaffPatientProfile';
 import ClinicSettings from './pages/ClinicSettings';
@@ -117,6 +118,15 @@ const ProtectedRoute = ({ children, requiredRole }) => {
   return children;
 };
 
+const ClinicSettingsRoute = () => {
+  const { user } = useApp();
+  const normalizedRole = String(user?.role || '').trim().toLowerCase();
+  if (normalizedRole === 'doctor') {
+    return <Navigate to="/dashboard" replace />;
+  }
+  return <ClinicSettings />;
+};
+
 function App() {
   return (
     <AppProvider>
@@ -166,6 +176,11 @@ function App() {
                 <ScheduleView />
               </ProtectedRoute>
             } />
+            <Route path="/dashboard/availability" element={
+              <ProtectedRoute requiredRole="clinic">
+                <AvailabilityManagement />
+              </ProtectedRoute>
+            } />
             <Route path="/dashboard/patients" element={
               <ProtectedRoute requiredRole="clinic">
                 <PatientsList />
@@ -178,7 +193,7 @@ function App() {
             } />
             <Route path="/dashboard/settings" element={
               <ProtectedRoute requiredRole="clinic">
-                <ClinicSettings />
+                <ClinicSettingsRoute />
               </ProtectedRoute>
             } />
             <Route path="/dashboard/support" element={

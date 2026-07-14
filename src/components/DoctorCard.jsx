@@ -1,5 +1,5 @@
 import { useTranslation } from 'react-i18next';
-import { Building2, Clock, CheckCircle, MapPin, Stethoscope } from 'lucide-react';
+import { AlertTriangle, Building2, Clock, CheckCircle, MapPin, Stethoscope } from 'lucide-react';
 import { governorateLabel } from '../services/superAdminService';
 import { formatMoney } from '../utils/money';
 
@@ -21,6 +21,11 @@ const DoctorCard = ({ doctor, onSelect, selected, bookingVariant = false }) => {
   const CardTag = onSelect ? 'button' : 'div';
   const fee = Number(doctor.fee || 0);
   const feeLabel = formatMoney(fee, { currency: doctor.currency || doctor.clinic?.currency || 'IQD' });
+  const availability = doctor.availability_status;
+  const availabilityIcon = availability?.available === false ? AlertTriangle : doctor.available !== false ? CheckCircle : Clock;
+  const AvailabilityIcon = availabilityIcon;
+  const availabilityLabel = availability?.label || (doctor.available !== false ? t('available') : doctor.nextSlot);
+  const availabilityClass = availability?.badgeClass || `doctor-availability ${doctor.available === false ? 'doctor-availability--closed' : ''}`;
 
   return (
     <CardTag
@@ -63,11 +68,11 @@ const DoctorCard = ({ doctor, onSelect, selected, bookingVariant = false }) => {
       )}
 
       <div className="doctor-card-foot">
-        <span className="doctor-availability">
-          {doctor.available !== false
-            ? <><CheckCircle size={14} /> {t('available')}</>
-            : <><Clock size={14} /> {doctor.nextSlot}</>}
+        <span className={availabilityClass}>
+          <AvailabilityIcon size={14} />
+          {availabilityLabel}
         </span>
+        {availability?.detail && <small className="doctor-availability-detail">{availability.detail}</small>}
         {bookingVariant && selected && <span className="doctor-selected-mark"><CheckCircle size={14} /></span>}
       </div>
     </CardTag>

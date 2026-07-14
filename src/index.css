@@ -2291,11 +2291,62 @@ select.input { appearance: none; cursor: pointer; }
 .doctor-card-foot {
   margin-top: 0.5rem; padding-top: 0.75rem;
   border-top: 1px solid var(--border-light);
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 0.35rem;
 }
 
 .doctor-availability {
   font-size: 0.8125rem; color: var(--success); font-weight: 500;
   display: inline-flex; align-items: center; gap: 0.375rem;
+}
+
+.doctor-availability--closed { color: var(--danger); }
+
+.doctor-availability-detail {
+  color: var(--text-secondary);
+  font-size: 0.76rem;
+  line-height: 1.35;
+}
+
+.availability-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  width: fit-content;
+  max-width: 100%;
+  border-radius: var(--radius-full);
+  padding: 0.35rem 0.65rem;
+  font-size: 0.78rem;
+  font-weight: 800;
+  line-height: 1.2;
+  border: 1px solid transparent;
+}
+
+.availability-badge--open {
+  color: #047857;
+  background: #ecfdf5;
+  border-color: #a7f3d0;
+}
+
+.availability-badge--soon,
+.availability-badge--future {
+  color: #1d4ed8;
+  background: #eff6ff;
+  border-color: #bfdbfe;
+}
+
+.availability-badge--warning {
+  color: #9a3412;
+  background: #fff7ed;
+  border-color: #fed7aa;
+}
+
+.availability-badge--closed {
+  color: #b91c1c;
+  background: #fef2f2;
+  border-color: #fecaca;
 }
 
 /* ========== SPECIALTY CHIPS ========== */
@@ -6528,6 +6579,309 @@ tbody tr:last-child td { border-bottom: none; }
   font-weight: 700;
 }
 
+/* ========== AVAILABILITY MANAGEMENT ========== */
+.availability-page {
+  max-width: 1180px;
+  margin-inline: auto;
+  width: 100%;
+}
+
+.availability-hero {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-end;
+  gap: 1rem;
+  margin-bottom: 1.25rem;
+}
+
+.availability-hero span {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+  color: var(--primary);
+  font-size: 0.85rem;
+  font-weight: 800;
+}
+
+.availability-hero h1 {
+  margin: 0.35rem 0 0.25rem;
+  color: var(--text);
+  font-size: clamp(1.65rem, 3vw, 2.25rem);
+  line-height: 1.15;
+}
+
+.availability-hero p {
+  color: var(--text-secondary);
+  margin: 0;
+  font-weight: 650;
+}
+
+.availability-status-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 0.85rem;
+  margin-bottom: 1rem;
+}
+
+.availability-status-card,
+.availability-panel {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 1rem;
+  box-shadow: var(--shadow-xs);
+}
+
+.availability-status-card {
+  padding: 1rem;
+  min-width: 0;
+}
+
+.availability-status-card > span {
+  display: block;
+  color: var(--text-secondary);
+  font-size: 0.82rem;
+  font-weight: 750;
+  margin-bottom: 0.5rem;
+}
+
+.availability-status-card strong:not(.availability-badge) {
+  color: var(--text);
+  font-size: 1.8rem;
+  font-weight: 850;
+}
+
+.availability-status-card p {
+  color: var(--text-secondary);
+  margin: 0.6rem 0 0;
+  line-height: 1.45;
+  overflow-wrap: anywhere;
+}
+
+.availability-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 1rem;
+  margin-bottom: 1rem;
+}
+
+.availability-panel {
+  padding: 1.1rem;
+}
+
+.availability-panel-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 1rem;
+  margin-bottom: 1rem;
+}
+
+.availability-panel-head div {
+  display: flex;
+  align-items: center;
+  gap: 0.55rem;
+  min-width: 0;
+}
+
+.availability-panel-head span {
+  width: 2rem;
+  height: 2rem;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 0.7rem;
+  background: var(--primary-50);
+  color: var(--primary);
+  flex: 0 0 auto;
+}
+
+.availability-panel-head h2 {
+  color: var(--text);
+  font-size: 1.05rem;
+  margin: 0;
+  font-weight: 850;
+}
+
+.availability-panel-head p {
+  color: var(--text-secondary);
+  margin: 0;
+  max-width: 22rem;
+  text-align: end;
+  line-height: 1.45;
+  font-size: 0.86rem;
+}
+
+.availability-week {
+  display: grid;
+  gap: 0.75rem;
+}
+
+.availability-day {
+  border: 1px solid var(--border-light);
+  border-radius: 0.85rem;
+  padding: 0.8rem;
+  background: var(--surface-muted);
+}
+
+.availability-day-head,
+.availability-period-row,
+.availability-actions,
+.availability-closure-card {
+  display: flex;
+  align-items: center;
+}
+
+.availability-day-head {
+  justify-content: space-between;
+  gap: 0.75rem;
+}
+
+.availability-day-head strong {
+  color: var(--text);
+  font-weight: 850;
+}
+
+.availability-switch {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  color: var(--text-secondary);
+  font-size: 0.82rem;
+  font-weight: 750;
+  cursor: pointer;
+}
+
+.availability-switch input,
+.support-check input {
+  accent-color: var(--primary);
+}
+
+.availability-periods {
+  display: grid;
+  gap: 0.5rem;
+  margin-top: 0.75rem;
+}
+
+.availability-period-row {
+  gap: 0.5rem;
+}
+
+.availability-period-row input,
+.availability-closure-form input,
+.availability-closure-form select {
+  min-height: 2.55rem;
+}
+
+.availability-period-row input {
+  min-width: 0;
+  flex: 1;
+}
+
+.availability-period-row span {
+  color: var(--text-secondary);
+  font-weight: 800;
+}
+
+.availability-period-row button {
+  width: 2.35rem;
+  height: 2.35rem;
+  border: 1px solid var(--border);
+  border-radius: 0.7rem;
+  background: var(--surface);
+  color: var(--danger);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.availability-add-period {
+  justify-self: start;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+  border: 1px dashed var(--primary-200);
+  color: var(--primary);
+  background: var(--primary-50);
+  border-radius: 0.75rem;
+  padding: 0.55rem 0.75rem;
+  font-weight: 800;
+}
+
+.availability-actions {
+  justify-content: flex-end;
+  margin-top: 1rem;
+}
+
+.availability-closure-form {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 0.85rem;
+}
+
+.availability-closure-form .support-check {
+  align-self: end;
+  min-height: 2.55rem;
+}
+
+.availability-conflicts {
+  margin-top: 0.9rem;
+  border: 1px solid #fed7aa;
+  background: #fff7ed;
+  color: #9a3412;
+  border-radius: 0.85rem;
+  padding: 0.8rem;
+}
+
+.availability-conflicts strong {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+}
+
+.availability-conflicts p {
+  margin: 0.35rem 0 0.65rem;
+}
+
+.availability-conflicts div {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.45rem;
+}
+
+.availability-conflicts span {
+  background: var(--surface);
+  border: 1px solid #fed7aa;
+  border-radius: var(--radius-full);
+  padding: 0.35rem 0.55rem;
+  font-size: 0.78rem;
+  font-weight: 750;
+}
+
+.availability-closure-list {
+  display: grid;
+  gap: 0.65rem;
+  margin-top: 1rem;
+}
+
+.availability-closure-card {
+  justify-content: space-between;
+  gap: 0.85rem;
+  border: 1px solid var(--border-light);
+  background: var(--surface-muted);
+  border-radius: 0.85rem;
+  padding: 0.75rem;
+}
+
+.availability-closure-card strong {
+  color: var(--text);
+  font-weight: 850;
+}
+
+.availability-closure-card p {
+  margin: 0.25rem 0 0;
+  color: var(--text-secondary);
+}
+
 .booking-form-grid {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -7106,6 +7460,32 @@ tbody tr:last-child td { border-bottom: none; }
 }
 
 @media (max-width: 768px) {
+  .availability-status-grid,
+  .availability-grid,
+  .availability-closure-form {
+    grid-template-columns: 1fr;
+  }
+
+  .availability-hero,
+  .availability-panel-head {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .availability-panel-head p {
+    text-align: start;
+    max-width: none;
+  }
+
+  .availability-closure-card {
+    align-items: flex-start;
+  }
+
+  .availability-period-row {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr) auto;
+  }
+
   .booking-page {
     padding: 1rem;
   }

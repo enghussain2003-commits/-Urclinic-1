@@ -3,7 +3,7 @@ import { useTranslation } from 'react-i18next';
 import { Link, useLocation } from 'react-router-dom';
 import {
   Activity, LayoutDashboard, CalendarDays, Users,
-  Settings, Stethoscope, Globe, LogOut, User, X, Building2, PlusCircle, ShieldCheck, UserRoundCog, Headset,
+  Settings, Stethoscope, Globe, LogOut, User, X, Building2, PlusCircle, ShieldCheck, UserRoundCog, Headset, CalendarClock,
 } from 'lucide-react';
 import { useApp } from '../context/AppContext';
 
@@ -13,6 +13,7 @@ const Sidebar = ({ isOpen, onClose }) => {
   const { logout, user, supportUnreadCount, pendingAppointmentCount } = useApp();
   const isActive = (path) => location.pathname === path || location.pathname.startsWith(`${path}/`);
   const normalizedRole = String(user?.role || '').trim().toLowerCase();
+  const isDoctor = normalizedRole === 'doctor';
   const formatBadgeCount = (count) => Number(count) > 99 ? '99+' : String(count);
   const pendingBadgeLabel = pendingAppointmentCount > 0
     ? t('pending_appointments_badge_label', { count: formatBadgeCount(pendingAppointmentCount) })
@@ -49,7 +50,8 @@ const Sidebar = ({ isOpen, onClose }) => {
     { path: '/dashboard/doctors', icon: Stethoscope, label: t('doctors_menu') },
     { path: '/dashboard/patients', icon: Users, label: t('patients_menu') },
     { path: '/dashboard/schedule', icon: CalendarDays, label: t('schedule_menu') },
-    { path: '/dashboard/settings', icon: Settings, label: t('settings') || 'Settings' },
+    { path: '/dashboard/availability', icon: CalendarClock, label: i18n.language === 'ar' ? 'إدارة التوفر' : 'Availability' },
+    ...(!isDoctor ? [{ path: '/dashboard/settings', icon: Settings, label: t('settings') || 'Settings' }] : []),
   ];
   const canUseRegularSupport = ['clinic_admin', 'doctor', 'employee', 'patient'].includes(normalizedRole);
 
