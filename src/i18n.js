@@ -124,6 +124,12 @@ const resources = {
       next_step: "Next Step",
       previous: "Previous",
       no_slots: "No available slots for this date",
+      governorate: "Governorate",
+      all_iraq: "All Iraq",
+      search_doctor_clinic: "Search for a doctor or clinic",
+      clear_filters: "Clear filters",
+      no_results: "No results",
+      location_unavailable: "Location unavailable",
       
       // Patient form
       full_name: "Full Name",
@@ -473,6 +479,12 @@ const resources = {
       next_step: "الخطوة التالية",
       previous: "السابق",
       no_slots: "لا توجد مواعيد متاحة لهذا التاريخ",
+      governorate: "المحافظة",
+      all_iraq: "جميع العراق",
+      search_doctor_clinic: "ابحث عن طبيب أو عيادة",
+      clear_filters: "مسح عوامل التصفية",
+      no_results: "لا توجد نتائج",
+      location_unavailable: "الموقع غير متوفر",
 
       // Patient form
       full_name: "الاسم الكامل",

@@ -4,9 +4,9 @@ const ALLOWED_ORIGINS = (Deno.env.get('ALLOWED_ORIGINS') ?? '*')
   .split(',').map((s) => s.trim()).filter(Boolean);
 
 const IRAQI_GOVERNORATES = new Set([
-  'Baghdad', 'Basra', 'Dhi Qar', 'Maysan', 'Muthanna', 'Qadisiyah', 'Najaf',
-  'Karbala', 'Babil', 'Wasit', 'Diyala', 'Anbar', 'Salah al-Din', 'Kirkuk',
-  'Nineveh', 'Erbil', 'Sulaymaniyah', 'Duhok', 'Halabja',
+  'Baghdad', 'Basra', 'Nineveh', 'Erbil', 'Najaf', 'Karbala', 'Dhi Qar',
+  'Maysan', 'Muthanna', 'Wasit', 'Babil', 'Al-Qadisiyah', 'Diyala',
+  'Kirkuk', 'Anbar', 'Salah Al-Din', 'Dohuk', 'Sulaymaniyah',
 ]);
 const ROLES = new Set(['clinic_admin', 'doctor', 'employee']);
 const STATUSES = new Set(['active', 'suspended']);

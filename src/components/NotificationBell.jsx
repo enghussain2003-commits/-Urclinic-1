@@ -110,47 +110,56 @@ const NotificationBell = () => {
             )}
           </div>
 
-          {/* Notifications List */}
-          {notifications.length === 0 ? (
-            <div style={{ padding: '2rem', textAlign: 'center', color: 'var(--text-secondary)' }}>
-              <Bell size={32} style={{ opacity: 0.2, margin: '0 auto 0.5rem' }} />
-              <p style={{ margin: 0, fontSize: '0.875rem' }}>{t('no_notifications')}</p>
-            </div>
-          ) : (
-            notifications.slice(0, 20).map(notif => (
-              <div
-                key={notif.id}
-                onClick={() => handleNotificationClick(notif)}
-                className={`notif-item ${notif.is_read ? '' : 'unread'}`}
-              >
-                <span style={{ fontSize: '1.25rem', flexShrink: 0, marginTop: 2 }}>
-                  {getNotifIcon(notif.type)}
-                </span>
-                <div style={{ flex: 1, minWidth: 0 }}>
-                  <div style={{ 
-                    fontWeight: notif.is_read ? 500 : 700, 
-                    fontSize: '0.875rem',
-                    marginBottom: 2
-                  }}>
-                    {localizedSupportText(notif, 'title', isAr)}
-                  </div>
-                  <p style={{ 
-                    margin: 0, fontSize: '0.8rem', 
-                    color: 'var(--text-secondary)',
-                    lineHeight: 1.4,
-                    overflow: 'hidden', textOverflow: 'ellipsis',
-                    display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical'
-                  }}>
-                    {localizedSupportText(notif, 'message', isAr)}
-                  </p>
-                  <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)', marginTop: 4, display: 'block' }}>
-                    {getTimeAgo(notif.created_at)}
-                  </span>
-                </div>
-                {!notif.is_read && <div className="notif-dot" />}
+          <div className="notif-list" tabIndex={0} role="list" aria-label={t('notifications')}>
+            {notifications.length === 0 ? (
+              <div className="notif-empty">
+                <Bell size={32} />
+                <p>{t('no_notifications')}</p>
               </div>
-            ))
-          )}
+            ) : (
+              notifications.map(notif => (
+                <div
+                  key={notif.id}
+                  onClick={() => handleNotificationClick(notif)}
+                  className={`notif-item ${notif.is_read ? '' : 'unread'}`}
+                  role="listitem"
+                  tabIndex={0}
+                  onKeyDown={(event) => {
+                    if (event.key === 'Enter' || event.key === ' ') {
+                      event.preventDefault();
+                      handleNotificationClick(notif);
+                    }
+                  }}
+                >
+                  <span style={{ fontSize: '1.25rem', flexShrink: 0, marginTop: 2 }}>
+                    {getNotifIcon(notif.type)}
+                  </span>
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <div style={{ 
+                      fontWeight: notif.is_read ? 500 : 700, 
+                      fontSize: '0.875rem',
+                      marginBottom: 2
+                    }}>
+                      {localizedSupportText(notif, 'title', isAr)}
+                    </div>
+                    <p style={{ 
+                      margin: 0, fontSize: '0.8rem', 
+                      color: 'var(--text-secondary)',
+                      lineHeight: 1.4,
+                      overflow: 'hidden', textOverflow: 'ellipsis',
+                      display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical'
+                    }}>
+                      {localizedSupportText(notif, 'message', isAr)}
+                    </p>
+                    <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)', marginTop: 4, display: 'block' }}>
+                      {getTimeAgo(notif.created_at)}
+                    </span>
+                  </div>
+                  {!notif.is_read && <div className="notif-dot" />}
+                </div>
+              ))
+            )}
+          </div>
         </div>
       )}
     </div>

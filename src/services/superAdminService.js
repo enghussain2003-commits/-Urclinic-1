@@ -3,24 +3,66 @@ import { supabase } from '../supabaseClient';
 export const IRAQI_GOVERNORATES = [
   { id: 'Baghdad', en: 'Baghdad', ar: 'بغداد' },
   { id: 'Basra', en: 'Basra', ar: 'البصرة' },
+  { id: 'Nineveh', en: 'Nineveh', ar: 'نينوى' },
+  { id: 'Erbil', en: 'Erbil', ar: 'أربيل' },
+  { id: 'Najaf', en: 'Najaf', ar: 'النجف' },
+  { id: 'Karbala', en: 'Karbala', ar: 'كربلاء' },
   { id: 'Dhi Qar', en: 'Dhi Qar', ar: 'ذي قار' },
   { id: 'Maysan', en: 'Maysan', ar: 'ميسان' },
   { id: 'Muthanna', en: 'Muthanna', ar: 'المثنى' },
-  { id: 'Qadisiyah', en: 'Qadisiyah', ar: 'القادسية' },
-  { id: 'Najaf', en: 'Najaf', ar: 'النجف' },
-  { id: 'Karbala', en: 'Karbala', ar: 'كربلاء' },
-  { id: 'Babil', en: 'Babil', ar: 'بابل' },
   { id: 'Wasit', en: 'Wasit', ar: 'واسط' },
+  { id: 'Babil', en: 'Babil', ar: 'بابل' },
+  { id: 'Al-Qadisiyah', en: 'Al-Qadisiyah', ar: 'القادسية' },
   { id: 'Diyala', en: 'Diyala', ar: 'ديالى' },
-  { id: 'Anbar', en: 'Anbar', ar: 'الأنبار' },
-  { id: 'Salah al-Din', en: 'Salah al-Din', ar: 'صلاح الدين' },
   { id: 'Kirkuk', en: 'Kirkuk', ar: 'كركوك' },
-  { id: 'Nineveh', en: 'Nineveh', ar: 'نينوى' },
-  { id: 'Erbil', en: 'Erbil', ar: 'أربيل' },
+  { id: 'Anbar', en: 'Anbar', ar: 'الأنبار' },
+  { id: 'Salah Al-Din', en: 'Salah Al-Din', ar: 'صلاح الدين' },
+  { id: 'Dohuk', en: 'Dohuk', ar: 'دهوك' },
   { id: 'Sulaymaniyah', en: 'Sulaymaniyah', ar: 'السليمانية' },
-  { id: 'Duhok', en: 'Duhok', ar: 'دهوك' },
-  { id: 'Halabja', en: 'Halabja', ar: 'حلبجة' },
 ];
+
+const GOVERNORATE_ALIASES = new Map([
+  ['Qadisiyah', 'Al-Qadisiyah'],
+  ['Al Qadisiyah', 'Al-Qadisiyah'],
+  ['القادسية', 'Al-Qadisiyah'],
+  ['Salah al-Din', 'Salah Al-Din'],
+  ['Salah Al Din', 'Salah Al-Din'],
+  ['صلاح الدين', 'Salah Al-Din'],
+  ['Duhok', 'Dohuk'],
+  ['دهوك', 'Dohuk'],
+  ['بغداد', 'Baghdad'],
+  ['البصرة', 'Basra'],
+  ['نينوى', 'Nineveh'],
+  ['أربيل', 'Erbil'],
+  ['اربيل', 'Erbil'],
+  ['النجف', 'Najaf'],
+  ['كربلاء', 'Karbala'],
+  ['ذي قار', 'Dhi Qar'],
+  ['ميسان', 'Maysan'],
+  ['المثنى', 'Muthanna'],
+  ['واسط', 'Wasit'],
+  ['بابل', 'Babil'],
+  ['ديالى', 'Diyala'],
+  ['كركوك', 'Kirkuk'],
+  ['الأنبار', 'Anbar'],
+  ['الانبار', 'Anbar'],
+  ['السليمانية', 'Sulaymaniyah'],
+]);
+
+const GOVERNORATE_IDS = new Set(IRAQI_GOVERNORATES.map(g => g.id));
+
+export const normalizeGovernorate = (value) => {
+  const raw = String(value || '').trim();
+  if (!raw) return '';
+  if (GOVERNORATE_IDS.has(raw)) return raw;
+  return GOVERNORATE_ALIASES.get(raw) || raw;
+};
+
+export const governorateLabel = (value, isAr = false) => {
+  const normalized = normalizeGovernorate(value);
+  const found = IRAQI_GOVERNORATES.find(g => g.id === normalized);
+  return found ? (isAr ? found.ar : found.en) : '';
+};
 
 export const WORK_DAYS = [
   { id: 'sat', en: 'Sat', ar: 'السبت' },

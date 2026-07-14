@@ -13,7 +13,7 @@ import {
   Users,
 } from 'lucide-react';
 import { supabase } from '../supabaseClient';
-import { IRAQI_GOVERNORATES } from '../services/superAdminService';
+import { IRAQI_GOVERNORATES, governorateLabel, normalizeGovernorate } from '../services/superAdminService';
 import { getLocalizedErrorMessage } from '../utils/errorMessages';
 
 const SuperAdminClinics = () => {
@@ -90,7 +90,7 @@ const SuperAdminClinics = () => {
         appointmentsCount: clinicAppointments.length,
         search: [
           clinic.name,
-          clinic.governorate,
+          governorateLabel(clinic.governorate, isAr),
           clinic.address,
           clinic.phone,
           clinicAdmin?.full_name,
@@ -101,7 +101,7 @@ const SuperAdminClinics = () => {
       };
     }).filter(row => {
       const matchesQuery = !q || row.search.includes(q);
-      const matchesGovernorate = governorate === 'all' || row.clinic.governorate === governorate;
+      const matchesGovernorate = governorate === 'all' || normalizeGovernorate(row.clinic.governorate) === governorate;
       const rowStatus = row.clinic.is_active === false ? 'suspended' : 'active';
       const matchesStatus = status === 'all' || rowStatus === status;
       return matchesQuery && matchesGovernorate && matchesStatus;
@@ -114,7 +114,7 @@ const SuperAdminClinics = () => {
       return (b.clinic.created_at || '').localeCompare(a.clinic.created_at || '');
     });
     return result;
-  }, [appointments, clinics, doctors, governorate, patients, profiles, query, sort, status]);
+  }, [appointments, clinics, doctors, governorate, isAr, patients, profiles, query, sort, status]);
 
   return (
     <div className="super-admin-page animate-in">
@@ -211,7 +211,7 @@ const Status = ({ active, isAr }) => (
 const ClinicRow = ({ row, isAr, navigate }) => (
   <tr>
     <td><strong>{row.clinic.name}</strong><small>{row.clinic.phone || '-'}</small></td>
-    <td><MapPin size={14} /> {row.clinic.governorate || '-'}</td>
+    <td><MapPin size={14} /> {governorateLabel(row.clinic.governorate, isAr) || '-'}</td>
     <td><strong>{row.clinicAdmin?.full_name || '-'}</strong><small>{row.clinicAdmin?.email || ''}</small></td>
     <td><strong>{row.mainDoctor?.full_name || '-'}</strong><small>{row.mainDoctor?.specialty || ''}</small></td>
     <td>{row.doctorsCount} {isAr ? 'أطباء' : 'doctors'} · {row.employeesCount} {isAr ? 'موظف' : 'employees'} · {row.patientsCount} {isAr ? 'مرضى' : 'patients'}</td>
@@ -226,7 +226,7 @@ const ClinicCard = ({ row, isAr, navigate }) => (
       <strong>{row.clinic.name}</strong>
       <Status active={row.clinic.is_active !== false} isAr={isAr} />
     </div>
-    <p><MapPin size={14} /> {row.clinic.governorate || '-'} · {row.clinic.address || '-'}</p>
+    <p><MapPin size={14} /> {governorateLabel(row.clinic.governorate, isAr) || '-'} · {row.clinic.address || '-'}</p>
     <p>{isAr ? 'مدير العيادة' : 'Clinic Admin'}: {row.clinicAdmin?.full_name || '-'}</p>
     <p>{isAr ? 'الطبيب الرئيسي' : 'Main Doctor'}: {row.mainDoctor?.full_name || '-'}</p>
     <p>{row.doctorsCount} {isAr ? 'أطباء' : 'doctors'} · {row.employeesCount} {isAr ? 'موظف' : 'employees'} · {row.patientsCount} {isAr ? 'مرضى' : 'patients'}</p>

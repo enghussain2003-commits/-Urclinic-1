@@ -576,8 +576,7 @@ select.input { appearance: none; cursor: pointer; }
 .notif-dropdown {
   position: absolute; top: calc(100% + 0.5rem);
   width: min(340px, 90vw);
-  max-height: min(420px, 70vh);
-  overflow-y: auto;
+  max-height: min(70vh, 520px);
   background: var(--surface);
   border: 1px solid var(--border);
   border-radius: var(--radius-lg);
@@ -585,6 +584,8 @@ select.input { appearance: none; cursor: pointer; }
   z-index: 350;
   animation: dropIn 0.2s ease-out;
   overflow: hidden;
+  display: flex;
+  flex-direction: column;
 }
 [dir="ltr"] .notif-dropdown { right: 0; }
 [dir="rtl"] .notif-dropdown { left: 0; }
@@ -592,11 +593,56 @@ select.input { appearance: none; cursor: pointer; }
 .notif-header {
   padding: 1rem 1.25rem;
   border-bottom: 1px solid var(--border);
+  background: var(--surface);
   font-weight: 700; font-size: 0.9375rem;
   display: flex;
   justify-content: space-between;
   align-items: center;
   gap: 0.75rem;
+  position: sticky;
+  top: 0;
+  z-index: 1;
+}
+
+.notif-list {
+  min-height: 0;
+  max-height: calc(min(70vh, 520px) - 65px);
+  overflow-y: auto;
+  overflow-x: hidden;
+  overscroll-behavior: contain;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: thin;
+  scrollbar-color: rgba(100,116,139,0.45) transparent;
+}
+
+.notif-list::-webkit-scrollbar {
+  width: 8px;
+}
+
+.notif-list::-webkit-scrollbar-thumb {
+  background: rgba(100,116,139,0.35);
+  border-radius: 999px;
+}
+
+.notif-list:focus {
+  outline: 2px solid var(--primary-200);
+  outline-offset: -2px;
+}
+
+.notif-empty {
+  padding: 2rem;
+  text-align: center;
+  color: var(--text-secondary);
+}
+
+.notif-empty svg {
+  opacity: 0.2;
+  margin: 0 auto 0.5rem;
+}
+
+.notif-empty p {
+  margin: 0;
+  font-size: 0.875rem;
 }
 
 .notif-item {
@@ -615,6 +661,21 @@ select.input { appearance: none; cursor: pointer; }
   width: 8px; height: 8px; border-radius: 50%;
   background: var(--primary);
   flex-shrink: 0; margin-top: 6px;
+}
+
+@media (max-width: 640px) {
+  .notif-dropdown {
+    position: fixed;
+    top: calc(env(safe-area-inset-top, 0px) + 4.5rem);
+    inset-inline: 0.75rem;
+    width: auto;
+    max-height: calc(100dvh - 6rem - env(safe-area-inset-bottom, 0px));
+    border-radius: var(--radius-lg);
+  }
+
+  .notif-list {
+    max-height: calc(100dvh - 10rem - env(safe-area-inset-bottom, 0px));
+  }
 }
 
 /* ========== TOAST FEEDBACK ========== */
@@ -6129,6 +6190,56 @@ tbody tr:last-child td { border-bottom: none; }
   margin-bottom: 1rem;
 }
 
+.booking-discovery-toolbar {
+  display: grid;
+  grid-template-columns: minmax(190px, 0.75fr) minmax(240px, 1.2fr) auto;
+  gap: 0.85rem;
+  align-items: end;
+  margin-bottom: 1rem;
+}
+
+.booking-search-group {
+  min-width: 0;
+}
+
+.booking-search-input {
+  position: relative;
+}
+
+.booking-search-input svg {
+  position: absolute;
+  inset-inline-start: 0.85rem;
+  top: 50%;
+  transform: translateY(-50%);
+  color: var(--text-muted);
+  pointer-events: none;
+}
+
+.booking-search-input .input {
+  padding-inline-start: 2.5rem;
+}
+
+.booking-clear-filters {
+  min-height: 44px;
+  white-space: nowrap;
+}
+
+.booking-discovery-grid {
+  margin-top: 0.5rem;
+}
+
+.doctor-meta--muted {
+  color: var(--text-muted);
+  font-size: 0.8rem;
+}
+
+.booking-empty-state span {
+  display: block;
+  margin-top: 0.35rem;
+  color: var(--text-muted);
+  font-size: 0.86rem;
+}
+
 .booking-date-time-grid {
   display: grid;
   grid-template-columns: minmax(300px, 0.95fr) minmax(300px, 1fr);
@@ -6757,6 +6868,10 @@ tbody tr:last-child td { border-bottom: none; }
 
   .booking-payment-grid,
   .booking-form-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .booking-discovery-toolbar {
     grid-template-columns: 1fr;
   }
 

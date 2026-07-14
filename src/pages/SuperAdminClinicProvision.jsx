@@ -20,6 +20,7 @@ import {
   WORK_DAYS,
   callSuperAdmin,
   generateStrongPassword,
+  normalizeGovernorate,
   passwordScore,
 } from '../services/superAdminService';
 import { getLocalizedErrorMessage } from '../utils/errorMessages';
@@ -101,6 +102,7 @@ const SuperAdminClinicProvision = () => {
   const validate = () => {
     const required = [
       [clinic.name, isAr ? 'اسم العيادة مطلوب' : 'Clinic name is required'],
+      [normalizeGovernorate(clinic.governorate), isAr ? 'المحافظة مطلوبة' : 'Governorate is required'],
       [clinic.address, isAr ? 'عنوان العيادة مطلوب' : 'Clinic address is required'],
       [clinicAdmin.full_name, isAr ? 'اسم مدير العيادة مطلوب' : 'Clinic Admin name is required'],
       [clinicAdmin.email, isAr ? 'بريد مدير العيادة مطلوب' : 'Clinic Admin email is required'],

@@ -6,9 +6,11 @@ import { useToast } from '../hooks/useToast';
 import { supabase } from '../supabaseClient';
 import { isDemoModeEnabled } from '../demo/demoMode';
 import { readDemoJson, writeDemoJson } from '../demo/demoStorage';
+import { IRAQI_GOVERNORATES, normalizeGovernorate } from '../services/superAdminService';
 
 const EMPTY_SETTINGS = {
   name: '',
+  governorate: '',
   phone: '',
   address: '',
   start_time: '09:00',
@@ -22,6 +24,7 @@ const normalizeClinic = (clinic) => {
     : {};
   return {
     name: clinic?.name || '',
+    governorate: normalizeGovernorate(clinic?.governorate || ''),
     phone: clinic?.phone || '',
     address: clinic?.address || '',
     start_time: hours.start || '09:00',
@@ -57,6 +60,7 @@ const ClinicSettings = () => {
         const demoSettings = readDemoJson('clinic_settings', {
           id: 'demo-clinic',
           name: 'UrClinic Demo Clinic',
+          governorate: 'Baghdad',
           phone: '+964 770 000 0000',
           address: isAr ? 'بغداد - عيادة تجريبية' : 'Baghdad - Demo Clinic',
           working_hours: { start: '09:00', end: '17:00' },
@@ -77,7 +81,7 @@ const ClinicSettings = () => {
       try {
         let query = supabase
           .from('clinics')
-          .select('id, name, phone, address, working_hours, default_appointment_duration')
+          .select('id, name, governorate, phone, address, working_hours, default_appointment_duration')
           .order('name', { ascending: true });
 
         if (!isSuperAdmin) {
@@ -143,9 +147,14 @@ const ClinicSettings = () => {
       setFormError(isAr ? 'اسم العيادة مطلوب.' : 'Clinic name is required.');
       return;
     }
+    if (!IRAQI_GOVERNORATES.some(g => g.id === settings.governorate)) {
+      setFormError(isAr ? 'اختر محافظة صحيحة.' : 'Select a valid governorate.');
+      return;
+    }
 
     const payload = {
       name: settings.name.trim(),
+      governorate: settings.governorate,
       phone: settings.phone.trim() || null,
       address: settings.address.trim() || null,
       working_hours: {
@@ -249,6 +258,24 @@ const ClinicSettings = () => {
                 onChange={(e) => updateSetting('name', e.target.value)}
                 disabled={saving || !selectedClinicId}
               />
+            </div>
+
+            <div className="form-group">
+              <label className="form-label">
+                <MapPin size={14} style={{ display: 'inline', marginInlineEnd: 4 }} />
+                {t('governorate')}
+              </label>
+              <select
+                className="input"
+                value={settings.governorate}
+                onChange={(e) => updateSetting('governorate', e.target.value)}
+                disabled={saving || !selectedClinicId}
+              >
+                <option value="">{isAr ? 'اختر المحافظة' : 'Select governorate'}</option>
+                {IRAQI_GOVERNORATES.map(g => (
+                  <option key={g.id} value={g.id}>{isAr ? g.ar : g.en}</option>
+                ))}
+              </select>
             </div>
 
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '1rem', marginBottom: '1rem' }}>

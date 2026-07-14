@@ -176,7 +176,7 @@ const formatSupabaseError = (error) => {
 
 const STAFF_ROLES = ['super_admin', 'clinic_admin', 'employee', 'doctor'];
 const DISABLED_STATUSES = ['suspended', 'inactive', 'disabled'];
-const PROFILE_AUTH_SELECT = 'id, full_name, email, phone_number, role, clinic_id, status, must_change_password';
+const PROFILE_AUTH_SELECT = 'id, full_name, email, phone_number, role, clinic_id, status, must_change_password, governorate';
 
 const isDisabledStatus = (status) =>
   DISABLED_STATUSES.includes(String(status || '').trim().toLowerCase());
@@ -205,6 +205,7 @@ const canonicalUserFromSessionProfile = (sessionUser, profile, clinicActive = tr
     clinic_id: profile?.clinic_id || null,
     status: profile?.status || 'active',
     must_change_password: Boolean(profile?.must_change_password),
+    governorate: profile?.governorate || '',
     clinic_active: clinicActive,
   };
 };

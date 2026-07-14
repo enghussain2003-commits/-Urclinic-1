@@ -25,6 +25,8 @@ import {
   WORK_DAYS,
   callSuperAdmin,
   generateStrongPassword,
+  governorateLabel,
+  normalizeGovernorate,
   passwordScore,
 } from '../services/superAdminService';
 import { supabase } from '../supabaseClient';
@@ -209,7 +211,7 @@ const SuperAdminClinicDetails = () => {
       <section className="super-admin-hero">
         <div>
           <button className="super-admin-back" onClick={() => navigate('/dashboard/super-admin/clinics')}><ArrowLeft size={16} /> {isAr ? 'العيادات' : 'Clinics'}</button>
-          <span><Building2 size={16} /> {clinic.governorate || (isAr ? 'غير محدد' : 'Not set')}</span>
+          <span><Building2 size={16} /> {governorateLabel(clinic.governorate, isAr) || (isAr ? 'غير محدد' : 'Not set')}</span>
           <h1>{clinic.name}</h1>
           <p>{clinic.address || '-'}</p>
         </div>
@@ -296,7 +298,7 @@ const normalizeClinic = (clinic) => {
   const hours = clinic?.working_hours || {};
   return {
     name: clinic?.name || '',
-    governorate: clinic?.governorate || 'Baghdad',
+    governorate: normalizeGovernorate(clinic?.governorate || 'Baghdad'),
     address: clinic?.address || '',
     phone: clinic?.phone || '',
     default_consultation_fee: clinic?.default_consultation_fee ?? 0,

@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
 import {
@@ -12,11 +12,12 @@ import {
   CreditCard,
   Mail,
   MapPin,
-  Phone,
+  Search,
   ShieldCheck,
   Smartphone,
   Stethoscope,
   User,
+  X,
 } from 'lucide-react';
 import { specialties } from '../data/specialties';
 import { useApp } from '../context/AppContext';
@@ -27,6 +28,7 @@ import TimeSlotGrid, { to12Hour } from '../components/TimeSlotGrid';
 import SpecialtyIcon from '../components/SpecialtyIcon';
 import { normalizeIraqiPhone, validateIraqiPhone, validatePersonName } from '../utils/identityValidation';
 import { getLocalizedErrorMessage } from '../utils/errorMessages';
+import { IRAQI_GOVERNORATES, governorateLabel, normalizeGovernorate } from '../services/superAdminService';
 
 const BookingErrorMessage = ({ children }) => children ? (
   <div className="booking-error-message">
@@ -34,6 +36,16 @@ const BookingErrorMessage = ({ children }) => children ? (
     <span>{children}</span>
   </div>
 ) : null;
+
+const ALL_GOVERNORATES = 'all';
+
+const normalizeSearchText = (value) =>
+  String(value || '')
+    .trim()
+    .toLowerCase()
+    .replace(/[أإآ]/g, 'ا')
+    .replace(/ى/g, 'ي')
+    .replace(/\s+/g, ' ');
 
 const Booking = () => {
   const { t, i18n } = useTranslation();
@@ -43,10 +55,14 @@ const Booking = () => {
 
   const [step, setStep] = useState(1);
 
-  // Step 1: Clinic selection
+  // Step 1: Governorate-based doctor discovery
   const [clinics, setClinics] = useState([]);
   const [selectedClinic, setSelectedClinic] = useState(null);
   const [loadingClinics, setLoadingClinics] = useState(true);
+  const [discoveryDoctors, setDiscoveryDoctors] = useState([]);
+  const [selectedGovernorate, setSelectedGovernorate] = useState('');
+  const [doctorSearch, setDoctorSearch] = useState('');
+  const [debouncedDoctorSearch, setDebouncedDoctorSearch] = useState('');
 
   // Step 2: Doctors for selected clinic
   const [clinicDoctors, setClinicDoctors] = useState([]);
@@ -75,32 +91,94 @@ const Booking = () => {
     { id: 'card', Icon: CreditCard, label: 'Credit Card', labelAr: 'بطاقة ائتمان', desc: 'Visa / Mastercard', descAr: 'فيزا / ماستركارد' },
   ];
 
-  // Fetch active clinics on mount
   useEffect(() => {
-    supabase.from('clinics').select('*').eq('is_active', true)
-      .then(({ data }) => { setClinics(data || []); setLoadingClinics(false); });
-  }, []);
+    const timer = window.setTimeout(() => setDebouncedDoctorSearch(doctorSearch), 300);
+    return () => window.clearTimeout(timer);
+  }, [doctorSearch]);
+
+  const toBookingDoctor = (row) => {
+    const clinic = Array.isArray(row.clinic) ? row.clinic[0] : row.clinic;
+    const clinicGovernorate = normalizeGovernorate(clinic?.governorate || '');
+    return {
+      ...row,
+      clinic,
+      clinic_id: row.clinic_id,
+      clinic_name: clinic?.name || '',
+      clinic_address: row.clinic_address || clinic?.address || '',
+      governorate: clinicGovernorate,
+      governorate_label: governorateLabel(clinicGovernorate, isAr),
+      fee: row.fee ?? clinic?.default_consultation_fee ?? 0,
+      name: row.full_name || row.name,
+      nameAr: row.full_name || row.nameAr,
+      avatar: (row.full_name || '?').charAt(0).toUpperCase(),
+      available: true,
+      nextSlot: isAr ? 'متاح' : 'Available',
+    };
+  };
+
+  // Fetch active doctors with their active clinic's public booking fields.
+  useEffect(() => {
+    let cancelled = false;
+    const loadDiscoveryDoctors = async () => {
+      setLoadingClinics(true);
+      const { data, error } = await supabase
+        .from('doctors')
+        .select(`
+          id,
+          clinic_id,
+          full_name,
+          specialty,
+          clinic_address,
+          fee,
+          open_time,
+          close_time,
+          break_start,
+          break_end,
+          work_days,
+          is_active,
+          clinic:clinics!inner (
+            id,
+            name,
+            address,
+            governorate,
+            default_consultation_fee,
+            is_active
+          )
+        `)
+        .eq('is_active', true)
+        .eq('clinic.is_active', true)
+        .order('full_name', { ascending: true });
+
+        if (cancelled) return;
+        if (error) {
+          console.warn('doctor discovery fetch error:', error.message);
+          setDiscoveryDoctors([]);
+          setClinics([]);
+        } else {
+          const doctors = (data || []).map(toBookingDoctor);
+          setDiscoveryDoctors(doctors);
+          const clinicMap = new Map();
+          doctors.forEach(doc => {
+            if (doc.clinic?.id) clinicMap.set(String(doc.clinic.id), doc.clinic);
+          });
+          setClinics(Array.from(clinicMap.values()));
+        }
+        setLoadingClinics(false);
+    };
+
+    const timer = window.setTimeout(loadDiscoveryDoctors, 0);
+
+    return () => { cancelled = true; window.clearTimeout(timer); };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isAr]);
 
   // When clinic is selected, load its doctors
   useEffect(() => {
     // eslint-disable-next-line react-hooks/set-state-in-effect
     if (!selectedClinic) { setClinicDoctors([]); return; }
-    setLoadingDoctors(true);
-    supabase.from('doctors').select('*')
-      .eq('clinic_id', selectedClinic.id)
-      .eq('is_active', true)
-      .then(({ data }) => {
-        setClinicDoctors((data || []).map(d => ({
-          ...d,
-          name: d.full_name || d.name,
-          nameAr: d.full_name || d.nameAr,
-          avatar: (d.full_name || '?').charAt(0).toUpperCase(),
-          available: true,
-          nextSlot: 'Available',
-        })));
-        setLoadingDoctors(false);
-      });
-  }, [selectedClinic]);
+    setLoadingDoctors(false);
+    setClinicDoctors(discoveryDoctors.filter(doc => String(doc.clinic_id) === String(selectedClinic.id)));
+  }, [discoveryDoctors, selectedClinic]);
 
   const [formError, setFormError] = useState('');
   const identityLocked = user?.role === 'patient';
@@ -111,7 +189,7 @@ const Booking = () => {
       if (!user?.id || user.role !== 'patient') return;
       const { data } = await supabase
         .from('profiles')
-        .select('full_name, email, phone_number')
+        .select('full_name, email, phone_number, governorate')
         .eq('id', user.id)
         .maybeSingle();
       if (cancelled) return;
@@ -121,16 +199,24 @@ const Booking = () => {
         phone: normalizeIraqiPhone(data?.phone_number || user.phone || prev.phone) || data?.phone_number || user.phone || prev.phone,
         email: data?.email || user.email || prev.email,
       }));
+      const patientGovernorate = normalizeGovernorate(data?.governorate || user.governorate || '');
+      if (IRAQI_GOVERNORATES.some(g => g.id === patientGovernorate)) setSelectedGovernorate(patientGovernorate);
     };
     loadCanonicalIdentity();
     return () => { cancelled = true; };
-  }, [user?.id, user?.role, user?.name, user?.phone, user?.email]);
+  }, [user?.id, user?.role, user?.name, user?.phone, user?.email, user?.governorate]);
 
   const handleSelectDoctor = (doctor) => {
     setSelectedDoctor(doctor);
     setSelectedDate('');
     setSelectedTime('');
     setBookedSlotsByDate({});
+  };
+
+  const handleSelectDiscoveryDoctor = (doctor) => {
+    setSelectedClinic(doctor.clinic || clinics.find(clinic => String(clinic.id) === String(doctor.clinic_id)) || null);
+    setSelectedSpecialty('');
+    handleSelectDoctor(doctor);
   };
 
   const groupOccupiedSlots = (rows) => {
@@ -291,7 +377,45 @@ const Booking = () => {
     }
   };
 
-  // Filter clinic's doctors by selected specialty
+  const governorateOptions = [
+    { id: ALL_GOVERNORATES, label: t('all_iraq') },
+    ...IRAQI_GOVERNORATES.map(g => ({ id: g.id, label: isAr ? g.ar : g.en })),
+  ];
+
+  const filteredDiscoveryDoctors = useMemo(() => {
+    const search = normalizeSearchText(debouncedDoctorSearch);
+    return discoveryDoctors.filter(doc => {
+      const hasGovernorate = Boolean(doc.governorate);
+      const matchesGovernorate =
+        selectedGovernorate === ALL_GOVERNORATES
+        || (hasGovernorate && doc.governorate === selectedGovernorate);
+      if (!matchesGovernorate) return false;
+
+      if (selectedSpecialty && doc.specialty !== selectedSpecialty) return false;
+      if (!search) return true;
+
+      const haystack = normalizeSearchText([
+        doc.full_name,
+        doc.name,
+        doc.nameAr,
+        doc.clinic_name,
+        doc.specialty,
+        t(doc.specialty),
+        doc.clinic_address,
+        doc.governorate_label,
+      ].filter(Boolean).join(' '));
+      return haystack.includes(search);
+    });
+  }, [debouncedDoctorSearch, discoveryDoctors, selectedGovernorate, selectedSpecialty, t]);
+
+  const clearDiscoveryFilters = () => {
+    setSelectedGovernorate('');
+    setDoctorSearch('');
+    setDebouncedDoctorSearch('');
+    setSelectedSpecialty('');
+  };
+
+  // Filter selected clinic's doctors by selected specialty.
   const filteredDoctors = selectedSpecialty
     ? clinicDoctors.filter(d => d.specialty === selectedSpecialty)
     : clinicDoctors;
@@ -378,7 +502,7 @@ const Booking = () => {
     : '';
   const selectedPayment = paymentMethods.find(p => p.id === paymentMethod);
   const stepLabels = [
-    isAr ? 'العيادة' : 'Clinic',
+    isAr ? 'الطبيب' : 'Doctor',
     isAr ? 'الطبيب' : 'Doctor',
     isAr ? 'الموعد' : 'Date',
     isAr ? 'البيانات' : 'Details',
@@ -408,7 +532,7 @@ const Booking = () => {
             const num = index + 1;
             const state = step === num ? 'active' : step > num ? 'completed' : 'pending';
             return (
-              <div key={label} className={`booking-step booking-step--${state}`}>
+              <div key={`${label}-${num}`} className={`booking-step booking-step--${state}`}>
                 <span>{step > num ? <CheckCircle size={16} /> : num}</span>
                 <strong>{label}</strong>
               </div>
@@ -419,47 +543,103 @@ const Booking = () => {
         <div className="booking-layout">
           <main className="booking-workspace">
           
-          {/* STEP 1: Choose Clinic */}
+          {/* STEP 1: Governorate doctor discovery */}
           {step === 1 && (
             <section className="booking-panel">
               <div className="booking-panel-head">
                 <div>
                   <span>{isAr ? 'الخطوة 1' : 'Step 1'}</span>
-                  <h2><Building2 size={20} /> {isAr ? 'اختر العيادة' : 'Choose clinic'}</h2>
+                  <h2><Stethoscope size={20} /> {isAr ? 'اكتشف الأطباء' : 'Discover doctors'}</h2>
                 </div>
-                <p>{isAr ? 'اختر العيادة التي تريد الحجز لديها.' : 'Select the clinic where you want to book.'}</p>
+                <p>{isAr ? 'اختر المحافظة أو اعرض جميع العراق ثم ابحث عن الطبيب أو العيادة.' : 'Choose a governorate or view all Iraq, then search for a doctor or clinic.'}</p>
               </div>
               {loadingClinics ? (
                 <div className="booking-loading"><span></span><span></span><span></span></div>
-              ) : clinics.length === 0 ? (
-                <div className="booking-empty-state">
-                  <Building2 size={30} />
-                  <p>{isAr ? 'لا توجد عيادات متاحة حالياً' : 'No clinics available'}</p>
-                </div>
               ) : (
-                <div className="booking-clinic-grid">
-                  {clinics.map(clinic => (
-                    <button
-                      key={clinic.id}
-                      type="button"
-                      onClick={() => { setSelectedClinic(clinic); setSelectedDoctor(null); setSelectedDate(''); setSelectedTime(''); setBookedSlotsByDate({}); setSelectedSpecialty(''); }}
-                      className={`booking-clinic-card ${selectedClinic?.id === clinic.id ? 'selected' : ''}`}
+                <>
+                <div className="booking-discovery-toolbar">
+                  <div className="form-group">
+                    <label className="form-label" htmlFor="booking-governorate">{t('governorate')}</label>
+                    <select
+                      id="booking-governorate"
+                      className="input"
+                      value={selectedGovernorate}
+                      onChange={event => {
+                        setSelectedGovernorate(event.target.value);
+                        setSelectedClinic(null);
+                        setSelectedDoctor(null);
+                        setSelectedDate('');
+                        setSelectedTime('');
+                      }}
                     >
-                      <div className="booking-clinic-avatar">
-                        {(clinic.name || '?').charAt(0).toUpperCase()}
-                      </div>
-                      <div className="booking-clinic-main">
-                        <strong>{clinic.name}</strong>
-                        {clinic.address && <span><MapPin size={14} /> {clinic.address}</span>}
-                        {clinic.phone && <span dir="ltr"><Phone size={14} /> {clinic.phone}</span>}
-                      </div>
-                      {selectedClinic?.id === clinic.id && <CheckCircle size={20} />}
+                      <option value="">{isAr ? 'اختر المحافظة' : 'Choose governorate'}</option>
+                      {governorateOptions.map(option => (
+                        <option key={option.id} value={option.id}>{option.label}</option>
+                      ))}
+                    </select>
+                  </div>
+                  <div className="form-group booking-search-group">
+                    <label className="form-label" htmlFor="booking-doctor-search">{t('search_doctor_clinic')}</label>
+                    <div className="booking-search-input">
+                      <Search size={18} />
+                      <input
+                        id="booking-doctor-search"
+                        className="input"
+                        value={doctorSearch}
+                        onChange={event => setDoctorSearch(event.target.value)}
+                        placeholder={t('search_doctor_clinic')}
+                      />
+                    </div>
+                  </div>
+                  <button type="button" className="btn btn-outline booking-clear-filters" onClick={clearDiscoveryFilters}>
+                    <X size={16} /> {t('clear_filters')}
+                  </button>
+                </div>
+
+                <div className="specialty-row booking-specialties">
+                  <button className={`chip ${selectedSpecialty === '' ? 'chip-active' : ''}`} onClick={() => setSelectedSpecialty('')}>
+                    {isAr ? 'الكل' : 'All'}
+                  </button>
+                  {specialties.map(spec => (
+                    <button
+                      key={spec.id}
+                      className={`chip ${selectedSpecialty === spec.id ? 'chip-active' : ''}`}
+                      onClick={() => setSelectedSpecialty(spec.id)}
+                    >
+                      <SpecialtyIcon id={spec.id} size={15} />
+                      {t(spec.id)}
                     </button>
                   ))}
                 </div>
+
+                {!selectedGovernorate ? (
+                  <div className="booking-empty-state">
+                    <MapPin size={30} />
+                    <p>{isAr ? 'اختر محافظة لعرض الأطباء، أو اختر جميع العراق.' : 'Choose a governorate to view doctors, or select All Iraq.'}</p>
+                  </div>
+                ) : filteredDiscoveryDoctors.length === 0 ? (
+                  <div className="booking-empty-state">
+                    <Stethoscope size={30} />
+                    <p>{t('no_results')}</p>
+                    <span>{isAr ? 'لا يوجد أطباء مطابقون في هذه المحافظة. جرّب تغيير المحافظة أو اختر عرض جميع العراق.' : 'No matching doctors were found in this governorate. Try another governorate or view all Iraq.'}</span>
+                  </div>
+                ) : (
+                  <div className="doctors-grid booking-discovery-grid">
+                    {filteredDiscoveryDoctors.map(doc => (
+                      <DoctorCard
+                        key={doc.id}
+                        doctor={doc}
+                        selected={selectedDoctor?.id === doc.id}
+                        onSelect={handleSelectDiscoveryDoctor}
+                        bookingVariant
+                      />
+                    ))}
+                  </div>
+                )}
+                </>
               )}
               <div className="booking-actions booking-actions--end">
-                <button className="btn btn-primary" disabled={!selectedClinic} onClick={handleNext}>
+                <button className="btn btn-primary" disabled={!selectedClinic || !selectedDoctor} onClick={handleNext}>
                   {t('next_step')} <ChevronRight size={18} />
                 </button>
               </div>
