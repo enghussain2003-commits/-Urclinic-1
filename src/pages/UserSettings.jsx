@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Settings, Lock, LogOut } from 'lucide-react';
+import { Settings, Lock, LogOut, Volume2 } from 'lucide-react';
 import { useApp } from '../context/AppContext';
 import { supabase } from '../supabaseClient';
 import { useNavigate } from 'react-router-dom';
@@ -9,7 +9,7 @@ import { getLocalizedErrorMessage } from '../utils/errorMessages';
 const UserSettings = () => {
   const { t } = useTranslation();
   const isAr = t('email') === 'البريد الإلكتروني';
-  const { user, logout } = useApp();
+  const { user, logout, patientCallSoundEnabled, setPatientCallSoundEnabled } = useApp();
   const navigate = useNavigate();
   
   const [password, setPassword] = useState('');
@@ -133,6 +133,28 @@ const UserSettings = () => {
             </button>
           </div>
         </form>
+
+        <hr style={{ margin: '2rem 0', borderColor: 'var(--border)' }} />
+
+        <div className="flex justify-between items-center flex-wrap gap-md mb-xl">
+          <div>
+            <h4 style={{ margin: 0 }}>
+              <Volume2 size={18} style={{ display: 'inline', verticalAlign: 'text-bottom', marginInlineEnd: 8 }} />
+              {t('patient_call_sound')}
+            </h4>
+            <p className="text-sm text-muted" style={{ margin: '0.25rem 0 0' }}>
+              {t('patient_call_sound_desc')}
+            </p>
+          </div>
+          <label className="patient-call-sound-toggle">
+            <input
+              type="checkbox"
+              checked={patientCallSoundEnabled}
+              onChange={event => setPatientCallSoundEnabled(event.target.checked)}
+            />
+            <span>{patientCallSoundEnabled ? t('enabled') : t('disabled')}</span>
+          </label>
+        </div>
 
         <hr style={{ margin: '2rem 0', borderColor: 'var(--border)' }} />
 

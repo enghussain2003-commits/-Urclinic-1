@@ -14,6 +14,13 @@ import {
 import { isDemoModeEnabled } from '../demo/demoMode';
 import { clearStoredUser, setStoredUser } from '../services/sessionService';
 import { SUPPORT_NOTIFICATION_TYPES } from '../services/supportService';
+import {
+  isPatientCallNotification,
+  isPatientCallRecipientRole,
+  playPatientCallChime,
+  readPatientCallSoundPreference,
+  savePatientCallSoundPreference,
+} from '../services/patientCallService';
 import { validateIraqiPhone, validatePersonName } from '../utils/identityValidation';
 
 const AppContext = createContext();
@@ -218,6 +225,8 @@ export const AppProvider = ({ children }) => {
   const [appointments, setAppointments] = useState([]);
   const [patients, setPatients] = useState([]);
   const [notifications, setNotifications] = useState([]);
+  const [patientCallToasts, setPatientCallToasts] = useState([]);
+  const [patientCallSoundEnabled, setPatientCallSoundEnabledState] = useState(readPatientCallSoundPreference);
   const [loading, setLoading] = useState(true);
   // When the logged-in user is a patient, this holds every patients.id row they own
   // across all clinics (patients.auth_user_id = auth.uid()). Drives ID-based linkage
@@ -227,6 +236,7 @@ export const AppProvider = ({ children }) => {
   // Stores the current clinic's doctor IDs so the Realtime callback can apply
   // the same filter as the initial fetch (null = no restriction = super_admin/patient).
   const clinicDoctorIdsRef = useRef(null);
+  const patientCallToastIdsRef = useRef(new Set());
 
   const clearSessionState = useCallback(() => {
     clearStoredUser();
@@ -235,8 +245,20 @@ export const AppProvider = ({ children }) => {
     setAppointments([]);
     setPatients([]);
     setNotifications([]);
+    setPatientCallToasts([]);
     setMyPatientIds([]);
     clinicDoctorIdsRef.current = null;
+    patientCallToastIdsRef.current = new Set();
+  }, []);
+
+  const dismissPatientCallToast = useCallback((id) => {
+    setPatientCallToasts(prev => prev.filter(item => String(item.id) !== String(id)));
+  }, []);
+
+  const setPatientCallSoundEnabled = useCallback((enabled) => {
+    const nextEnabled = Boolean(enabled);
+    savePatientCallSoundPreference(nextEnabled);
+    setPatientCallSoundEnabledState(nextEnabled);
   }, []);
 
   const refreshAuthProfile = useCallback(async (sessionOverride = null, options = {}) => {
@@ -599,6 +621,16 @@ export const AppProvider = ({ children }) => {
             (payload) => {
               if (!active || !payload.new) return;
               setNotifications(prev => sortNotifications(mergeById([payload.new], prev)));
+              if (
+                isPatientCallNotification(payload.new)
+                && isPatientCallRecipientRole(user?.role)
+                && !payload.new.acknowledged_at
+                && !patientCallToastIdsRef.current.has(String(payload.new.id))
+              ) {
+                patientCallToastIdsRef.current.add(String(payload.new.id));
+                setPatientCallToasts(prev => sortNotifications(mergeById([payload.new], prev)).slice(0, 4));
+                playPatientCallChime();
+              }
             })
           .on('postgres_changes',
             { event: 'UPDATE', schema: 'public', table: 'notifications', filter: `user_id=eq.${authUser.id}` },
@@ -1068,6 +1100,80 @@ export const AppProvider = ({ children }) => {
     return { appointment: updated, payment: paymentRow, already_recorded: !!payload?.already_recorded };
   };
 
+  const callPatientForAppointment = async (appointmentId) => {
+    if (!appointmentId) {
+      const err = new Error('PATIENT_CALL_APPOINTMENT_NOT_FOUND');
+      err.code = 'PATIENT_CALL_APPOINTMENT_NOT_FOUND';
+      throw err;
+    }
+
+    if (isDemoModeEnabled(user)) {
+      return { ok: true, code: 'PATIENT_CALL_SENT', recipients_count: 1 };
+    }
+
+    const { data, error } = await supabase.rpc('call_patient_for_appointment', {
+      p_appointment_id: appointmentId,
+    });
+
+    if (error) {
+      console.error('Patient call RPC failed:', error);
+      const err = new Error('PATIENT_CALL_FAILED');
+      err.code = error.code || 'PATIENT_CALL_FAILED';
+      err.cause = error;
+      throw err;
+    }
+
+    const payload = Array.isArray(data) ? data[0] : data;
+    if (!payload?.ok) {
+      const err = new Error(payload?.code || 'PATIENT_CALL_FAILED');
+      err.code = payload?.code || 'PATIENT_CALL_FAILED';
+      err.details = payload;
+      throw err;
+    }
+
+    return payload;
+  };
+
+  const acknowledgePatientCall = async (notificationId) => {
+    if (!notificationId) return null;
+
+    if (isDemoModeEnabled(user)) {
+      const acknowledgedAt = new Date().toISOString();
+      setNotifications(prev => prev.map(n => String(n.id) === String(notificationId)
+        ? { ...n, is_read: true, acknowledged_at: acknowledgedAt, acknowledged_by: user?.id || null }
+        : n));
+      dismissPatientCallToast(notificationId);
+      return { ok: true, code: 'PATIENT_CALL_ACKNOWLEDGED', acknowledged_at: acknowledgedAt };
+    }
+
+    const { data, error } = await supabase.rpc('acknowledge_patient_call', {
+      p_notification_id: notificationId,
+    });
+
+    if (error) {
+      console.error('Patient call acknowledge RPC failed:', error);
+      const err = new Error('PATIENT_CALL_ACK_FAILED');
+      err.code = error.code || 'PATIENT_CALL_ACK_FAILED';
+      err.cause = error;
+      throw err;
+    }
+
+    const payload = Array.isArray(data) ? data[0] : data;
+    if (!payload?.ok) {
+      const err = new Error(payload?.code || 'PATIENT_CALL_ACK_FAILED');
+      err.code = payload?.code || 'PATIENT_CALL_ACK_FAILED';
+      err.details = payload;
+      throw err;
+    }
+
+    const acknowledgedAt = payload.acknowledged_at || new Date().toISOString();
+    setNotifications(prev => prev.map(n => String(n.id) === String(notificationId)
+      ? { ...n, is_read: true, acknowledged_at: acknowledgedAt, acknowledged_by: user?.id || null }
+      : n));
+    dismissPatientCallToast(notificationId);
+    return payload;
+  };
+
   const markNotificationRead = async (id) => {
     setNotifications(prev => prev.map(n => n.id === id ? { ...n, is_read: true } : n));
     try { await supabase.from('notifications').update({ is_read: true }).eq('id', id); }
@@ -1227,6 +1333,8 @@ export const AppProvider = ({ children }) => {
       addDoctor, deleteDoctor,
       addMedicalHistory, addMedicalFile, sendNotification, createPrescription,
       notifications, refreshNotifications, readAllNotifications, markNotificationRead, markAllNotificationsRead, unreadCount, supportUnreadCount,
+      callPatientForAppointment, acknowledgePatientCall, patientCallToasts, dismissPatientCallToast,
+      patientCallSoundEnabled, setPatientCallSoundEnabled,
     }}>
       {children}
     </AppContext.Provider>

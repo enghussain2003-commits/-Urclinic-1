@@ -1,9 +1,10 @@
 import { useState, useRef, useEffect } from 'react';
-import { Bell, CheckCheck, Volume2, CalendarPlus, RefreshCw, XCircle, UserRoundCog, KeyRound } from 'lucide-react';
+import { Bell, CheckCheck, Volume2, CalendarPlus, Megaphone, RefreshCw, XCircle, UserRoundCog, KeyRound } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
 import { useApp } from '../context/AppContext';
 import { localizedSupportText, markSupportTicketRead, supportRouteForNotification } from '../services/supportService';
+import { isPatientCallNotification, localizedPatientCallText, patientCallMetaLine } from '../services/patientCallService';
 
 const NotificationBell = () => {
   const { t, i18n } = useTranslation();
@@ -27,6 +28,7 @@ const NotificationBell = () => {
   const getNotifIcon = (type) => {
     switch(type) {
       case 'call': return <Volume2 size={18} color="var(--primary)" />;
+      case 'patient_call': return <Megaphone size={18} color="var(--primary)" />;
       case 'appointment_new': return <CalendarPlus size={18} color="var(--success)" />;
       case 'appointment_update': return <RefreshCw size={18} color="var(--info)" />;
       case 'appointment_cancel': return <XCircle size={18} color="var(--danger)" />;
@@ -77,6 +79,16 @@ const NotificationBell = () => {
       refreshNotifications();
     }
   };
+
+  const notificationTitle = (notif) =>
+    isPatientCallNotification(notif)
+      ? localizedPatientCallText(notif, 'title', isAr)
+      : localizedSupportText(notif, 'title', isAr);
+
+  const notificationMessage = (notif) =>
+    isPatientCallNotification(notif)
+      ? localizedPatientCallText(notif, 'message', isAr)
+      : localizedSupportText(notif, 'message', isAr);
 
   return (
     <div style={{ position: 'relative' }} ref={dropdownRef}>
@@ -140,7 +152,7 @@ const NotificationBell = () => {
                       fontSize: '0.875rem',
                       marginBottom: 2
                     }}>
-                      {localizedSupportText(notif, 'title', isAr)}
+                      {notificationTitle(notif)}
                     </div>
                     <p style={{ 
                       margin: 0, fontSize: '0.8rem', 
@@ -149,8 +161,13 @@ const NotificationBell = () => {
                       overflow: 'hidden', textOverflow: 'ellipsis',
                       display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical'
                     }}>
-                      {localizedSupportText(notif, 'message', isAr)}
+                      {notificationMessage(notif)}
                     </p>
+                    {isPatientCallNotification(notif) && patientCallMetaLine(notif, isAr) && (
+                      <span className="notif-meta-line">
+                        {patientCallMetaLine(notif, isAr)}
+                      </span>
+                    )}
                     <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)', marginTop: 4, display: 'block' }}>
                       {getTimeAgo(notif.created_at)}
                     </span>

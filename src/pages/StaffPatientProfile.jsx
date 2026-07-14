@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useParams, useNavigate } from 'react-router-dom';
 import {
@@ -31,13 +31,29 @@ import PrescriptionViewer from '../components/PrescriptionViewer';
 import ContactActionsCard from '../components/ContactActionsCard';
 import { buildContactMessage } from '../services/contactService';
 import { getLocalizedErrorMessage } from '../utils/errorMessages';
+import { isPatientCallEligibleStatus, patientCallErrorMessage } from '../services/patientCallService';
+
+const localDateKey = (date = new Date()) => {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, '0');
+  const day = String(date.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
+};
 
 const StaffPatientProfile = () => {
   const { id } = useParams();
   const { t, i18n } = useTranslation();
   const isAr = i18n.language === 'ar';
   const navigate = useNavigate();
-  const { doctors, sendNotification, user, addMedicalHistory, addMedicalFile, createPrescription } = useApp();
+  const {
+    doctors,
+    appointments,
+    user,
+    addMedicalHistory,
+    addMedicalFile,
+    createPrescription,
+    callPatientForAppointment,
+  } = useApp();
   const toast = useToast();
 
   const [patient, setPatient] = useState(null);
@@ -53,6 +69,7 @@ const StaffPatientProfile = () => {
     medicines: [{ name: '', dosage: '', instructions: '' }],
   });
   const [loading, setLoading] = useState(true);
+  const [callingPatient, setCallingPatient] = useState(false);
   const [showAddVisit, setShowAddVisit] = useState(false);
   const [showAddFile, setShowAddFile] = useState(false);
   const [expandedVisit, setExpandedVisit] = useState(null);
@@ -213,19 +230,36 @@ const StaffPatientProfile = () => {
     }
   };
 
+  const todayCallAppointment = useMemo(() => {
+    if (!patient || user?.role !== 'doctor') return null;
+    const myDoctor = doctors.find(d => String(d.profile_id || '') === String(user?.id || ''));
+    if (!myDoctor?.id) return null;
+    const today = localDateKey();
+    return appointments.find(apt =>
+      String(apt.patient_id || '') === String(patient.id)
+      && String(apt.doctor_id || '') === String(myDoctor.id)
+      && String(apt.clinic_id || '') === String(patient.clinic_id || '')
+      && String(apt.date || apt.appointment_date || '') === today
+      && isPatientCallEligibleStatus(apt.status)
+    ) || null;
+  }, [appointments, doctors, patient, user?.id, user?.role]);
+
   const handleCallPatient = async () => {
-    if (!patient) return;
-    const success = await sendNotification(
-      patient.id,
-      'استدعاء المريض',
-      `يرجى التوجه إلى غرفة الفحص الآن - ${patient.full_name}`,
-      'call',
-      { clinic_id: patient.clinic_id, called_by: user?.id, called_by_name: user?.name || user?.full_name }
-    );
-    if (success) {
-      toast.success(isAr ? 'تم استدعاء المريض بنجاح.' : 'Patient was called successfully.');
-    } else {
-      toast.error(isAr ? 'تعذر إرسال استدعاء المريض.' : 'Could not send the patient call notification.');
+    if (!todayCallAppointment || callingPatient) {
+      toast.error(isAr
+        ? 'يمكن استدعاء المريض من موعد اليوم المقبول أو قيد الكشف فقط.'
+        : "You can only call this patient from today's approved or in-progress appointment.");
+      return;
+    }
+    setCallingPatient(true);
+    try {
+      const result = await callPatientForAppointment(todayCallAppointment.id);
+      toast.success(patientCallErrorMessage(result?.code || 'PATIENT_CALL_SENT', isAr));
+    } catch (err) {
+      console.error('Patient profile call failed:', err);
+      toast.error(patientCallErrorMessage(err?.code || err?.message, isAr));
+    } finally {
+      setCallingPatient(false);
     }
   };
 
@@ -315,8 +349,13 @@ const StaffPatientProfile = () => {
           </div>
         </div>
         <div className="patient-emr-hero-actions">
-          <button className="btn btn-primary" onClick={handleCallPatient}>
-            <Bell size={18} /> {isAr ? 'استدعاء المريض' : 'Call patient'}
+          <button
+            className="btn btn-primary"
+            onClick={handleCallPatient}
+            disabled={callingPatient || !todayCallAppointment}
+            title={isAr ? 'يتطلب موعداً مؤهلاً لهذا اليوم' : 'Requires an eligible appointment today'}
+          >
+            <Bell size={18} /> {callingPatient ? t('loading') : (isAr ? 'استدعاء المريض' : 'Call patient')}
           </button>
           <button className="btn btn-outline" onClick={() => { setActiveTab('prescriptions'); setShowAddRx(true); }}>
             <Pill size={18} /> {t('new_prescription')}
@@ -642,8 +681,12 @@ const StaffPatientProfile = () => {
               <button onClick={() => { setActiveTab('files'); setShowAddFile(true); }}>
                 <Upload size={17} /><span>{isAr ? 'رفع ملف' : 'Upload file'}</span>
               </button>
-              <button onClick={handleCallPatient}>
-                <Bell size={17} /><span>{isAr ? 'استدعاء المريض' : 'Call patient'}</span>
+              <button
+                onClick={handleCallPatient}
+                disabled={callingPatient || !todayCallAppointment}
+                title={isAr ? 'يتطلب موعداً مؤهلاً لهذا اليوم' : 'Requires an eligible appointment today'}
+              >
+                <Bell size={17} /><span>{callingPatient ? t('loading') : (isAr ? 'استدعاء المريض' : 'Call patient')}</span>
               </button>
             </div>
           </div>

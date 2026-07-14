@@ -10,6 +10,8 @@ import {
   ChevronRight,
   Clock,
   FileText,
+  Loader2,
+  Megaphone,
   NotebookPen,
   Phone,
   Play,
@@ -28,16 +30,26 @@ import { to12Hour } from '../components/TimeSlotGrid';
 import PaymentCompletionModal from '../components/PaymentCompletionModal';
 import { useToast } from '../hooks/useToast';
 import { getLocalizedErrorMessage } from '../utils/errorMessages';
+import { isPatientCallEligibleStatus, patientCallErrorMessage } from '../services/patientCallService';
+
+const localDateKey = (date = new Date()) => {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, '0');
+  const day = String(date.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
+};
 
 const DoctorDashboard = () => {
   const { t, i18n } = useTranslation();
   const isAr = i18n.language === 'ar';
   const navigate = useNavigate();
   const toast = useToast();
-  const { user, appointments, doctors, patients, notifications, changeStatus, completeAppointmentWithPayment, loading } = useApp();
+  const { user, appointments, doctors, patients, notifications, changeStatus, completeAppointmentWithPayment, callPatientForAppointment, loading } = useApp();
   const [patientQuery, setPatientQuery] = useState('');
   const [paymentAppointment, setPaymentAppointment] = useState(null);
   const [statusBusyId, setStatusBusyId] = useState(null);
+  const [callBusyId, setCallBusyId] = useState(null);
+  const [recentlyCalledIds, setRecentlyCalledIds] = useState([]);
 
   useEffect(() => {
     document.documentElement.dir = isAr ? 'rtl' : 'ltr';
@@ -45,9 +57,14 @@ const DoctorDashboard = () => {
   }, [i18n.language, isAr]);
 
   const stats = useDoctorStats({ appointments, doctors, patients, user });
+  const todayKey = localDateKey();
+  const myDoctor = useMemo(
+    () => doctors.find(d => String(d.profile_id || '') === String(user?.id || '')),
+    [doctors, user?.id],
+  );
 
   const statusBadge = s => ({
-    pending: 'badge-warning', approved: 'badge-info', confirmed: 'badge-info', in_progress: 'badge-primary',
+    pending: 'badge-warning', approved: 'badge-info', confirmed: 'badge-info', in_progress: 'badge-primary', checked_in: 'badge-primary',
     completed: 'badge-success', cancelled: 'badge-danger', rejected: 'badge-danger',
     'no-show': 'badge-danger', no_show: 'badge-danger',
   }[s] || 'badge-warning');
@@ -67,11 +84,55 @@ const DoctorDashboard = () => {
     }
   };
 
+  const canCallPatient = (apt) =>
+    user?.role === 'doctor'
+    && apt?.id
+    && myDoctor?.id
+    && String(apt.doctor_id || '') === String(myDoctor.id)
+    && (!user?.clinic_id || String(apt.clinic_id || '') === String(user.clinic_id))
+    && String(apt.date || apt.appointment_date || '') === todayKey
+    && isPatientCallEligibleStatus(apt.status);
+
+  const handleCallPatient = async (apt) => {
+    if (!apt || callBusyId || !canCallPatient(apt)) return;
+    setCallBusyId(apt.id);
+    try {
+      const result = await callPatientForAppointment(apt.id);
+      setRecentlyCalledIds(prev => Array.from(new Set([apt.id, ...prev])).slice(0, 12));
+      window.setTimeout(() => {
+        setRecentlyCalledIds(prev => prev.filter(id => String(id) !== String(apt.id)));
+      }, 60000);
+      toast.success(patientCallErrorMessage(result?.code || 'PATIENT_CALL_SENT', isAr));
+    } catch (err) {
+      console.error('Doctor patient call failed:', err);
+      toast.error(patientCallErrorMessage(err?.code || err?.message, isAr));
+    } finally {
+      setCallBusyId(null);
+    }
+  };
+
+  const renderCallButton = (apt) => {
+    if (!canCallPatient(apt)) return null;
+    const isBusy = String(callBusyId || '') === String(apt.id);
+    const wasSent = recentlyCalledIds.some(id => String(id) === String(apt.id));
+    return (
+      <button
+        className={`btn btn-sm doctor-btn-call ${wasSent ? 'is-sent' : ''}`}
+        disabled={!!callBusyId || !!statusBusyId}
+        onClick={() => handleCallPatient(apt)}
+      >
+        {isBusy ? <Loader2 size={13} className="spin" /> : <Megaphone size={13} />}
+        {wasSent ? t('patient_call_sent_short') : t('call_patient')}
+      </button>
+    );
+  };
+
   const renderActions = apt => {
     const s = apt.status;
     if (s === 'pending' || s === 'approved' || s === 'confirmed') {
       return (
         <div className="doctor-action-row">
+          {renderCallButton(apt)}
           <button className="btn btn-sm btn-primary" disabled={!!statusBusyId} onClick={() => handleStatusChange(apt, 'in_progress')}>
             <Play size={13} /> {t('start_visit')}
           </button>
@@ -84,9 +145,10 @@ const DoctorDashboard = () => {
         </div>
       );
     }
-    if (s === 'in_progress') {
+    if (s === 'in_progress' || s === 'checked_in') {
       return (
         <div className="doctor-action-row">
+          {renderCallButton(apt)}
           <button className="btn btn-sm btn-success" onClick={() => setPaymentAppointment(apt)}>
             <CheckCircle size={13} /> {t('complete_visit')}
           </button>
@@ -104,8 +166,8 @@ const DoctorDashboard = () => {
   });
 
   const drPrefix = isAr ? 'د. ' : 'Dr. ';
-  const nextPatient = stats.todayList.find(a => ['pending', 'approved', 'confirmed', 'in_progress'].includes(a.status));
-  const waitingQueue = stats.todayList.filter(a => ['pending', 'approved', 'confirmed', 'in_progress'].includes(a.status)).slice(0, 5);
+  const nextPatient = stats.todayList.find(a => ['pending', 'approved', 'confirmed', 'in_progress', 'checked_in'].includes(a.status));
+  const waitingQueue = stats.todayList.filter(a => ['pending', 'approved', 'confirmed', 'in_progress', 'checked_in'].includes(a.status)).slice(0, 5);
   const recentNotifications = notifications.slice(0, 4);
 
   const filteredPatients = useMemo(() => {

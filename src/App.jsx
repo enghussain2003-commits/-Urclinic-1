@@ -5,6 +5,7 @@ import { ToastProvider } from './components/ToastProvider';
 import Navbar from './components/Navbar';
 import Sidebar from './components/Sidebar';
 import NotificationBell from './components/NotificationBell';
+import PatientCallToastStack from './components/PatientCallToastStack';
 import Home from './pages/Home';
 import Login from './pages/Login';
 import SignUp from './pages/SignUp';
@@ -233,6 +234,7 @@ function App() {
             <Route path="*" element={<Navigate to="/" replace />} />
             </Routes>
           </Layout>
+          <PatientCallToastStack />
         </Router>
       </ToastProvider>
     </AppProvider>
