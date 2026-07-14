@@ -6,6 +6,7 @@ import { Calendar, Clock, Users, CheckCircle, XCircle, ArrowRight } from 'lucide
 import StatCard from '../components/analytics/StatCard';
 import { to12Hour } from '../components/TimeSlotGrid';
 import PaymentCompletionModal from '../components/PaymentCompletionModal';
+import { useToast } from '../hooks/useToast';
 
 const VOID = ['cancelled', 'rejected', 'completed'];
 
@@ -18,8 +19,10 @@ const EmployeeDashboard = () => {
   const { t, i18n } = useTranslation();
   const isAr = i18n.language === 'ar';
   const navigate = useNavigate();
+  const toast = useToast();
   const { appointments, doctors, changeStatus, completeAppointmentWithPayment, user, loading } = useApp();
   const [paymentAppointment, setPaymentAppointment] = useState(null);
+  const [statusBusyId, setStatusBusyId] = useState(null);
 
   const today = new Date().toISOString().slice(0, 10);
 
@@ -63,6 +66,18 @@ const EmployeeDashboard = () => {
   const dateLabel = new Date().toLocaleDateString(isAr ? 'ar-EG' : 'en-US', {
     weekday: 'long', year: 'numeric', month: 'long', day: 'numeric',
   });
+
+  const handleStatusChange = async (apt, nextStatus) => {
+    if (!apt || statusBusyId) return;
+    setStatusBusyId(`${apt.id}:${nextStatus}`);
+    try {
+      await changeStatus(apt.id, nextStatus);
+    } catch (err) {
+      toast.error(err?.message || (isAr ? 'تعذر تحديث حالة الموعد.' : 'Could not update appointment status.'));
+    } finally {
+      setStatusBusyId(null);
+    }
+  };
 
   return (
     <div className="page-padding animate-in">
@@ -146,14 +161,16 @@ const EmployeeDashboard = () => {
                         <button
                           className="btn btn-sm"
                           style={{ background: 'var(--success)', color: '#fff' }}
-                          onClick={() => changeStatus(apt.id, 'approved')}
+                          disabled={!!statusBusyId}
+                          onClick={() => handleStatusChange(apt, 'approved')}
                         >
                           <CheckCircle size={13} /> {t('approve')}
                         </button>
                         <button
                           className="btn btn-sm btn-outline"
                           style={{ borderColor: 'var(--danger)', color: 'var(--danger)' }}
-                          onClick={() => changeStatus(apt.id, 'rejected')}
+                          disabled={!!statusBusyId}
+                          onClick={() => handleStatusChange(apt, 'rejected')}
                         >
                           <XCircle size={13} /> {t('reject')}
                         </button>
@@ -207,14 +224,16 @@ const EmployeeDashboard = () => {
                       <button
                         className="btn btn-sm"
                         style={{ background: 'var(--success)', color: '#fff', flex: 1 }}
-                        onClick={() => changeStatus(apt.id, 'approved')}
+                        disabled={!!statusBusyId}
+                        onClick={() => handleStatusChange(apt, 'approved')}
                       >
                         <CheckCircle size={13} /> {t('approve')}
                       </button>
                       <button
                         className="btn btn-sm btn-outline"
                         style={{ borderColor: 'var(--danger)', color: 'var(--danger)', flex: 1 }}
-                        onClick={() => changeStatus(apt.id, 'rejected')}
+                        disabled={!!statusBusyId}
+                        onClick={() => handleStatusChange(apt, 'rejected')}
                       >
                         <XCircle size={13} /> {t('reject')}
                       </button>

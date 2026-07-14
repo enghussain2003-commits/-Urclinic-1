@@ -141,6 +141,17 @@ const fetchAppointmentsWithPatients = async (clinicDoctorIds = null) => {
   return { data: await hydrateAppointments(data || []), error: null };
 };
 
+const fetchAppointmentWithPatient = async (id) => {
+  const { data, error } = await supabase
+    .from('appointments')
+    .select(APPOINTMENTS_WITH_PATIENT_SELECT)
+    .eq('id', id)
+    .single();
+  if (error) return { data: null, error };
+  const [hydrated] = await hydrateAppointments(data ? [data] : []);
+  return { data: hydrated || null, error: null };
+};
+
 const ACTIVE_APPOINTMENT_STATUSES = ['pending', 'approved', 'in_progress', 'confirmed'];
 
 const sortNotifications = (list = []) =>
@@ -723,30 +734,64 @@ export const AppProvider = ({ children }) => {
       throw new Error('Use completeAppointmentWithPayment to complete appointments with payment recording.');
     }
 
-    const apt = appointments.find(a => a.id === id);
-    const completedAt = status === 'completed' ? new Date().toISOString() : null;
-    // Update in-memory immediately (re-scope as a safety net).
-    setAppointments(prev => scopeToClinic(prev.map(a => a.id === id ? { ...a, status, completed_at: completedAt } : a), clinicDoctorIdsRef.current));
+    const apt = appointments.find(a => String(a.id) === String(id));
+    if (!apt) throw new Error('Appointment not found');
+
+    const normalizedStatus = status === 'confirmed' ? 'approved' : status;
+
+    if (user?.role === 'patient' && normalizedStatus !== 'cancelled') {
+      throw new Error('Patients cannot approve or reject appointments');
+    }
+
+    if (user?.role === 'doctor') {
+      const doctor = doctors.find(d => String(d.id) === String(apt.doctor_id));
+      if (String(doctor?.profile_id || '') !== String(user?.id || '')) {
+        throw new Error('Doctors can only update appointments assigned to them');
+      }
+    }
 
     if (isDemoModeEnabled(user)) {
-      updateDemoAppointmentStatus(id, status);
+      updateDemoAppointmentStatus(id, normalizedStatus);
+      setAppointments(prev => prev.map(a => String(a.id) === String(id) ? { ...a, status: normalizedStatus } : a));
       return;
     }
 
-    // Best-effort persist to Supabase.
-    try {
-      const { error } = await supabase.from('appointments').update({ status }).eq('id', id);
-      if (error) console.warn("Supabase status update failed (kept locally):", error.message);
-    } catch (err) {
-      console.warn(err);
+    const updateRow = { status: normalizedStatus };
+    if (normalizedStatus === 'approved') {
+      updateRow.approved_at = new Date().toISOString();
+    }
+    const { data, error } = await supabase
+      .from('appointments')
+      .update(updateRow)
+      .eq('id', id)
+      .select('id,status,approved_at')
+      .single();
+
+    if (error) {
+      const formatted = formatSupabaseError(error);
+      console.error('appointments status update failed', { id, status: normalizedStatus, error });
+      throw new Error(`Appointment status update failed: ${formatted}`);
     }
 
+    if (!data?.id || data.status !== normalizedStatus) {
+      throw new Error('Appointment status update failed: no persisted appointment row was returned');
+    }
+
+    const { data: refreshed, error: refreshError } = await fetchAppointmentWithPatient(id);
+    if (refreshError) {
+      const formatted = formatSupabaseError(refreshError);
+      console.error('appointments status refresh failed', { id, error: refreshError });
+      throw new Error(`Appointment updated, but refresh failed: ${formatted}`);
+    }
+
+    setAppointments(prev => scopeToClinic(prev.map(a => String(a.id) === String(id) ? refreshed : a), clinicDoctorIdsRef.current));
+
     // Notify the patient when staff approve / reject their request (best-effort).
-    if (status === 'approved' || status === 'confirmed' || status === 'rejected') {
-      const uid = await resolvePatientUserId(apt);
+    if (normalizedStatus === 'approved' || normalizedStatus === 'rejected') {
+      const uid = await resolvePatientUserId(refreshed || apt);
       if (uid) {
         const ar = i18n.language === 'ar';
-        const ok = status === 'approved' || status === 'confirmed';
+        const ok = normalizedStatus === 'approved';
         // The notification must carry the appointment's clinic_id so the 0005
         // RLS policy admits it for staff/doctor inserters.
         await sendNotification(
@@ -758,10 +803,12 @@ export const AppProvider = ({ children }) => {
              : (ar ? `نأسف، تم رفض موعدك بتاريخ ${apt?.date || ''}`
                    : `We're sorry, your appointment on ${apt?.date || ''} was rejected`),
           ok ? 'appointment_confirmed' : 'appointment_rejected',
-          { clinic_id: apt?.clinic_id },
+          { clinic_id: refreshed?.clinic_id || apt?.clinic_id },
         );
       }
     }
+
+    return refreshed;
   };
 
   const completeAppointmentWithPayment = async (id, paymentInput = {}) => {

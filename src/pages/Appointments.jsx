@@ -19,17 +19,20 @@ import ContactActionsCard from '../components/ContactActionsCard';
 import PaymentCompletionModal from '../components/PaymentCompletionModal';
 import { buildContactMessage } from '../services/contactService';
 import { DEFAULT_CURRENCY, formatMoney, normalizeCurrency, normalizeCurrencyAmount } from '../utils/money';
+import { useToast } from '../hooks/useToast';
 
 const Appointments = () => {
   const { t, i18n } = useTranslation();
   const isAr = i18n.language === 'ar';
   const navigate = useNavigate();
   const { appointments, doctors, changeStatus, completeAppointmentWithPayment, loading, user } = useApp();
+  const toast = useToast();
 
   const [filter, setFilter] = useState('all');
   const [query, setQuery] = useState('');
   const [selectedAppointment, setSelectedAppointment] = useState(null);
   const [paymentAppointment, setPaymentAppointment] = useState(null);
+  const [statusBusyId, setStatusBusyId] = useState(null);
 
   useEffect(() => {
     document.documentElement.dir = isAr ? 'rtl' : 'ltr';
@@ -127,6 +130,21 @@ const Appointments = () => {
     };
   };
 
+  const handleStatusChange = async (apt, nextStatus) => {
+    if (!apt || statusBusyId) return;
+    setStatusBusyId(`${apt.id}:${nextStatus}`);
+    try {
+      const updated = await changeStatus(apt.id, nextStatus);
+      if (selectedAppointment && String(selectedAppointment.id) === String(apt.id)) {
+        setSelectedAppointment(updated);
+      }
+    } catch (err) {
+      toast.error(err?.message || (isAr ? 'تعذر تحديث حالة الموعد.' : 'Could not update appointment status.'));
+    } finally {
+      setStatusBusyId(null);
+    }
+  };
+
   const handleCompleteAppointment = async (id, paymentInput) => {
     const result = await completeAppointmentWithPayment(id, paymentInput);
     if (selectedAppointment && String(selectedAppointment.id) === String(id)) {
@@ -191,10 +209,10 @@ const Appointments = () => {
     if (apt.status !== 'pending') return <span className="text-muted text-sm">-</span>;
     return (
       <div className="operational-action-row">
-        <button className="btn btn-sm btn-success" onClick={() => changeStatus(apt.id, 'approved')}>
+        <button className="btn btn-sm btn-success" disabled={!!statusBusyId} onClick={() => handleStatusChange(apt, 'approved')}>
           <CheckCircle size={15} /> {isAr ? 'قبول' : 'Approve'}
         </button>
-        <button className="btn btn-sm btn-outline operational-danger-btn" onClick={() => changeStatus(apt.id, 'rejected')}>
+        <button className="btn btn-sm btn-outline operational-danger-btn" disabled={!!statusBusyId} onClick={() => handleStatusChange(apt, 'rejected')}>
           <XCircle size={15} /> {isAr ? 'رفض' : 'Reject'}
         </button>
       </div>

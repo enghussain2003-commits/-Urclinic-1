@@ -26,14 +26,17 @@ import StatCard from '../components/analytics/StatCard';
 import SvgBarChart from '../components/analytics/SvgBarChart';
 import { to12Hour } from '../components/TimeSlotGrid';
 import PaymentCompletionModal from '../components/PaymentCompletionModal';
+import { useToast } from '../hooks/useToast';
 
 const DoctorDashboard = () => {
   const { t, i18n } = useTranslation();
   const isAr = i18n.language === 'ar';
   const navigate = useNavigate();
+  const toast = useToast();
   const { user, appointments, doctors, patients, notifications, changeStatus, completeAppointmentWithPayment, loading } = useApp();
   const [patientQuery, setPatientQuery] = useState('');
   const [paymentAppointment, setPaymentAppointment] = useState(null);
+  const [statusBusyId, setStatusBusyId] = useState(null);
 
   useEffect(() => {
     document.documentElement.dir = isAr ? 'rtl' : 'ltr';
@@ -50,18 +53,30 @@ const DoctorDashboard = () => {
 
   const statusLabel = s => t(s === 'no-show' ? 'no_show' : s);
 
+  const handleStatusChange = async (apt, nextStatus) => {
+    if (!apt || statusBusyId) return;
+    setStatusBusyId(`${apt.id}:${nextStatus}`);
+    try {
+      await changeStatus(apt.id, nextStatus);
+    } catch (err) {
+      toast.error(err?.message || (isAr ? 'تعذر تحديث حالة الموعد.' : 'Could not update appointment status.'));
+    } finally {
+      setStatusBusyId(null);
+    }
+  };
+
   const renderActions = apt => {
     const s = apt.status;
     if (s === 'pending' || s === 'approved' || s === 'confirmed') {
       return (
         <div className="doctor-action-row">
-          <button className="btn btn-sm btn-primary" onClick={() => changeStatus(apt.id, 'in_progress')}>
+          <button className="btn btn-sm btn-primary" disabled={!!statusBusyId} onClick={() => handleStatusChange(apt, 'in_progress')}>
             <Play size={13} /> {t('start_visit')}
           </button>
           <button className="btn btn-sm btn-success" onClick={() => setPaymentAppointment(apt)}>
             <CheckCircle size={13} /> {t('complete_visit')}
           </button>
-          <button className="btn btn-sm btn-outline doctor-btn-danger" onClick={() => changeStatus(apt.id, 'cancelled')}>
+          <button className="btn btn-sm btn-outline doctor-btn-danger" disabled={!!statusBusyId} onClick={() => handleStatusChange(apt, 'cancelled')}>
             <X size={13} /> {t('cancel')}
           </button>
         </div>
@@ -73,7 +88,7 @@ const DoctorDashboard = () => {
           <button className="btn btn-sm btn-success" onClick={() => setPaymentAppointment(apt)}>
             <CheckCircle size={13} /> {t('complete_visit')}
           </button>
-          <button className="btn btn-sm btn-outline doctor-btn-danger" onClick={() => changeStatus(apt.id, 'cancelled')}>
+          <button className="btn btn-sm btn-outline doctor-btn-danger" disabled={!!statusBusyId} onClick={() => handleStatusChange(apt, 'cancelled')}>
             <X size={13} /> {t('cancel')}
           </button>
         </div>
