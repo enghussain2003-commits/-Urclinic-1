@@ -10,9 +10,13 @@ import { useApp } from '../context/AppContext';
 const Sidebar = ({ isOpen, onClose }) => {
   const { t, i18n } = useTranslation();
   const location = useLocation();
-  const { logout, user, supportUnreadCount } = useApp();
+  const { logout, user, supportUnreadCount, pendingAppointmentCount } = useApp();
   const isActive = (path) => location.pathname === path || location.pathname.startsWith(`${path}/`);
   const normalizedRole = String(user?.role || '').trim().toLowerCase();
+  const formatBadgeCount = (count) => Number(count) > 99 ? '99+' : String(count);
+  const pendingBadgeLabel = pendingAppointmentCount > 0
+    ? t('pending_appointments_badge_label', { count: formatBadgeCount(pendingAppointmentCount) })
+    : undefined;
 
   const toggleLang = () => {
     i18n.changeLanguage(i18n.language === 'en' ? 'ar' : 'en');
@@ -35,7 +39,13 @@ const Sidebar = ({ isOpen, onClose }) => {
 
   const staffItems = [
     { path: '/dashboard', icon: LayoutDashboard, label: t('overview') },
-    { path: '/dashboard/appointments', icon: CalendarDays, label: t('appointments') },
+    {
+      path: '/dashboard/appointments',
+      icon: CalendarDays,
+      label: t('appointments'),
+      badge: pendingAppointmentCount,
+      badgeLabel: pendingBadgeLabel,
+    },
     { path: '/dashboard/doctors', icon: Stethoscope, label: t('doctors_menu') },
     { path: '/dashboard/patients', icon: Users, label: t('patients_menu') },
     { path: '/dashboard/schedule', icon: CalendarDays, label: t('schedule_menu') },
@@ -61,6 +71,20 @@ const Sidebar = ({ isOpen, onClose }) => {
     { path: '/dashboard/super-admin/support', icon: Headset, label: i18n.language === 'ar' ? 'فريق الدعم' : 'Support Center', badge: supportUnreadCount },
     { path: '/dashboard/super-admin/clinics', icon: ShieldCheck, label: i18n.language === 'ar' ? 'إدارة الحسابات' : 'Account Management' },
   ];
+
+  const renderBadge = (item) => (
+    item.badge > 0
+      ? (
+        <em
+          className="sidebar-badge"
+          aria-hidden="true"
+          title={item.badgeLabel || undefined}
+        >
+          {formatBadgeCount(item.badge)}
+        </em>
+      )
+      : null
+  );
 
   return (
     <>
@@ -102,10 +126,11 @@ const Sidebar = ({ isOpen, onClose }) => {
                   key={`${item.path}-${item.label}`}
                   to={item.path}
                   className={`sidebar-item ${isActive(item.path) ? 'active' : ''}`}
+                  aria-label={item.badgeLabel ? `${item.label} - ${item.badgeLabel}` : item.label}
                 >
                   <item.icon size={20} />
                   <span>{item.label}</span>
-                  {item.badge > 0 && <em className="sidebar-badge">{item.badge > 9 ? '9+' : item.badge}</em>}
+                  {renderBadge(item)}
                 </Link>
               ))}
             </>
@@ -115,10 +140,11 @@ const Sidebar = ({ isOpen, onClose }) => {
               key={item.path}
               to={item.path}
               className={`sidebar-item ${isActive(item.path) ? 'active' : ''}`}
+              aria-label={item.badgeLabel ? `${item.label} - ${item.badgeLabel}` : item.label}
             >
               <item.icon size={20} />
               <span>{item.label}</span>
-              {item.badge > 0 && <em className="sidebar-badge">{item.badge > 9 ? '9+' : item.badge}</em>}
+              {renderBadge(item)}
             </Link>
           ))}
         </nav>

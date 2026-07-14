@@ -1324,6 +1324,25 @@ export const AppProvider = ({ children }) => {
   const supportUnreadCount = notifications.filter(n =>
     !n.is_read && SUPPORT_NOTIFICATION_TYPES.includes(n.type)
   ).length;
+  const pendingAppointmentCount = (() => {
+    const role = String(user?.role || '').trim().toLowerCase();
+    if (role === 'doctor') {
+      const myDoctor = doctors.find(d => String(d.profile_id || '') === String(user?.id || ''));
+      if (!myDoctor?.id) return 0;
+      return appointments.filter(apt =>
+        String(apt.status || '') === 'pending'
+        && String(apt.doctor_id || '') === String(myDoctor.id)
+        && (!user?.clinic_id || String(apt.clinic_id || '') === String(user.clinic_id))
+      ).length;
+    }
+    if (role === 'clinic_admin' || role === 'employee') {
+      return appointments.filter(apt =>
+        String(apt.status || '') === 'pending'
+        && (!user?.clinic_id || String(apt.clinic_id || '') === String(user.clinic_id))
+      ).length;
+    }
+    return 0;
+  })();
 
   return (
     <AppContext.Provider value={{
@@ -1332,7 +1351,7 @@ export const AppProvider = ({ children }) => {
       createAppointment, changeStatus, completeAppointmentWithPayment,
       addDoctor, deleteDoctor,
       addMedicalHistory, addMedicalFile, sendNotification, createPrescription,
-      notifications, refreshNotifications, readAllNotifications, markNotificationRead, markAllNotificationsRead, unreadCount, supportUnreadCount,
+      notifications, refreshNotifications, readAllNotifications, markNotificationRead, markAllNotificationsRead, unreadCount, supportUnreadCount, pendingAppointmentCount,
       callPatientForAppointment, acknowledgePatientCall, patientCallToasts, dismissPatientCallToast,
       patientCallSoundEnabled, setPatientCallSoundEnabled,
     }}>

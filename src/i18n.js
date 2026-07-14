@@ -322,6 +322,7 @@ const resources = {
 
       // Patient appointments
       pending_approval: "Pending approval",
+      pending_appointments_badge_label: "{{count}} appointments awaiting approval",
       time_until_appointment: "Time until your appointment",
       appointment_rejected_note: "This appointment request was rejected.",
       no_prescriptions: "No prescriptions yet.",
@@ -686,6 +687,7 @@ const resources = {
 
       // Patient appointments
       pending_approval: "بانتظار الموافقة",
+      pending_appointments_badge_label: "{{count}} مواعيد بانتظار الموافقة",
       time_until_appointment: "الوقت المتبقي لموعدك",
       appointment_rejected_note: "تم رفض طلب هذا الموعد.",
       no_prescriptions: "لا توجد وصفات طبية بعد.",
