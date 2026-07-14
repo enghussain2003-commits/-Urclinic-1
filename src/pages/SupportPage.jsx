@@ -5,6 +5,7 @@ import { Headset, MessageSquarePlus, Paperclip, Search, Ticket, X } from 'lucide
 import { useApp } from '../context/AppContext';
 import { useToast } from '../hooks/useToast';
 import SupportConversation from '../components/support/SupportConversation';
+import SupportAttachmentPreview from '../components/support/SupportAttachmentPreview';
 import {
   canCreateSupportTicket,
   createSupportTicket,
@@ -13,8 +14,7 @@ import {
   SUPPORT_CATEGORIES,
   SUPPORT_PRIORITIES,
   SUPPORT_STATUSES,
-  uploadSupportAttachment,
-  validateSupportAttachment,
+  sendSupportMessage,
 } from '../services/supportService';
 import { supabase } from '../supabaseClient';
 import { getLocalizedErrorMessage } from '../utils/errorMessages';
@@ -178,29 +178,41 @@ const CreateTicketModal = ({ isAr, onClose, onCreated }) => {
   const [form, setForm] = useState({ subject: '', category: 'technical', description: '', priority: 'medium' });
   const [file, setFile] = useState(null);
   const [sending, setSending] = useState(false);
+  const [sendPhase, setSendPhase] = useState('idle');
+  const [createdTicket, setCreatedTicket] = useState(null);
 
   const submit = async (event) => {
     event.preventDefault();
     if (sending) return;
-    if (!form.subject.trim() || !form.description.trim()) {
+    if (!createdTicket && (!form.subject.trim() || !form.description.trim())) {
       toast.warning(isAr ? 'يرجى إكمال الموضوع والوصف' : 'Please complete subject and description');
       return;
     }
     setSending(true);
+    setSendPhase(file ? 'uploading' : 'sending');
     try {
-      if (file) validateSupportAttachment(file);
-      const ticket = await createSupportTicket({
+      const ticket = createdTicket || await createSupportTicket({
         ...form,
         currentPage: window.location.pathname,
         deviceInfo: getDeviceInfo(),
       });
-      if (file) await uploadSupportAttachment({ ticketId: ticket.id, file });
+      setCreatedTicket(ticket);
+      if (file) {
+        await sendSupportMessage({
+          ticketId: ticket.id,
+          body: form.description,
+          file,
+          onPhase: setSendPhase,
+        });
+      }
+      setSendPhase('done');
       onCreated(ticket);
     } catch (err) {
       console.error('Support ticket creation failed:', err);
       toast.error(getLocalizedErrorMessage(err, { isAr, fallback: 'support' }));
     } finally {
       setSending(false);
+      setSendPhase('idle');
     }
   };
 
@@ -212,38 +224,48 @@ const CreateTicketModal = ({ isAr, onClose, onCreated }) => {
             <h2>{isAr ? 'طلب دعم جديد' : 'New Support Request'}</h2>
             <p>{isAr ? 'لا ترفق كلمات مرور أو معلومات طبية حساسة.' : 'Do not include passwords or sensitive medical information.'}</p>
           </div>
-          <button type="button" className="btn btn-ghost btn-icon" onClick={onClose}><X size={18} /></button>
+          <button type="button" className="btn btn-ghost btn-icon" onClick={onClose} disabled={sending}><X size={18} /></button>
         </div>
         <label className="support-field">
           <span>{isAr ? 'الموضوع' : 'Subject'}</span>
-          <input value={form.subject} onChange={event => setForm({ ...form, subject: event.target.value })} maxLength={160} required />
+          <input value={form.subject} onChange={event => setForm({ ...form, subject: event.target.value })} maxLength={160} required disabled={sending || !!createdTicket} />
         </label>
         <div className="support-form-grid">
           <label className="support-field">
             <span>{isAr ? 'التصنيف' : 'Category'}</span>
-            <select value={form.category} onChange={event => setForm({ ...form, category: event.target.value })}>
+            <select value={form.category} onChange={event => setForm({ ...form, category: event.target.value })} disabled={sending || !!createdTicket}>
               {SUPPORT_CATEGORIES.map(category => <option key={category} value={category}>{label(category, isAr)}</option>)}
             </select>
           </label>
           <label className="support-field">
             <span>{isAr ? 'الأولوية' : 'Priority'}</span>
-            <select value={form.priority} onChange={event => setForm({ ...form, priority: event.target.value })}>
+            <select value={form.priority} onChange={event => setForm({ ...form, priority: event.target.value })} disabled={sending || !!createdTicket}>
               {SUPPORT_PRIORITIES.map(priority => <option key={priority} value={priority}>{label(priority, isAr)}</option>)}
             </select>
           </label>
         </div>
         <label className="support-field">
           <span>{isAr ? 'الوصف' : 'Description'}</span>
-          <textarea value={form.description} onChange={event => setForm({ ...form, description: event.target.value })} rows={6} required />
+          <textarea value={form.description} onChange={event => setForm({ ...form, description: event.target.value })} rows={6} required disabled={sending || !!createdTicket} />
         </label>
         <label className="support-upload">
           <Paperclip size={16} />
           <span>{file ? file.name : (isAr ? 'إرفاق صورة أو PDF اختياري' : 'Optional screenshot or PDF')}</span>
-          <input hidden type="file" accept=".jpg,.jpeg,.png,.webp,.pdf" onChange={event => setFile(event.target.files?.[0] || null)} />
+          <input hidden type="file" accept=".jpg,.jpeg,.png,.webp,.pdf" disabled={sending} onChange={event => setFile(event.target.files?.[0] || null)} />
         </label>
+        <SupportAttachmentPreview
+          file={file}
+          isAr={isAr}
+          phase={sendPhase}
+          disabled={sending}
+          onRemove={() => setFile(null)}
+        />
         <div className="support-modal-actions">
           <button type="button" className="btn btn-outline" onClick={onClose} disabled={sending}>{isAr ? 'إلغاء' : 'Cancel'}</button>
-          <button className="btn btn-primary" disabled={sending}>{sending ? (isAr ? 'جارٍ الإرسال...' : 'Sending...') : (isAr ? 'إرسال الطلب' : 'Submit request')}</button>
+          <button className="btn btn-primary" disabled={sending}>{sending
+            ? (sendPhase === 'uploading' ? (isAr ? 'جارٍ رفع المرفق...' : 'Uploading attachment...')
+              : (isAr ? 'جارٍ إرسال الطلب...' : 'Submitting request...'))
+            : (createdTicket ? (isAr ? 'إعادة محاولة المرفق' : 'Retry attachment') : (isAr ? 'إرسال الطلب' : 'Submit request'))}</button>
         </div>
       </form>
     </div>

@@ -1,24 +1,25 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { ArrowLeft, Lock, Paperclip, RefreshCw, Send, ShieldCheck, XCircle } from 'lucide-react';
+import { ArrowLeft, FileText, Image, Lock, Paperclip, RefreshCw, Send, ShieldCheck, XCircle } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useApp } from '../../context/AppContext';
 import { useToast } from '../../hooks/useToast';
 import ContactActionsCard from '../ContactActionsCard';
+import SupportAttachmentPreview from './SupportAttachmentPreview';
 import { buildContactMessage } from '../../services/contactService';
 import {
-  addSupportMessage,
   canAddInternalNote,
   canChangeSupportStatus,
   canReplyAsSupport,
   createSignedAttachmentUrl,
   fetchSupportTicket,
+  formatSupportFileSize,
+  isImageAttachment,
   markSupportTicketRead,
+  sendSupportMessage,
   SUPPORT_PRIORITIES,
   SUPPORT_STATUSES,
   updateSupportTicket,
-  uploadSupportAttachment,
-  validateSupportAttachment,
 } from '../../services/supportService';
 import { supabase } from '../../supabaseClient';
 import { getLocalizedErrorMessage } from '../../utils/errorMessages';
@@ -64,10 +65,11 @@ const SupportConversation = ({ ticketId, admin = false, onBack, onChanged }) => 
   const [file, setFile] = useState(null);
   const [internalNote, setInternalNote] = useState(false);
   const [sending, setSending] = useState(false);
+  const [sendPhase, setSendPhase] = useState('idle');
   const [saving, setSaving] = useState(false);
 
-  const load = async () => {
-    setLoading(true);
+  const load = async ({ silent = false } = {}) => {
+    if (!silent) setLoading(true);
     setError('');
     try {
       const data = await fetchSupportTicket(ticketId);
@@ -78,20 +80,26 @@ const SupportConversation = ({ ticketId, admin = false, onBack, onChanged }) => 
       console.error('Support ticket load failed:', err);
       setError(getLocalizedErrorMessage(err, { isAr, fallback: 'support' }));
     } finally {
-      setLoading(false);
+      if (!silent) setLoading(false);
     }
   };
 
   useEffect(() => {
     const id = window.setTimeout(load, 0);
+    let refreshTimer;
+    const reloadQuietly = () => {
+      window.clearTimeout(refreshTimer);
+      refreshTimer = window.setTimeout(() => load({ silent: true }), 180);
+    };
     const channel = supabase
       .channel(`support-ticket:${ticketId}`)
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'support_messages', filter: `ticket_id=eq.${ticketId}` }, load)
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'support_tickets', filter: `id=eq.${ticketId}` }, load)
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'support_attachments', filter: `ticket_id=eq.${ticketId}` }, load)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'support_messages', filter: `ticket_id=eq.${ticketId}` }, reloadQuietly)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'support_tickets', filter: `id=eq.${ticketId}` }, reloadQuietly)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'support_attachments', filter: `ticket_id=eq.${ticketId}` }, reloadQuietly)
       .subscribe();
     return () => {
       window.clearTimeout(id);
+      window.clearTimeout(refreshTimer);
       supabase.removeChannel(channel);
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -108,27 +116,40 @@ const SupportConversation = ({ ticketId, admin = false, onBack, onChanged }) => 
 
   const submitReply = async (event) => {
     event.preventDefault();
-    if (!reply.trim() && !file) return;
+    if (sending || (!reply.trim() && !file)) return;
     setSending(true);
+    setSendPhase(file ? 'uploading' : 'sending');
     try {
-      if (file) validateSupportAttachment(file);
-      const created = reply.trim()
-        ? await addSupportMessage({ ticketId, message: reply, isInternalNote: internalNote && canInternal })
-        : null;
-      if (file) {
-        await uploadSupportAttachment({ ticketId, messageId: created?.id || null, file });
-      }
+      const created = await sendSupportMessage({
+        ticketId,
+        body: reply,
+        file,
+        isInternalNote: internalNote && canInternal,
+        onPhase: setSendPhase,
+      });
+      setTicket(prev => prev ? {
+        ...prev,
+        messages: [
+          ...(prev.messages || []).filter(item => String(item.id) !== String(created.id)),
+          created,
+        ].sort((a, b) => (a.created_at || '').localeCompare(b.created_at || '')),
+        attachments: [
+          ...(prev.attachments || []).filter(item => !(created.attachments || []).some(att => String(att.id) === String(item.id))),
+          ...(created.attachments || []),
+        ],
+      } : prev);
       setReply('');
       setFile(null);
       setInternalNote(false);
       toast.success(isAr ? 'تم إرسال الرد' : 'Reply sent');
-      await load();
+      await load({ silent: true });
       onChanged?.();
     } catch (err) {
       console.error('Support reply failed:', err);
       toast.error(getLocalizedErrorMessage(err, { isAr, fallback: 'support' }));
     } finally {
       setSending(false);
+      setSendPhase('idle');
     }
   };
 
@@ -212,13 +233,16 @@ const SupportConversation = ({ ticketId, admin = false, onBack, onChanged }) => 
                     <span>{roleLabel(message.sender?.role, isAr)} · {fmt(message.created_at, isAr)}</span>
                     {message.is_internal_note && <em><Lock size={12} /> {isAr ? 'ملاحظة داخلية' : 'Internal note'}</em>}
                   </div>
-                  <p>{message.message}</p>
+                  {message.message && <p>{message.message}</p>}
                   {(message.attachments || []).length > 0 && (
-                    <div className="support-attachment-row">
+                    <div className="support-attachment-grid">
                       {message.attachments.map(attachment => (
-                        <button key={attachment.id} type="button" onClick={() => openAttachment(attachment)}>
-                          <Paperclip size={14} /> {attachment.file_name}
-                        </button>
+                        <SupportAttachmentCard
+                          key={attachment.id}
+                          attachment={attachment}
+                          isAr={isAr}
+                          onOpen={() => openAttachment(attachment)}
+                        />
                       ))}
                     </div>
                   )}
@@ -244,10 +268,26 @@ const SupportConversation = ({ ticketId, admin = false, onBack, onChanged }) => 
               <label className="btn btn-outline btn-sm">
                 <Paperclip size={15} />
                 {file ? file.name : (isAr ? 'مرفق' : 'Attachment')}
-                <input hidden type="file" accept=".jpg,.jpeg,.png,.webp,.pdf" onChange={event => setFile(event.target.files?.[0] || null)} />
+                <input
+                  hidden
+                  type="file"
+                  accept=".jpg,.jpeg,.png,.webp,.pdf"
+                  disabled={sending}
+                  onChange={event => setFile(event.target.files?.[0] || null)}
+                />
               </label>
+              <SupportAttachmentPreview
+                file={file}
+                isAr={isAr}
+                phase={sendPhase}
+                disabled={sending}
+                onRemove={() => setFile(null)}
+              />
               <button className="btn btn-primary btn-sm" disabled={sending || (admin && !canSupportReply)}>
-                <Send size={15} /> {sending ? (isAr ? 'جارٍ الإرسال...' : 'Sending...') : (isAr ? 'إرسال' : 'Send')}
+                <Send size={15} /> {sending
+                  ? (sendPhase === 'uploading' ? (isAr ? 'جارٍ رفع المرفق...' : 'Uploading...')
+                    : (isAr ? 'جارٍ إرسال الرد...' : 'Sending...'))
+                  : (isAr ? 'إرسال' : 'Send')}
               </button>
             </div>
           </form>
@@ -360,5 +400,35 @@ const Info = ({ label, value }) => (
     <strong>{value ?? '-'}</strong>
   </div>
 );
+
+const SupportAttachmentCard = ({ attachment, isAr, onOpen }) => {
+  const [url, setUrl] = useState('');
+  const [failed, setFailed] = useState(false);
+  const image = isImageAttachment(attachment);
+
+  useEffect(() => {
+    let active = true;
+    if (!image) return undefined;
+    createSignedAttachmentUrl(attachment.file_path)
+      .then(signedUrl => { if (active) setUrl(signedUrl || ''); })
+      .catch(err => {
+        console.error('Support attachment thumbnail failed:', err);
+        if (active) setFailed(true);
+      });
+    return () => { active = false; };
+  }, [attachment.file_path, image]);
+
+  return (
+    <button type="button" className="support-attachment-card" onClick={onOpen}>
+      <span className="support-attachment-card__thumb">
+        {image && url && !failed ? <img src={url} alt="" /> : (image ? <Image size={18} /> : <FileText size={18} />)}
+      </span>
+      <span className="support-attachment-card__meta">
+        <strong title={attachment.file_name}>{attachment.file_name}</strong>
+        <em>{attachment.file_type || (isAr ? 'ملف' : 'File')} · {formatSupportFileSize(attachment.file_size, isAr)}</em>
+      </span>
+    </button>
+  );
+};
 
 export default SupportConversation;

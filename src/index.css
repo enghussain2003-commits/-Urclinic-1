@@ -10081,6 +10081,122 @@ tbody tr:last-child td { border-bottom: none; }
   font-weight: 800;
 }
 
+.support-attachment-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(210px, 1fr));
+  gap: 0.65rem;
+  margin-top: 0.75rem;
+}
+
+.support-attachment-card {
+  border: 1px solid rgba(37,99,235,0.18);
+  background: #f8fbff;
+  color: #1d4ed8;
+  border-radius: var(--radius-md);
+  padding: 0.5rem;
+  display: grid;
+  grid-template-columns: 3.25rem 1fr;
+  align-items: center;
+  gap: 0.65rem;
+  text-align: start;
+  min-width: 0;
+  width: 100%;
+}
+
+.support-attachment-card:hover {
+  background: #eff6ff;
+  border-color: rgba(37,99,235,0.32);
+}
+
+.support-attachment-card__thumb,
+.support-file-preview__thumb {
+  border-radius: var(--radius-sm);
+  display: grid;
+  place-items: center;
+  overflow: hidden;
+  color: var(--primary);
+  background: var(--primary-50);
+}
+
+.support-attachment-card__thumb {
+  width: 3.25rem;
+  height: 3.25rem;
+}
+
+.support-file-preview__thumb {
+  width: 3.5rem;
+  height: 3.5rem;
+}
+
+.support-attachment-card__thumb img,
+.support-file-preview__thumb img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.support-attachment-card__meta,
+.support-file-preview__meta {
+  min-width: 0;
+  display: grid;
+  gap: 0.12rem;
+}
+
+.support-attachment-card__meta strong,
+.support-file-preview__meta strong {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.support-attachment-card__meta em {
+  color: #64748b;
+  font-size: 0.74rem;
+  font-style: normal;
+}
+
+.support-file-preview {
+  display: grid;
+  grid-template-columns: 3.5rem 1fr auto;
+  align-items: center;
+  gap: 0.75rem;
+  width: 100%;
+  padding: 0.65rem;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  background: #fff;
+}
+
+.support-file-preview.is-disabled {
+  opacity: 0.82;
+}
+
+.support-file-preview__meta span,
+.support-file-preview__meta em {
+  color: var(--text-muted);
+  font-size: 0.76rem;
+  font-style: normal;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+}
+
+.support-file-preview__meta em {
+  color: var(--primary);
+  font-weight: 700;
+}
+
+.support-file-preview > button {
+  width: 2rem;
+  height: 2rem;
+  border: 0;
+  border-radius: var(--radius-full);
+  display: grid;
+  place-items: center;
+  background: var(--surface-hover);
+  color: var(--text-muted);
+}
+
 .support-reply-box {
   border-top: 1px solid #e2e8f0;
   padding-top: 1rem;
