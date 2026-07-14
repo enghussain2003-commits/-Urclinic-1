@@ -1,6 +1,7 @@
 import { useTranslation } from 'react-i18next';
 import { Building2, Clock, CheckCircle, MapPin, Stethoscope } from 'lucide-react';
 import { governorateLabel } from '../services/superAdminService';
+import { formatMoney } from '../utils/money';
 
 const DoctorCard = ({ doctor, onSelect, selected, bookingVariant = false }) => {
   const { t, i18n } = useTranslation();
@@ -19,6 +20,7 @@ const DoctorCard = ({ doctor, onSelect, selected, bookingVariant = false }) => {
   const workingHours = `${doctor.open_time || '09:00'} - ${doctor.close_time || '17:00'}`;
   const CardTag = onSelect ? 'button' : 'div';
   const fee = Number(doctor.fee || 0);
+  const feeLabel = formatMoney(fee, { currency: doctor.currency || doctor.clinic?.currency || 'IQD' });
 
   return (
     <CardTag
@@ -29,20 +31,20 @@ const DoctorCard = ({ doctor, onSelect, selected, bookingVariant = false }) => {
       <div className="doctor-card-head">
         <div className="doctor-avatar">{initial}</div>
         {fee > 0 && (
-          <span className="doctor-fee">{fee.toLocaleString('en-US')} د.ع</span>
+          <span className="doctor-fee">{feeLabel}</span>
         )}
       </div>
 
       <div className="doctor-name">{name}</div>
+      <div className="doctor-clinic-name" title={clinicName}>
+        <Building2 size={16} />
+        <span>{clinicName}</span>
+      </div>
       <div className="doctor-specialty">
         {bookingVariant && <Stethoscope size={14} />}
         {t(doctor.specialty) || doctor.specialty}
       </div>
 
-      <div className="doctor-meta">
-        <Building2 size={14} />
-        <span>{clinicName}</span>
-      </div>
       <div className="doctor-meta">
         <MapPin size={14} />
         <span>{governorate || t('location_unavailable')}</span>
