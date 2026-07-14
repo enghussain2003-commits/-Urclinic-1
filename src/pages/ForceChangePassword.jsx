@@ -37,10 +37,7 @@ const ForceChangePassword = () => {
     try {
       const { error: authError } = await supabase.auth.updateUser({ password });
       if (authError) throw authError;
-      const { error: profileError } = await supabase
-        .from('profiles')
-        .update({ must_change_password: false })
-        .eq('id', user.id);
+      const { error: profileError } = await supabase.rpc('clear_own_must_change_password');
       if (profileError) throw profileError;
       const nextUser = { ...user, must_change_password: false };
       login(nextUser);
