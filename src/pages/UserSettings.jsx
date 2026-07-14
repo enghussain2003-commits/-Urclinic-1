@@ -73,13 +73,16 @@ const UserSettings = () => {
   }
 
   return (
-    <div className="page-padding animate-in">
-      <div className="flex items-center gap-sm mb-xl">
-        <Settings size={28} color="var(--primary)" />
-        <h2 style={{ margin: 0 }}>{t('user_settings')}</h2>
-      </div>
+    <div className="page-padding user-settings-page animate-in">
+      <div className="user-settings-shell">
+        <header className="user-settings-header">
+          <span className="user-settings-icon">
+            <Settings size={26} />
+          </span>
+          <h2>{t('user_settings')}</h2>
+        </header>
 
-      <div className="glass p-8" style={{ maxWidth: 700 }}>
+        <div className="glass user-settings-card">
         {error && (
           <div style={{
             background: 'rgba(239,68,68,0.08)', border: '1px solid var(--danger)',
@@ -100,9 +103,9 @@ const UserSettings = () => {
           </div>
         )}
 
-        <h4 className="mb-md"><Lock size={18} style={{ display: 'inline', verticalAlign: 'text-bottom', marginInlineEnd: 8 }}/> {t('change_password')}</h4>
+        <h4 className="user-settings-section-title"><Lock size={18} /> {t('change_password')}</h4>
         
-        <form onSubmit={handlePasswordChange} className="card-flat bg-alt mb-xl">
+        <form onSubmit={handlePasswordChange} className="card-flat bg-alt user-settings-password-card">
           <div className="form-group">
             <label className="form-label">{t('new_password')}</label>
             <input 
@@ -134,15 +137,15 @@ const UserSettings = () => {
           </div>
         </form>
 
-        <hr style={{ margin: '2rem 0', borderColor: 'var(--border)' }} />
+        <hr className="user-settings-divider" />
 
-        <div className="flex justify-between items-center flex-wrap gap-md mb-xl">
+        <div className="user-settings-row">
           <div>
-            <h4 style={{ margin: 0 }}>
-              <Volume2 size={18} style={{ display: 'inline', verticalAlign: 'text-bottom', marginInlineEnd: 8 }} />
+            <h4>
+              <Volume2 size={18} />
               {t('patient_call_sound')}
             </h4>
-            <p className="text-sm text-muted" style={{ margin: '0.25rem 0 0' }}>
+            <p className="text-sm text-muted">
               {t('patient_call_sound_desc')}
             </p>
           </div>
@@ -156,18 +159,19 @@ const UserSettings = () => {
           </label>
         </div>
 
-        <hr style={{ margin: '2rem 0', borderColor: 'var(--border)' }} />
+        <hr className="user-settings-divider" />
 
-        <div className="flex justify-between items-center flex-wrap gap-md">
+        <div className="user-settings-row">
           <div>
-            <h4 style={{ margin: 0 }}>{t('logout')}</h4>
-            <p className="text-sm text-muted" style={{ margin: '0.25rem 0 0' }}>
+            <h4>{t('logout')}</h4>
+            <p className="text-sm text-muted">
               {t('email') === 'البريد الإلكتروني' ? 'تسجيل الخروج من حسابك الحالي' : 'Sign out of your current account'}
             </p>
           </div>
           <button onClick={handleLogout} className="btn" style={{ background: 'rgba(239,68,68,0.1)', color: 'var(--danger)', border: 'none', minWidth: 140 }}>
             <LogOut size={18} /> {t('logout')}
           </button>
+        </div>
         </div>
       </div>
     </div>
