@@ -14,6 +14,7 @@ import {
 import { isDemoModeEnabled } from '../demo/demoMode';
 import { clearStoredUser, getStoredUser, setStoredUser } from '../services/sessionService';
 import { SUPPORT_NOTIFICATION_TYPES } from '../services/supportService';
+import { validateIraqiPhone, validatePersonName } from '../utils/identityValidation';
 
 const AppContext = createContext();
 
@@ -577,16 +578,29 @@ export const AppProvider = ({ children }) => {
       throw new Error('Missing required booking fields (clinic, doctor, date, time)');
     }
 
+    const isAr = i18n.language === 'ar';
+    const checkedName = validatePersonName(patient_name, { isAr });
+    if (!checkedName.valid) {
+      throw new Error(checkedName.error);
+    }
+    const checkedPhone = validateIraqiPhone(patient_phone, { isAr });
+    if (!checkedPhone.valid) {
+      throw new Error(checkedPhone.error);
+    }
+
+    const normalizedPatientName = checkedName.value;
+    const normalizedPatientPhone = checkedPhone.value;
+
     if (isDemoModeEnabled(user)) {
       // eslint-disable-next-line react-hooks/purity
       const demoStamp = Date.now();
       const demoRow = {
         id: `DEMO-${demoStamp}`,
         clinic_id: clinic_id || 'demo-clinic',
-        patient_name,
-        patient_phone,
+        patient_name: normalizedPatientName,
+        patient_phone: normalizedPatientPhone,
         patient_email,
-        patient: patient_name,
+        patient: normalizedPatientName,
         doctor_id,
         doctorId: doctor_id,
         date,
@@ -605,7 +619,7 @@ export const AppProvider = ({ children }) => {
     }
 
     const patientId = await ensurePatientForClinic({
-      clinic_id, full_name: patient_name, phone: patient_phone, email: patient_email,
+      clinic_id, full_name: normalizedPatientName, phone: normalizedPatientPhone, email: patient_email,
     });
 
     const { data: { user: authUser } } = await supabase.auth.getUser();
@@ -652,6 +666,13 @@ export const AppProvider = ({ children }) => {
         || (error.message || '').includes('appointments_doctor_slot_uniq');
       const isActiveAppointmentConflict = error.code === '23514'
         || (error.message || '').includes('patient already has an active appointment');
+      const isRateLimit = error.code === '23514'
+        && (error.message || '').includes('booking rate limit exceeded');
+      if (isRateLimit) {
+        throw new Error(i18n.language === 'ar'
+          ? 'يرجى الانتظار دقيقة قبل إرسال طلب حجز جديد.'
+          : 'Please wait one minute before submitting another booking request.');
+      }
       if (isActiveAppointmentConflict) {
         throw new Error(i18n.language === 'ar'
           ? 'لديك موعد نشط بالفعل. يرجى الانتظار حتى تكتمل زيارتك الحالية.'
@@ -669,15 +690,15 @@ export const AppProvider = ({ children }) => {
     // realtime channel will re-fetch in a moment, but this avoids a visible lag.
     const uiRow = fromDbAppt({
       ...data,
-      patient_name,
-      patient_phone,
+      patient_name: normalizedPatientName,
+      patient_phone: normalizedPatientPhone,
       patient_email,
       patient: {
         id: patientId,
         clinic_id,
         auth_user_id: null,
-        full_name: patient_name,
-        phone: patient_phone,
+        full_name: normalizedPatientName,
+        phone: normalizedPatientPhone,
         email: patient_email,
       },
     });
@@ -691,8 +712,8 @@ export const AppProvider = ({ children }) => {
       await sendNotification(
         doc.profile_id,
         ar ? 'طلب موعد جديد' : 'New appointment request',
-        ar ? `${patient_name || 'مريض'} طلب موعداً بتاريخ ${date}`
-           : `${patient_name || 'A patient'} requested an appointment on ${date}`,
+        ar ? `${normalizedPatientName || 'مريض'} طلب موعداً بتاريخ ${date}`
+           : `${normalizedPatientName || 'A patient'} requested an appointment on ${date}`,
         'appointment_new',
         { clinic_id }, // patient inserter MUST pass the doctor's clinic_id (0005 policy)
       );

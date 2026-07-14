@@ -25,6 +25,7 @@ import DoctorCard from '../components/DoctorCard';
 import CalendarPicker from '../components/CalendarPicker';
 import TimeSlotGrid, { to12Hour } from '../components/TimeSlotGrid';
 import SpecialtyIcon from '../components/SpecialtyIcon';
+import { normalizeIraqiPhone, validateIraqiPhone, validatePersonName } from '../utils/identityValidation';
 
 const BookingErrorMessage = ({ children }) => children ? (
   <div className="booking-error-message">
@@ -101,6 +102,28 @@ const Booking = () => {
   }, [selectedClinic]);
 
   const [formError, setFormError] = useState('');
+  const identityLocked = user?.role === 'patient';
+
+  useEffect(() => {
+    let cancelled = false;
+    const loadCanonicalIdentity = async () => {
+      if (!user?.id || user.role !== 'patient') return;
+      const { data } = await supabase
+        .from('profiles')
+        .select('full_name, email, phone_number')
+        .eq('id', user.id)
+        .maybeSingle();
+      if (cancelled) return;
+      setPatientData(prev => ({
+        ...prev,
+        name: data?.full_name || user.name || prev.name,
+        phone: normalizeIraqiPhone(data?.phone_number || user.phone || prev.phone) || data?.phone_number || user.phone || prev.phone,
+        email: data?.email || user.email || prev.email,
+      }));
+    };
+    loadCanonicalIdentity();
+    return () => { cancelled = true; };
+  }, [user?.id, user?.role, user?.name, user?.phone, user?.email]);
 
   const handleSelectDoctor = (doctor) => {
     setSelectedDoctor(doctor);
@@ -165,23 +188,25 @@ const Booking = () => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selectedDoctor?.id, selectedDate]);
 
-  // Validation helpers
-  const cleanPhone = patientData.phone.replace(/\D/g, ''); // digits only
-  const nameIsValid = /^[؀-ۿa-zA-Z\s]{3,}$/.test(patientData.name.trim()); // letters only, min 3
-  const phoneIsValid = cleanPhone.length === 11;
+  const nameValidation = validatePersonName(patientData.name, { isAr });
+  const phoneValidation = validateIraqiPhone(patientData.phone, { isAr });
+  const nameIsValid = nameValidation.valid;
+  const phoneIsValid = phoneValidation.valid;
 
   const validateStep3 = () => {
-    if (!nameIsValid) {
-      setFormError(isAr ? 'الرجاء إدخال اسم حقيقي صحيح (أحرف فقط)' : 'Please enter a valid real name (letters only)');
+    const checkedName = validatePersonName(patientData.name, { isAr });
+    const checkedPhone = validateIraqiPhone(patientData.phone, { isAr });
+    if (!checkedName.valid) {
+      setFormError(checkedName.error);
       return false;
     }
-    if (!phoneIsValid) {
-      setFormError(isAr ? 'رقم الهاتف يجب أن يتكون من 11 رقماً' : 'Phone number must be exactly 11 digits');
+    if (!checkedPhone.valid) {
+      setFormError(checkedPhone.error);
       return false;
     }
     // Professional lifecycle: a patient may have only one active appointment at a time.
     const activeAppointment = appointments.find(a =>
-      (a.patient_phone === patientData.phone || a.patient_name === patientData.name.trim()) &&
+      (normalizeIraqiPhone(a.patient_phone || '') === checkedPhone.value || a.patient_name === checkedName.value) &&
       ['pending', 'approved', 'in_progress', 'confirmed'].includes(a.status)
     );
     if (activeAppointment) {
@@ -191,6 +216,7 @@ const Booking = () => {
       return false;
     }
     setFormError('');
+    setPatientData(prev => ({ ...prev, name: checkedName.value, phone: checkedPhone.value }));
     return true;
   };
 
@@ -229,8 +255,8 @@ const Booking = () => {
     try {
       const created = await createAppointment({
         clinic_id: selectedClinic?.id,
-        patient_name: patientData.name,
-        patient_phone: patientData.phone,
+        patient_name: nameValidation.value,
+        patient_phone: phoneValidation.value,
         patient_email: patientData.email || null,
         doctor_id: selectedDoctor.id,
         date: selectedDate,
@@ -246,7 +272,7 @@ const Booking = () => {
         import('../services/emailService').then(({ sendAppointmentConfirmation }) => {
           sendAppointmentConfirmation(
             patientData.email,
-            patientData.name,
+            nameValidation.value,
             selectedDate,
             to12Hour(selectedTime, isAr),
             isAr ? selectedDoctor.nameAr : selectedDoctor.name
@@ -563,10 +589,14 @@ const Booking = () => {
                     placeholder={isAr ? 'أحمد محمد العلي' : 'John Doe'}
                     value={patientData.name}
                     onChange={e => setPatientData({...patientData, name: e.target.value})}
+                    readOnly={identityLocked}
                     aria-invalid={Boolean(patientData.name && !nameIsValid)}
                   />
                   {patientData.name && !nameIsValid && (
-                    <span className="booking-field-hint booking-field-hint--error">{isAr ? 'أحرف فقط، 3 على الأقل' : 'Letters only, min 3'}</span>
+                    <span className="booking-field-hint booking-field-hint--error">{nameValidation.error}</span>
+                  )}
+                  {identityLocked && nameIsValid && (
+                    <span className="booking-field-hint">{isAr ? 'لا يمكن تغيير بيانات المريض من نموذج الحجز' : 'Patient identity cannot be changed from the booking form.'}</span>
                   )}
                 </div>
                 <div className="form-group">
@@ -574,15 +604,15 @@ const Booking = () => {
                   <input
                     className="input"
                     type="tel"
-                    inputMode="numeric"
-                    maxLength={11}
+                    inputMode="tel"
                     placeholder="07XXXXXXXXX"
                     value={patientData.phone}
-                    onChange={e => setPatientData({...patientData, phone: e.target.value.replace(/\D/g, '')})}
+                    onChange={e => setPatientData({...patientData, phone: e.target.value})}
+                    readOnly={identityLocked}
                     aria-invalid={Boolean(patientData.phone && !phoneIsValid)}
                   />
                   <span className={`booking-field-hint ${patientData.phone && !phoneIsValid ? 'booking-field-hint--error' : ''}`}>
-                    {isAr ? `11 رقماً (${cleanPhone.length}/11)` : `11 digits (${cleanPhone.length}/11)`}
+                    {patientData.phone && phoneIsValid ? phoneValidation.value : (isAr ? 'مثال: 07701234567 أو +9647701234567' : 'Example: 07701234567 or +9647701234567')}
                   </span>
                 </div>
                 <div className="form-group booking-form-grid__wide">

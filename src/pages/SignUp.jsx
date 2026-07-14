@@ -4,9 +4,11 @@ import { useNavigate, Link } from 'react-router-dom';
 import { Activity, AlertCircle, Eye, EyeOff, LockKeyhole, Mail, Phone, ShieldCheck, UserRound } from 'lucide-react';
 import { supabase } from '../supabaseClient';
 import { useApp } from '../context/AppContext';
+import { validateIraqiPhone, validatePersonName } from '../utils/identityValidation';
 
 const SignUp = () => {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
+  const isAr = i18n.language === 'ar';
   const navigate = useNavigate();
   const { login } = useApp();
   
@@ -18,12 +20,37 @@ const SignUp = () => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
 
+  const nameValidation = validatePersonName(fullName, { isAr });
+  const phoneValidation = validateIraqiPhone(phone, { isAr });
+  const canSubmit = nameValidation.valid && phoneValidation.valid && email && password && !loading;
+
   const handleSubmit = async (e) => {
     e.preventDefault();
-    setLoading(true);
     setError(null);
 
+    const checkedName = validatePersonName(fullName, { isAr });
+    if (!checkedName.valid) {
+      setError(checkedName.error);
+      return;
+    }
+
+    const checkedPhone = validateIraqiPhone(phone, { isAr });
+    if (!checkedPhone.valid) {
+      setError(checkedPhone.error);
+      return;
+    }
+
+    setLoading(true);
+
     try {
+      const { data: phoneAvailable, error: phoneCheckError } = await supabase.rpc('is_patient_phone_available', {
+        p_phone: checkedPhone.value,
+      });
+      if (phoneCheckError) throw phoneCheckError;
+      if (phoneAvailable === false) {
+        throw new Error(isAr ? 'رقم الهاتف مستخدم مسبقاً' : 'Phone number is already in use.');
+      }
+
       // Create user in Supabase Auth — pass profile data as metadata.
       // The DB trigger (handle_new_user) creates the profile row automatically,
       // so we do NOT insert into profiles here (avoids duplicate-key race condition).
@@ -31,7 +58,7 @@ const SignUp = () => {
         email,
         password,
         options: {
-          data: { full_name: fullName, phone: phone }
+          data: { full_name: checkedName.value, phone: checkedPhone.value }
         }
       });
 
@@ -41,9 +68,9 @@ const SignUp = () => {
         if (authData.session) {
           const userData = {
             id: authData.user.id,
-            name: fullName,
+            name: checkedName.value,
             email,
-            phone,
+            phone: checkedPhone.value,
             role: 'patient',
             clinic_id: null,
           };
@@ -57,7 +84,10 @@ const SignUp = () => {
         }
       }
     } catch (err) {
-      setError(err.message || 'An error occurred during sign up.');
+      const duplicate = err?.code === '23505' || /duplicate|unique|already/i.test(err?.message || '');
+      setError(duplicate
+        ? (isAr ? 'رقم الهاتف مستخدم مسبقاً' : 'Phone number is already in use.')
+        : (err.message || 'An error occurred during sign up.'));
     } finally {
       setLoading(false);
     }
@@ -102,8 +132,9 @@ const SignUp = () => {
               <label className="form-label" htmlFor="signup-name">{t('full_name') || 'Full Name'}</label>
               <div className="auth-input-wrap">
                 <UserRound size={18} />
-                <input id="signup-name" type="text" required className="input auth-input" placeholder="John Doe" value={fullName} onChange={e => setFullName(e.target.value)} autoComplete="name" />
+                <input id="signup-name" type="text" required className="input auth-input" placeholder={isAr ? 'أحمد حسن علي' : 'Ahmed Hassan'} value={fullName} onChange={e => setFullName(e.target.value)} autoComplete="name" aria-invalid={Boolean(fullName && !nameValidation.valid)} />
               </div>
+              {fullName && !nameValidation.valid && <span className="booking-field-hint booking-field-hint--error">{nameValidation.error}</span>}
             </div>
             <div className="form-group">
               <label className="form-label" htmlFor="signup-email">{t('email')}</label>
@@ -116,8 +147,11 @@ const SignUp = () => {
               <label className="form-label" htmlFor="signup-phone">{t('phone') || 'Phone Number'}</label>
               <div className="auth-input-wrap">
                 <Phone size={18} />
-                <input id="signup-phone" type="tel" required className="input auth-input" placeholder="+964..." value={phone} onChange={e => setPhone(e.target.value)} autoComplete="tel" />
+                <input id="signup-phone" type="tel" required className="input auth-input" placeholder="07701234567" value={phone} onChange={e => setPhone(e.target.value)} autoComplete="tel" aria-invalid={Boolean(phone && !phoneValidation.valid)} />
               </div>
+              <span className={`booking-field-hint ${phone && !phoneValidation.valid ? 'booking-field-hint--error' : ''}`}>
+                {phone && phoneValidation.valid ? phoneValidation.value : (isAr ? 'مثال: 07701234567 أو +9647701234567' : 'Example: 07701234567 or +9647701234567')}
+              </span>
             </div>
             <div className="form-group">
               <label className="form-label" htmlFor="signup-password">{t('password')}</label>
@@ -139,7 +173,7 @@ const SignUp = () => {
               </div>
             </div>
             
-            <button type="submit" disabled={loading} className="btn btn-primary w-full auth-submit">
+            <button type="submit" disabled={!canSubmit} className="btn btn-primary w-full auth-submit">
               {loading ? t('loading') || 'Loading...' : t('sign_up')}
             </button>
           </form>
