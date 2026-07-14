@@ -10,6 +10,7 @@ create or replace function public.normalize_iraqi_phone(p_phone text)
 returns text
 language plpgsql
 immutable
+strict
 as $$
 declare
   v_raw text;
@@ -210,7 +211,7 @@ begin
   if not exists (select 1 from pg_constraint where conname = 'profiles_patient_full_name_quality_check') then
     alter table public.profiles
       add constraint profiles_patient_full_name_quality_check
-      check (role::text <> 'patient' or public.is_valid_person_name(full_name)) not valid;
+      check (role <> 'patient'::public.user_role or public.is_valid_person_name(full_name)) not valid;
   end if;
 end $$;
 
@@ -219,7 +220,7 @@ begin
   if exists (
     select 1
     from public.profiles
-    where role::text = 'patient'
+    where role = 'patient'::public.user_role
       and phone_number is not null
       and public.normalize_iraqi_phone(phone_number) is not null
     group by public.normalize_iraqi_phone(phone_number)
@@ -229,7 +230,7 @@ begin
   elsif not exists (
     select 1 from pg_indexes where schemaname = 'public' and indexname = 'profiles_patient_phone_normalized_uniq'
   ) then
-    execute 'create unique index profiles_patient_phone_normalized_uniq on public.profiles (public.normalize_iraqi_phone(phone_number)) where role::text = ''patient'' and phone_number is not null and public.normalize_iraqi_phone(phone_number) is not null';
+    execute 'create unique index profiles_patient_phone_normalized_uniq on public.profiles (phone_number) where role = ''patient''::public.user_role and phone_number is not null';
   end if;
 
   if exists (
@@ -244,7 +245,7 @@ begin
   elsif not exists (
     select 1 from pg_indexes where schemaname = 'public' and indexname = 'patients_clinic_phone_normalized_uniq'
   ) then
-    execute 'create unique index patients_clinic_phone_normalized_uniq on public.patients (clinic_id, public.normalize_iraqi_phone(phone)) where phone is not null and public.normalize_iraqi_phone(phone) is not null';
+    execute 'create unique index patients_clinic_phone_normalized_uniq on public.patients (clinic_id, phone) where phone is not null';
   end if;
 end $$;
 
@@ -263,7 +264,7 @@ begin
 
   return not exists (
     select 1 from public.profiles p
-    where p.role::text = 'patient'
+    where p.role = 'patient'::public.user_role
       and public.normalize_iraqi_phone(p.phone_number) = v_phone
   );
 end;
@@ -315,7 +316,7 @@ commit;
 --
 -- Invalid patient profile phones:
 -- select id, full_name, phone_number from public.profiles
--- where role::text = 'patient'
+-- where role = 'patient'::public.user_role
 --   and phone_number is not null
 --   and public.normalize_iraqi_phone(phone_number) is null;
 --
@@ -324,4 +325,4 @@ commit;
 -- where not public.is_valid_person_name(full_name)
 -- union all
 -- select 'profiles' source, id, full_name from public.profiles
--- where role::text = 'patient' and not public.is_valid_person_name(full_name);
+-- where role = 'patient'::public.user_role and not public.is_valid_person_name(full_name);
